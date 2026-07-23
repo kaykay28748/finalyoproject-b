@@ -222,27 +222,6 @@ export async function resolveCluster(reportIds, status, adminNotes = '') {
 }
 
 /**
- * Confirm that an approved report's issue is resolved (any logged-in user).
- * @param {number} reportId - Report ID
- * @returns {Promise<Object>} Confirmation result
- */
-export async function confirmReportResolved(reportId) {
-  const token = sessionStorage.getItem('accessToken');
-  if (!token) throw new Error('You must be logged in to confirm');
-
-  const response = await fetch(`${API_URL}/api/reports/${reportId}/confirm-resolved`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to confirm');
-  return data;
-}
-
-/**
  * Get messages for a report.
  * @param {number} reportId - Report ID
  * @returns {Promise<Object>} Messages list
