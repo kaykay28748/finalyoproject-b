@@ -68,6 +68,38 @@ async function runMigration() {
     `);
     
     console.log('[Migration] ✓ Ensured is_admin column exists');
+
+    // Ensure report_confirmations table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS report_confirmations (
+        id           SERIAL PRIMARY KEY,
+        report_id    INTEGER NOT NULL,
+        user_id      UUID NOT NULL,
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(report_id, user_id),
+        FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id ON report_confirmations(report_id)`);
+    console.log('[Migration] ✓ report_confirmations table ready');
+
+    // Ensure report_messages table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS report_messages (
+        id             SERIAL PRIMARY KEY,
+        report_id      INTEGER NOT NULL,
+        sender_id      UUID NOT NULL,
+        message        TEXT NOT NULL,
+        read_at        TIMESTAMPTZ,
+        created_at     TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_report_messages_sender_id ON report_messages(sender_id)`);
+    console.log('[Migration] ✓ report_messages table ready');
     
   } catch (error) {
     console.error('[Migration] ❌ Failed:', error.message);
