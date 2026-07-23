@@ -384,6 +384,27 @@ export default function AdminDashboard() {
   const handleApproveReport = (id) => handleUpdateReport(id, 'approved');
   const handleRejectReport  = (id) => handleUpdateReport(id, 'rejected');
 
+  // ── Send cluster-level message (without approve/reject) ──────────────────────
+  const handleSendClusterMessage = useCallback(async (clusterId) => {
+    const cluster = clusters.find(c => c.id === clusterId);
+    if (!cluster) return;
+    const text = (clusterNotes[clusterId] || '').trim();
+    if (!text) return;
+
+    setClusterProcessing(clusterId);
+    try {
+      for (const report of cluster.reports) {
+        await sendReportMessage(report.id, text);
+      }
+      setClusterNotes(prev => ({ ...prev, [clusterId]: '' }));
+      addToast('success', `Message sent to ${cluster.reports.length} report(s)`);
+    } catch (err) {
+      addToast('error', err.message || 'Failed to send message');
+    } finally {
+      setClusterProcessing(null);
+    }
+  }, [clusters, clusterNotes, addToast]);
+
   // ── Cluster bulk resolve ──────────────────────────────────────────────────────
   const handleClusterResolve = useCallback(async (cluster, status) => {
     const reportIds = cluster.reports.map(r => r.id);
@@ -775,12 +796,21 @@ export default function AdminDashboard() {
                           <div className="cluster-expanded">
                             <textarea
                               className="cluster-notes-textarea"
-                              placeholder="Admin notes for this cluster (visible to reporters)..."
+                              placeholder="Message for reporters in this cluster..."
                               value={clusterNotes[cluster.id] || ''}
                               onChange={(e) => setClusterNotes(prev => ({ ...prev, [cluster.id]: e.target.value }))}
                               rows={2}
                               disabled={isProcessing}
                             />
+                            <div className="cluster-actions" style={{ marginTop: 0, marginBottom: 0 }}>
+                              <button
+                                className="btn btn-primary"
+                                onClick={() => handleSendClusterMessage(cluster.id)}
+                                disabled={isProcessing || !(clusterNotes[cluster.id] || '').trim()}
+                              >
+                                Send Message
+                              </button>
+                            </div>
 
                             <div className="cluster-reports">
                               {cluster.reports.map((report) => {
