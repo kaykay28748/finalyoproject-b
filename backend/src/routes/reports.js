@@ -521,20 +521,28 @@ router.get('/inbox', verifyToken, async (req, res) => {
 
     // Reports where this user has unread messages from others
     const result = await query(
-      `SELECT DISTINCT ar.id, ar.location_name, ar.issue_type, ar.status,
-              COUNT(rm2.id) AS unread_count,
-              MAX(rm2.created_at) AS latest_message_at
+      `SELECT ar.id, ar.location_name, ar.issue_type, ar.status,
+              sub.unread_count,
+              sub.latest_message_at
        FROM accessibility_reports ar
-       JOIN report_messages rm ON ar.id = rm.report_id
-       LEFT JOIN report_messages rm2 ON ar.id = rm2.report_id
-         AND rm2.sender_id != ? AND rm2.read_at IS NULL
-       WHERE (ar.submitted_by = ? OR rm.sender_id IN (
-         SELECT id FROM users WHERE is_admin = 1
-       ))
-       GROUP BY ar.id
-       HAVING unread_count > 0
-       ORDER BY latest_message_at DESC`,
-      [userId, userId]
+       JOIN (
+         SELECT rm.report_id,
+                COUNT(CASE WHEN rm2.id IS NOT NULL THEN 1 END) AS unread_count,
+                MAX(CASE WHEN rm2.id IS NOT NULL THEN rm2.created_at END) AS latest_message_at
+         FROM report_messages rm
+         LEFT JOIN report_messages rm2 ON rm.report_id = rm2.report_id
+           AND rm2.sender_id != $1 AND rm2.read_at IS NULL
+         GROUP BY rm.report_id
+       ) sub ON ar.id = sub.report_id
+       WHERE sub.unread_count > 0
+         AND (ar.submitted_by = $1 OR EXISTS (
+           SELECT 1 FROM report_messages rm3
+           WHERE rm3.report_id = ar.id AND rm3.sender_id IN (
+             SELECT id FROM users WHERE is_admin = 1
+           )
+         ))
+       ORDER BY sub.latest_message_at DESC`,
+      [userId]
     );
 
     res.json({ success: true, inbox: result.rows });
