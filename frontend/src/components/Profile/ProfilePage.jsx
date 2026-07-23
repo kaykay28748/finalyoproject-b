@@ -1,17 +1,17 @@
 // frontend/src/components/Profile/ProfilePage.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
 import { API_URL } from "../../config";
 import { loadPreferences, savePreferences } from "../../services/preferencesStore";
 import { isTokenValid } from "./auth";
-import { getMyReports, updateReportStatus, getReportMessages } from "../../services/reportService";
 import EditProfileModal from "./EditProfileModal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import DeleteAccountModal from "./DeleteAccountModal";
 import LogoutConfirmationModal from "./LogoutConfirmationModal";
 import HelpGuideModal from "./HelpGuideModal";
 import PrivacyPolicyModal from "./PrivacyPolicyModal";
+import MyReportsModal from "./MyReportsModal";
 import "./ProfilePage.css";
 
 // Modern SVG Icons
@@ -121,16 +121,7 @@ export default function ProfilePage() {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-
-  // My Reports state
-  const [myReports, setMyReports] = useState([]);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  const [resolvingId, setResolvingId] = useState(null);
-  const [expandedReportMessages, setExpandedReportMessages] = useState(null);
-  const [reportMessages, setReportMessages] = useState([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [expandedReport, setExpandedReport] = useState(null);
-  const [showReports, setShowReports] = useState(false);
+  const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
 
   // Load dark mode from IndexedDB
   useEffect(() => {
@@ -225,62 +216,6 @@ export default function ProfilePage() {
     // Use navigate for smoother transition
     navigate("/login");
   };
-
-  // Fetch user's submitted reports
-  const fetchMyReports = useCallback(async () => {
-    setReportsLoading(true);
-    try {
-      const data = await getMyReports(20);
-      setMyReports(data.reports || []);
-    } catch (err) {
-      console.error("[ProfilePage] Failed to fetch reports:", err);
-    } finally {
-      setReportsLoading(false);
-    }
-  }, []);
-
-  // Resolve an approved report (reporter marks issue as fixed)
-  const handleResolveReport = useCallback(async (reportId) => {
-    setResolvingId(reportId);
-    try {
-      await updateReportStatus(reportId, 'resolved');
-      setMyReports(prev =>
-        prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r)
-      );
-    } catch (err) {
-      console.error("[ProfilePage] Failed to resolve report:", err);
-    } finally {
-      setResolvingId(null);
-    }
-  }, []);
-
-  // Load messages for a report thread
-  const loadMessages = useCallback(async (reportId) => {
-    setMessagesLoading(true);
-    try {
-      const data = await getReportMessages(reportId);
-      setReportMessages(data.messages || []);
-      setExpandedReportMessages(reportId);
-    } catch (err) {
-      console.error("[ProfilePage] Messages error:", err);
-    } finally {
-      setMessagesLoading(false);
-    }
-  }, []);
-
-  // Fetch reports when profile is ready
-  useEffect(() => {
-    if (!profile) return;
-    fetchMyReports();
-  }, [profile, fetchMyReports]);
-
-  // Poll reports only when section is open
-  useEffect(() => {
-    if (!profile || !showReports) return;
-    fetchMyReports();
-    const interval = setInterval(fetchMyReports, 30000);
-    return () => clearInterval(interval);
-  }, [profile, showReports, fetchMyReports]);
 
   if (isLoading) {
     return (
@@ -410,10 +345,7 @@ export default function ProfilePage() {
         <div className="profile-settings-list">
           <button
             className="profile-setting-btn"
-            onClick={() => {
-              setShowReports(!showReports);
-              if (!showReports) fetchMyReports();
-            }}
+            onClick={() => setIsReportsModalOpen(true)}
           >
             <span className="profile-setting-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -426,132 +358,10 @@ export default function ProfilePage() {
             </span>
             <div className="profile-setting-info">
               <strong>My Reports</strong>
-              <span>
-                {reportsLoading ? 'Loading...' : `${myReports.length} report${myReports.length !== 1 ? 's' : ''} submitted`}
-              </span>
+              <span>View and manage your submitted reports</span>
             </div>
-            <span className="profile-setting-arrow">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points={showReports ? "18 15 12 9 6 15" : "9 18 15 12 9 6"} />
-              </svg>
-            </span>
+            <span className="profile-setting-arrow"><IconArrowRight /></span>
           </button>
-
-          {/* Reports list — only shown when expanded */}
-          <div className={`report-detail-panel ${showReports ? 'open' : ''}`}>
-            {reportsLoading && myReports.length === 0 ? (
-              <p className="report-empty-state">Loading reports...</p>
-            ) : myReports.length === 0 ? (
-              <p className="report-empty-state">
-                You haven't submitted any reports yet.
-              </p>
-            ) : (
-              <div className="profile-settings-list">
-                {myReports.map((report) => {
-                  const severityLabels = { 1: 'Mild', 2: 'Moderate', 3: 'Severe' };
-                  const statusLabels = {
-                    pending: 'Under Review',
-                    approved: 'Approved',
-                    rejected: 'Rejected',
-                    resolved: 'Resolved',
-                  };
-                  const isExpanded = expandedReport === report.id;
-                  const isMessagesOpen = expandedReportMessages === report.id;
-
-                  return (
-                    <div className="report-row" key={report.id}>
-                      <button
-                        className="report-row-btn"
-                        onClick={() => setExpandedReport(isExpanded ? null : report.id)}
-                      >
-                        <div className={`report-row-icon severity-${report.severity}`}>
-                          {report.severity === 1 ? '!' : report.severity === 2 ? '!!' : '!!!'}
-                        </div>
-                        <div className="report-row-info">
-                          <strong>{report.location_name || 'Report #' + report.id}</strong>
-                          <span>
-                            {severityLabels[report.severity] || 'Unknown'} · {report.issue_type?.replace(/_/g, ' ')} · {new Date(report.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <span className={`report-status-badge ${report.status}`}>
-                          {statusLabels[report.status] || report.status}
-                        </span>
-                        <span className="report-row-arrow">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points={isExpanded ? "18 15 12 9 6 15" : "9 18 15 12 9 6"} />
-                          </svg>
-                        </span>
-                      </button>
-
-                      <div className={`report-detail-panel ${isExpanded ? 'open' : ''}`}>
-                        <div className="report-detail-section">
-                          <div className="report-detail-row">
-                            <span className="report-detail-label">Type:</span>
-                            <span className="report-detail-value">{report.issue_type?.replace(/_/g, ' ')}</span>
-                          </div>
-                          <div className="report-detail-row">
-                            <span className="report-detail-label">Reported:</span>
-                            <span className="report-detail-value">{new Date(report.created_at).toLocaleString()}</span>
-                          </div>
-                          {report.custom_description && (
-                            <div className="report-detail-row">
-                              <span className="report-detail-label">Note:</span>
-                              <span className="report-detail-value">"{report.custom_description}"</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {report.status === 'approved' && (
-                          <div className="report-detail-section">
-                            <div className="report-actions-row">
-                              <button
-                                className="report-action-btn resolve"
-                                onClick={() => handleResolveReport(report.id)}
-                                disabled={resolvingId === report.id}
-                              >
-                                {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Admin Messages — read-only */}
-                        <div className="report-detail-section">
-                          <button
-                            className="report-messages-toggle"
-                            onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
-                          >
-                            {isMessagesOpen ? 'Hide Messages' : 'Messages from Admin'}
-                          </button>
-
-                          {isMessagesOpen && (
-                            <div className="report-thread">
-                              {messagesLoading ? (
-                                <p className="report-msg-empty">Loading messages...</p>
-                              ) : reportMessages.length > 0 ? (
-                                <div>
-                                  {reportMessages.map(msg => (
-                                    <div key={msg.id} className={`report-msg-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                      <div className={`report-msg-meta ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                        {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
-                                      </div>
-                                      <div className="report-msg-text">{msg.message}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="report-msg-empty">No messages yet.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -660,6 +470,11 @@ export default function ProfilePage() {
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={logout}
+      />
+
+      <MyReportsModal
+        isOpen={isReportsModalOpen}
+        onClose={() => setIsReportsModalOpen(false)}
       />
     </div>
   );
