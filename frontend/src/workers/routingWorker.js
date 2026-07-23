@@ -40,6 +40,7 @@ function findClosestNode(graph, lat, lng) {
 
 let graph = null;
 let isGraphReady = false;
+let approvedReports = [];
 
 function sendToMain(type, data = {}) {
   self.postMessage({ type, ...data });
@@ -87,7 +88,7 @@ function calculateRoute(startLat, startLng, destLat, destLng, profileKey, vehicl
     
     console.log("[Worker] Finding path from", startNodeId, "to", destNodeId, "for", vehicleMode);
   
-    const path = findShortestPath(graph, startNodeId, destNodeId, profileKey, vehicleMode);
+    const path = findShortestPath(graph, startNodeId, destNodeId, profileKey, vehicleMode, approvedReports);
     
     if (!path) {
       sendToMain("ROUTE_ERROR", { error: "No path found" });
@@ -108,10 +109,15 @@ function calculateRoute(startLat, startLng, destLat, destLng, profileKey, vehicl
 }
 
 self.onmessage = function(e) {
-  const { type, startLat, startLng, destLat, destLng, profileKey, vehicleMode } = e.data;
+  const { type, startLat, startLng, destLat, destLng, profileKey, vehicleMode, reports } = e.data;
   
   if (type === "CALCULATE_ROUTE") {
     calculateRoute(startLat, startLng, destLat, destLng, profileKey, vehicleMode);
+  }
+
+  if (type === "UPDATE_REPORTS" && Array.isArray(reports)) {
+    approvedReports = reports;
+    console.log("[Worker] Updated approved reports:", reports.length);
   }
 };
 

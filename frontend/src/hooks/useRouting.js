@@ -183,6 +183,7 @@
 // Graph builds inside a persistent worker — main thread never touches the graph
 
 import { useState, useEffect, useRef } from "react";
+import { API_URL } from "../config";
 
 export function useRouting(startPoint, destPoint, triggered, profileKey = "standard", vehicleMode = "walk") {
   const [route, setRoute] = useState(null);
@@ -241,6 +242,33 @@ export function useRouting(startPoint, destPoint, triggered, profileKey = "stand
       }
     };
   }, []);
+
+  // ── Fetch approved reports and send to worker ────────────────────────────────
+  const reportsRef = useRef([]);
+
+  const fetchApprovedReports = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/reports/approved`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.reports)) {
+        reportsRef.current = data.reports;
+        workerRef.current?.postMessage({
+          type: "UPDATE_REPORTS",
+          reports: data.reports,
+        });
+      }
+    } catch (err) {
+      console.warn("[useRouting] Failed to fetch approved reports:", err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (!isGraphReady) return;
+    fetchApprovedReports();
+    const interval = setInterval(fetchApprovedReports, 60000);
+    return () => clearInterval(interval);
+  }, [isGraphReady]);
 
   // ── Send route request to worker ──────────────────────────────────────────
   useEffect(() => {

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
 import { API_URL } from '../../config';
-import { getReports, updateReportStatus } from '../../services/reportService';
+import { getReports, updateReportStatus, getReportClusters, resolveCluster, getReportMessages, sendReportMessage } from '../../services/reportService';
 import { isTokenValid } from '../Profile/auth';
 import './AdminDashboard.css';
 
@@ -174,6 +174,14 @@ export default function AdminDashboard() {
   const [processingReport, setProcessingReport] = useState(null);
   const [adminNotes,       setAdminNotes]       = useState({});
   const [successMessage,   setSuccessMessage]   = useState('');
+  const [clusters,         setClusters]         = useState([]);
+  const [expandedCluster,  setExpandedCluster]  = useState(null);
+  const [clusterNotes,     setClusterNotes]     = useState({});
+  const [clusterProcessing, setClusterProcessing] = useState(null);
+  const [reportMessages,   setReportMessages]   = useState({});
+  const [newMessage,       setNewMessage]       = useState({});
+  const [sendingMessage,   setSendingMessage]   = useState(null);
+  const [messageThreadReport, setMessageThreadReport] = useState(null);
 
   // Use a ref for the interval so it never re-registers on tab change
   const intervalRef = useRef(null);
@@ -202,6 +210,16 @@ export default function AdminDashboard() {
       setPendingCount(data.reports?.length ?? 0);
     } catch (err) {
       console.error('[Admin] Fetch reports error:', err);
+    }
+  }, []);
+
+  // ── Fetch report clusters (grouped by proximity + issue type) ────────────────
+  const fetchClusters = useCallback(async () => {
+    try {
+      const data = await getReportClusters();
+      setClusters(data.clusters || []);
+    } catch (err) {
+      console.error('[Admin] Fetch clusters error:', err);
     }
   }, []);
 
@@ -283,10 +301,13 @@ export default function AdminDashboard() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // fetchData is stable (no deps change) so the empty array is safe here
 
-  // ── Load reports when switching to Reports tab ───────────────────────────────
+  // ── Load reports + clusters when switching to Reports tab ────────────────────
   useEffect(() => {
-    if (activeTab === 'reports') fetchReports();
-  }, [activeTab, fetchReports]);
+    if (activeTab === 'reports') {
+      fetchReports();
+      fetchClusters();
+    }
+  }, [activeTab, fetchReports, fetchClusters]);
 
   // ── Approve / Reject ─────────────────────────────────────────────────────────
   const handleUpdateReport = useCallback(async (reportId, status) => {
@@ -310,6 +331,53 @@ export default function AdminDashboard() {
 
   const handleApproveReport = (id) => handleUpdateReport(id, 'approved');
   const handleRejectReport  = (id) => handleUpdateReport(id, 'rejected');
+
+  // ── Cluster bulk resolve ─────────────────────────────────────────────────────
+  const handleClusterResolve = useCallback(async (cluster, status) => {
+    const reportIds = cluster.reports.map(r => r.id);
+    setClusterProcessing(cluster.id);
+    setError('');
+    setSuccessMessage('');
+    try {
+      await resolveCluster(reportIds, status, clusterNotes[cluster.id] || '');
+      setClusterNotes(prev => ({ ...prev, [cluster.id]: '' }));
+      setSuccessMessage(`${cluster.reports.length} report(s) ${status} successfully`);
+      await fetchReports();
+      await fetchClusters();
+      fetchData();
+    } catch (err) {
+      setError(err.message || `Failed to ${status} cluster`);
+    } finally {
+      setClusterProcessing(null);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    }
+  }, [clusterNotes, fetchReports, fetchClusters, fetchData]);
+
+  // ── Messaging: load messages for a report ────────────────────────────────────
+  const loadMessages = useCallback(async (reportId) => {
+    try {
+      const data = await getReportMessages(reportId);
+      setReportMessages(prev => ({ ...prev, [reportId]: data.messages || [] }));
+    } catch (err) {
+      console.error('[Admin] Load messages error:', err);
+    }
+  }, []);
+
+  const handleSendMessage = useCallback(async (reportId) => {
+    const text = (newMessage[reportId] || '').trim();
+    if (!text) return;
+
+    setSendingMessage(reportId);
+    try {
+      await sendReportMessage(reportId, text);
+      setNewMessage(prev => ({ ...prev, [reportId]: '' }));
+      await loadMessages(reportId);
+    } catch (err) {
+      setError(err.message || 'Failed to send message');
+    } finally {
+      setSendingMessage(null);
+    }
+  }, [newMessage, loadMessages]);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -613,104 +681,303 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Reports ────────────────────────────────────────────────────────── */}
+        {/* ── Reports (Cluster View) ──────────────────────────────────────── */}
         {activeTab === 'reports' && (
           <div className="admin-card full-width">
             <div className="admin-table-header">
-              <h3>Pending Accessibility Reports</h3>
-              <span className="admin-table-stats">{reports.length} report(s) awaiting review</span>
+              <h3>Accessibility Reports — Cluster View</h3>
+              <span className="admin-table-stats">
+                {clusters.length} cluster(s) · {reports.length} pending report(s)
+              </span>
             </div>
 
-            {reports.length === 0 ? (
+            {clusters.length === 0 ? (
               <div className="no-data" style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-                <p>No pending reports. All clear!</p>
+                <p>No reports to review. All clear!</p>
               </div>
             ) : (
-              <div className="reports-list">
-                {reports.map((report) => {
-                  const severity = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG[2];
-                  const isProcessing = processingReport === report.id;
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px 0' }}>
+                {clusters.map((cluster) => {
+                  const severity = SEVERITY_CONFIG[cluster.max_severity] || SEVERITY_CONFIG[2];
+                  const isExpanded = expandedCluster === cluster.id;
+                  const isProcessing = clusterProcessing === cluster.id;
+                  const hasPending = cluster.reports.some(r => r.status === 'pending');
+                  const hasApproved = cluster.reports.some(r => r.status === 'approved');
 
                   return (
-                    <div key={report.id} className="report-item">
-                      <div className="report-item-header">
-                        <div className="report-item-left">
-                          <span className="report-id">#{report.id}</span>
-                          <span className="report-type">
-                            {ISSUE_TYPE_LABELS[report.issue_type] || report.issue_type}
+                    <div key={cluster.id} style={{
+                      background: 'var(--panel, #fff)',
+                      border: `2px solid ${hasPending ? severity.border : 'var(--border, #e2e8f0)'}`,
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                    }}>
+                      {/* Cluster Header */}
+                      <div style={{
+                        padding: '16px 20px',
+                        borderBottom: isExpanded ? '1px solid var(--border, #e2e8f0)' : 'none',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '20px' }}>
+                                {cluster.max_severity === 3 ? '🔴' : cluster.max_severity === 2 ? '🟡' : '🟢'}
+                              </span>
+                              <span style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text)' }}>
+                                {ISSUE_TYPE_LABELS[cluster.issue_type] || cluster.issue_type}
+                              </span>
+                              {cluster.location_name && (
+                                <span style={{ fontSize: '13px', color: 'var(--sub, #64748b)' }}>
+                                  — {cluster.location_name}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--sub, #64748b)' }}>
+                              📍 {cluster.lat.toFixed(5)}, {cluster.lng.toFixed(5)}
+                            </div>
+                          </div>
+
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            background: severity.bg,
+                            color: severity.color,
+                          }}>
+                            Severity {cluster.avg_severity}
                           </span>
                         </div>
-                        <span
-                          className="report-severity"
-                          style={{ backgroundColor: severity.bg, color: severity.color }}
-                        >
-                          {severity.label}
-                        </span>
+
+                        {/* Stats Row */}
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text)' }}>
+                          <span><strong>{cluster.report_count}</strong> report{cluster.report_count > 1 ? 's' : ''}</span>
+                          {cluster.open_count > 0 && <span style={{ color: '#f59e0b' }}>{cluster.open_count} pending</span>}
+                          {cluster.approved_count > 0 && <span style={{ color: '#22c55e' }}>{cluster.approved_count} approved</span>}
+                          {cluster.resolved_count > 0 && <span style={{ color: '#6366f1' }}>{cluster.resolved_count} resolved</span>}
+                          {cluster.rejected_count > 0 && <span style={{ color: '#ef4444' }}>{cluster.rejected_count} rejected</span>}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--sub, #94a3b8)', marginTop: '4px' }}>
+                          First: {new Date(cluster.first_reported).toLocaleDateString()} · Latest: {new Date(cluster.latest_reported).toLocaleString()}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button
+                            onClick={() => {
+                              setExpandedCluster(isExpanded ? null : cluster.id);
+                              if (!isExpanded) {
+                                cluster.reports.forEach(r => loadMessages(r.id));
+                              }
+                            }}
+                            style={{
+                              fontSize: '13px', fontWeight: '600', padding: '6px 14px',
+                              borderRadius: '8px', border: '1px solid var(--border)',
+                              background: 'transparent', color: 'var(--text)', cursor: 'pointer',
+                            }}
+                          >
+                            {isExpanded ? 'Collapse' : `View ${cluster.report_count} report${cluster.report_count > 1 ? 's' : ''}`}
+                          </button>
+
+                          {hasPending && (
+                            <>
+                              <button
+                                onClick={() => handleClusterResolve(cluster, 'rejected')}
+                                disabled={isProcessing}
+                                style={{
+                                  fontSize: '13px', fontWeight: '600', padding: '6px 14px',
+                                  borderRadius: '8px', border: '1px solid #ef4444',
+                                  background: isProcessing ? '#ef444420' : 'transparent',
+                                  color: '#ef4444', cursor: isProcessing ? 'wait' : 'pointer',
+                                }}
+                              >
+                                {isProcessing ? '...' : 'Reject All'}
+                              </button>
+                              <button
+                                onClick={() => handleClusterResolve(cluster, 'approved')}
+                                disabled={isProcessing}
+                                style={{
+                                  fontSize: '13px', fontWeight: '600', padding: '6px 14px',
+                                  borderRadius: '8px', border: '1px solid #22c55e',
+                                  background: isProcessing ? '#22c55e20' : 'transparent',
+                                  color: '#22c55e', cursor: isProcessing ? 'wait' : 'pointer',
+                                }}
+                              >
+                                {isProcessing ? '...' : 'Approve All'}
+                              </button>
+                            </>
+                          )}
+
+                          {hasApproved && !hasPending && (
+                            <button
+                              onClick={() => handleClusterResolve(cluster, 'resolved')}
+                              disabled={isProcessing}
+                              style={{
+                                fontSize: '13px', fontWeight: '600', padding: '6px 14px',
+                                borderRadius: '8px', border: '1px solid #6366f1',
+                                background: isProcessing ? '#6366f120' : 'transparent',
+                                color: '#6366f1', cursor: isProcessing ? 'wait' : 'pointer',
+                              }}
+                            >
+                              {isProcessing ? '...' : 'Resolve All'}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="report-item-details">
-                        <div className="report-detail-row">
-                          <span className="report-detail-label">Location:</span>
-                          <span className="report-detail-value">
-                            {formatCoordinate(report.lat, report.lng)}
-                          </span>
-                        </div>
-
-                        {report.location_name && (
-                          <div className="report-detail-row">
-                            <span className="report-detail-label">Place:</span>
-                            <span className="report-detail-value">{report.location_name}</span>
-                          </div>
-                        )}
-
-                        {report.custom_description && (
-                          <div className="report-detail-row">
-                            <span className="report-detail-label">Description:</span>
-                            <span className="report-detail-value report-description">
-                              {report.custom_description}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="report-detail-row">
-                          <span className="report-detail-label">Reported:</span>
-                          <span className="report-detail-value">
-                            {new Date(report.created_at).toLocaleString()}
-                          </span>
-                        </div>
-
-                        <div className="report-actions">
+                      {/* Expanded: Individual Reports */}
+                      {isExpanded && (
+                        <div style={{ padding: '16px 20px' }}>
+                          {/* Admin Notes */}
                           <textarea
-                            className="report-notes-input"
-                            placeholder="Add admin notes (optional)..."
-                            value={adminNotes[report.id] || ''}
-                            onChange={(e) =>
-                              setAdminNotes(prev => ({ ...prev, [report.id]: e.target.value }))
-                            }
+                            placeholder="Admin notes for this cluster (visible to reporters)..."
+                            value={clusterNotes[cluster.id] || ''}
+                            onChange={(e) => setClusterNotes(prev => ({ ...prev, [cluster.id]: e.target.value }))}
                             rows={2}
                             disabled={isProcessing}
+                            style={{
+                              width: '100%', boxSizing: 'border-box', padding: '10px',
+                              borderRadius: '8px', border: '1px solid var(--border)',
+                              background: 'var(--bg, #f8fafc)', color: 'var(--text)',
+                              fontSize: '13px', resize: 'vertical', marginBottom: '12px',
+                            }}
                           />
-                          <div className="report-action-buttons">
-                            <button
-                              className="report-btn reject-btn"
-                              onClick={() => handleRejectReport(report.id)}
-                              disabled={isProcessing}
-                            >
-                              <Icons.X />
-                              {isProcessing ? 'Processing...' : 'Reject'}
-                            </button>
-                            <button
-                              className="report-btn approve-btn"
-                              onClick={() => handleApproveReport(report.id)}
-                              disabled={isProcessing}
-                            >
-                              <Icons.Check />
-                              {isProcessing ? 'Processing...' : 'Approve'}
-                            </button>
-                          </div>
+
+                          {cluster.reports.map((report) => {
+                            const rSeverity = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG[2];
+                            const isReportProcessing = processingReport === report.id;
+                            const msgs = reportMessages[report.id] || [];
+
+                            return (
+                              <div key={report.id} style={{
+                                border: '1px solid var(--border, #e2e8f0)',
+                                borderRadius: '12px', padding: '14px', marginBottom: '12px',
+                                background: 'var(--bg, #f8fafc)',
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontWeight: '700', fontSize: '14px' }}>#{report.id}</span>
+                                    <span style={{
+                                      fontSize: '11px', fontWeight: '600', padding: '2px 8px',
+                                      borderRadius: '12px', background: rSeverity.bg, color: rSeverity.color,
+                                    }}>
+                                      {rSeverity.label}
+                                    </span>
+                                    <span style={{
+                                      fontSize: '11px', fontWeight: '600', padding: '2px 8px',
+                                      borderRadius: '12px',
+                                      background: report.status === 'pending' ? '#f59e0b18' : report.status === 'approved' ? '#22c55e18' : '#6366f118',
+                                      color: report.status === 'pending' ? '#f59e0b' : report.status === 'approved' ? '#22c55e' : '#6366f1',
+                                    }}>
+                                      {report.status}
+                                    </span>
+                                  </div>
+                                  <span style={{ fontSize: '11px', color: 'var(--sub, #94a3b8)' }}>
+                                    {new Date(report.created_at).toLocaleString()}
+                                  </span>
+                                </div>
+
+                                {report.location_name && (
+                                  <div style={{ fontSize: '13px', color: 'var(--sub, #64748b)', marginBottom: '4px' }}>
+                                    📍 {report.location_name}
+                                  </div>
+                                )}
+                                {report.custom_description && (
+                                  <div style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '8px', fontStyle: 'italic' }}>
+                                    "{report.custom_description}"
+                                  </div>
+                                )}
+                                {report.admin_notes && (
+                                  <div style={{ fontSize: '12px', color: '#6366f1', marginBottom: '8px', padding: '6px 10px', background: '#6366f110', borderRadius: '6px' }}>
+                                    Admin note: {report.admin_notes}
+                                  </div>
+                                )}
+
+                                {/* Individual report actions */}
+                                {report.status === 'pending' && (
+                                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                    <button
+                                      onClick={() => handleRejectReport(report.id)}
+                                      disabled={isReportProcessing}
+                                      style={{
+                                        fontSize: '12px', fontWeight: '600', padding: '4px 12px',
+                                        borderRadius: '6px', border: '1px solid #ef4444',
+                                        background: 'transparent', color: '#ef4444', cursor: 'pointer',
+                                      }}
+                                    >
+                                      {isReportProcessing ? '...' : 'Reject'}
+                                    </button>
+                                    <button
+                                      onClick={() => handleApproveReport(report.id)}
+                                      disabled={isReportProcessing}
+                                      style={{
+                                        fontSize: '12px', fontWeight: '600', padding: '4px 12px',
+                                        borderRadius: '6px', border: '1px solid #22c55e',
+                                        background: 'transparent', color: '#22c55e', cursor: 'pointer',
+                                      }}
+                                    >
+                                      {isReportProcessing ? '...' : 'Approve'}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Message Thread */}
+                                <div style={{ marginTop: '12px', borderTop: '1px solid var(--border, #e2e8f0)', paddingTop: '12px' }}>
+                                  <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--sub, #64748b)', marginBottom: '8px' }}>
+                                    Messages ({msgs.length})
+                                  </div>
+                                  {msgs.length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                                      {msgs.map(msg => (
+                                        <div key={msg.id} style={{
+                                          padding: '8px 12px', borderRadius: '8px',
+                                          background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
+                                          borderLeft: msg.sender_is_admin ? '3px solid #2563eb' : '3px solid transparent',
+                                          fontSize: '13px',
+                                        }}>
+                                          <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>
+                                            {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
+                                          </div>
+                                          <div style={{ color: 'var(--text)' }}>{msg.message}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Send Message Input */}
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input
+                                      type="text"
+                                      placeholder="Send a message to the reporter..."
+                                      value={newMessage[report.id] || ''}
+                                      onChange={(e) => setNewMessage(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(report.id); }}
+                                      disabled={sendingMessage === report.id}
+                                      style={{
+                                        flex: 1, padding: '8px 12px', borderRadius: '8px',
+                                        border: '1px solid var(--border)', fontSize: '13px',
+                                        background: 'var(--bg, #fff)', color: 'var(--text)',
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => handleSendMessage(report.id)}
+                                      disabled={sendingMessage === report.id || !(newMessage[report.id] || '').trim()}
+                                      style={{
+                                        fontSize: '13px', fontWeight: '600', padding: '8px 16px',
+                                        borderRadius: '8px', border: 'none',
+                                        background: '#2563eb', color: '#fff', cursor: 'pointer',
+                                        opacity: sendingMessage === report.id || !(newMessage[report.id] || '').trim() ? 0.5 : 1,
+                                      }}
+                                    >
+                                      {sendingMessage === report.id ? '...' : 'Send'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}

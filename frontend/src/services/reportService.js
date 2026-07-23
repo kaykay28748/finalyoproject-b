@@ -119,6 +119,33 @@ export async function updateReportStatus(reportId, status, adminNotes = '') {
 }
 
 /**
+ * Get current user's submitted reports
+ * @param {number} limit - Results per page
+ * @param {number} offset - Pagination offset
+ * @returns {Promise<Object>} Reports list
+ */
+export async function getMyReports(limit = 50, offset = 0) {
+  const token = sessionStorage.getItem('accessToken');
+
+  const response = await fetch(
+    `${API_URL}/api/reports/mine?limit=${limit}&offset=${offset}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to fetch your reports');
+  }
+
+  return data;
+}
+
+/**
  * Get report statistics for admin dashboard
  * @returns {Promise<Object>} Statistics
  */
@@ -137,5 +164,132 @@ export async function getReportStats() {
     throw new Error(data.error || 'Failed to fetch statistics');
   }
   
+  return data;
+}
+
+/**
+ * Get all approved reports (public — no auth required).
+ * Used by the routing system and map display.
+ * @returns {Promise<Object>} Approved reports list
+ */
+export async function getApprovedReports() {
+  const response = await fetch(`${API_URL}/api/reports/approved`);
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to fetch approved reports');
+  }
+  
+  return data;
+}
+
+/**
+ * Get report clusters (admin only).
+ * Groups nearby reports with same issue type.
+ * @returns {Promise<Object>} Cluster list
+ */
+export async function getReportClusters() {
+  const token = sessionStorage.getItem('accessToken');
+  const response = await fetch(`${API_URL}/api/reports/clusters`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to fetch clusters');
+  return data;
+}
+
+/**
+ * Bulk resolve/reject reports in a cluster (admin only).
+ * @param {number[]} reportIds - Report IDs to update
+ * @param {string} status - 'approved', 'rejected', or 'resolved'
+ * @param {string} adminNotes - Optional notes
+ * @returns {Promise<Object>} Result
+ */
+export async function resolveCluster(reportIds, status, adminNotes = '') {
+  const token = sessionStorage.getItem('accessToken');
+  const response = await fetch(`${API_URL}/api/reports/cluster/resolve`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ report_ids: reportIds, status, admin_notes: adminNotes }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to resolve cluster');
+  return data;
+}
+
+/**
+ * Confirm that an approved report's issue is resolved (any logged-in user).
+ * @param {number} reportId - Report ID
+ * @returns {Promise<Object>} Confirmation result
+ */
+export async function confirmReportResolved(reportId) {
+  const token = sessionStorage.getItem('accessToken');
+  if (!token) throw new Error('You must be logged in to confirm');
+
+  const response = await fetch(`${API_URL}/api/reports/${reportId}/confirm-resolved`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to confirm');
+  return data;
+}
+
+/**
+ * Get messages for a report.
+ * @param {number} reportId - Report ID
+ * @returns {Promise<Object>} Messages list
+ */
+export async function getReportMessages(reportId) {
+  const token = sessionStorage.getItem('accessToken');
+  const response = await fetch(`${API_URL}/api/reports/${reportId}/messages`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to fetch messages');
+  return data;
+}
+
+/**
+ * Send a message on a report.
+ * @param {number} reportId - Report ID
+ * @param {string} message - Message text
+ * @returns {Promise<Object>} Sent message
+ */
+export async function sendReportMessage(reportId, message) {
+  const token = sessionStorage.getItem('accessToken');
+  if (!token) throw new Error('You must be logged in');
+
+  const response = await fetch(`${API_URL}/api/reports/${reportId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ message }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to send message');
+  return data;
+}
+
+/**
+ * Get reports with unread messages for current user (inbox).
+ * @returns {Promise<Object>} Inbox items
+ */
+export async function getReportInbox() {
+  const token = sessionStorage.getItem('accessToken');
+  const response = await fetch(`${API_URL}/api/reports/inbox`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to fetch inbox');
   return data;
 }

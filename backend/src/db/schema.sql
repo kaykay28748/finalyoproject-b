@@ -132,6 +132,29 @@ CREATE TABLE IF NOT EXISTS accessibility_reports (
   FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Report confirmations (community consensus for "already resolved")
+CREATE TABLE IF NOT EXISTS report_confirmations (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  report_id    INTEGER NOT NULL,
+  user_id      TEXT NOT NULL,
+  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(report_id, user_id),
+  FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Report messages (admin-reporter communication)
+CREATE TABLE IF NOT EXISTS report_messages (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  report_id      INTEGER NOT NULL,
+  sender_id      TEXT NOT NULL,
+  message        TEXT NOT NULL,
+  read_at        DATETIME,
+  created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- ============================================
 -- INDEXES
 -- ============================================
@@ -155,3 +178,6 @@ CREATE INDEX IF NOT EXISTS idx_search_destinations_lng ON search_destinations (l
 CREATE UNIQUE INDEX IF NOT EXISTS idx_search_destinations_unique ON search_destinations (lat_bucket, lng_bucket, hour_of_day, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_accessibility_reports_status ON accessibility_reports(status);
 CREATE INDEX IF NOT EXISTS idx_accessibility_reports_submitted_by ON accessibility_reports(submitted_by);
+CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id ON report_confirmations(report_id);
+CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id);
+CREATE INDEX IF NOT EXISTS idx_report_messages_sender_id ON report_messages(sender_id);

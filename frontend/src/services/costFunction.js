@@ -379,6 +379,43 @@ export function getEstimatedTime(distanceMeters, vehicleMode) {
 }
 
 /**
+ * Check if a point is near any approved report and return the highest severity penalty.
+ * Reports within REPORT_RADIUS_METERS of the edge midpoint affect routing.
+ */
+const REPORT_RADIUS_METERS = 50;
+const REPORT_SEVERITY_MULTIPLIERS = { 1: 1.5, 2: 2.0, 3: 3.0 };
+
+function getReportPenalty(edge, approvedReports) {
+  if (!approvedReports?.length) return 1.0;
+
+  const midLat = ((edge.fromLat ?? 0) + (edge.toLat ?? 0)) / 2;
+  const midLng = ((edge.fromLng ?? 0) + (edge.toLng ?? 0)) / 2;
+  if (midLat === 0 && midLng === 0) return 1.0;
+
+  let maxPenalty = 1.0;
+  const R = 6371000;
+
+  for (const report of approvedReports) {
+    if (!report.lat || !report.lng) continue;
+    const dLat = (report.lat - midLat) * Math.PI / 180;
+    const dLng = (report.lng - midLng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(midLat * Math.PI / 180) * Math.cos(report.lat * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2;
+    const distMeters = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    if (distMeters <= REPORT_RADIUS_METERS) {
+      const severity = report.severity || 2;
+      let penalty = REPORT_SEVERITY_MULTIPLIERS[severity] || 2.0;
+      if (report.issue_type === 'construction' && severity === 3) penalty = 9999;
+      if (penalty > maxPenalty) maxPenalty = penalty;
+    }
+  }
+
+  return maxPenalty;
+}
+
+/**
  * Calculates the weighted cost of traversing an edge.
  * Now includes weather multipliers for context-aware routing.
  */
@@ -391,7 +428,8 @@ export function calculateEdgeCost(
   vehicleMode = 'walk',
   incomingBearing = null,
   goalBearing = null,
-  weatherMultipliers = DEFAULT_WEATHER_MULTIPLIERS
+  weatherMultipliers = DEFAULT_WEATHER_MULTIPLIERS,
+  approvedReports = []
 ) {
   // Hard block for this vehicle mode
   if (!isEdgeAllowed(edge, vehicleMode)) {
@@ -542,6 +580,9 @@ export function calculateEdgeCost(
     modeHighwayBonus = 0.9;
   }
 
+  // ── Approved report penalty ──────────────────────────────────────────────
+  const reportPenalty = getReportPenalty(edge, approvedReports);
+
   // ── Base weighted distance with weather ────────────────────────────────────
   const baseCost =
     distance *
@@ -555,7 +596,8 @@ export function calculateEdgeCost(
     trafficCost *
     gateCost *
     shadeCost *
-    exposedCost;
+    exposedCost *
+    reportPenalty;
 
   // ── Turn penalty ─────────────────────────────────────────────────────────
   let turnPenalty = 0;

@@ -79,7 +79,8 @@ export function findShortestPath(
   startNodeId,
   endNodeId,
   profileKey  = "standard",
-  vehicleMode = "walk"
+  vehicleMode = "walk",
+  approvedReports = []
 ) {
   if (!graph?.nodes || !graph?.edges) {
     console.error("[Routing] Invalid graph");
@@ -209,7 +210,9 @@ export function findShortestPath(
         context.currentHour,
         vehicleMode,
         incomingBearing,
-        goalBearing
+        goalBearing,
+        undefined,
+        approvedReports
       );
 
       const tentativeG = currentG + edgeCost;
@@ -314,15 +317,16 @@ export async function getAllRoutes(
   startNodeId,
   endNodeId,
   profileKey  = "standard",
-  vehicleMode = "walk"
+  vehicleMode = "walk",
+  approvedReports = []
 ) {
   const startTime = performance.now();
 
   const [standard, fastest, accessible, night] = await Promise.all([
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, approvedReports)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, approvedReports)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, approvedReports)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, approvedReports)),
   ]);
 
   const elapsed = performance.now() - startTime;

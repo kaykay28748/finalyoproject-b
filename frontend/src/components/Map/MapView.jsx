@@ -16,6 +16,7 @@ import Legend from "../Legend/Legend";
 import WeatherOverlay from "./WeatherOverlay";
 import FloatingButtonGroup from "./FloatingButtonGroup";
 import LayerSwitcher from "./LayerSwitcher";
+import ReportMarkers from "./ReportMarkers";
 import { useWeather } from "../../hooks/useWeather";
 import "../Legend/Legend.css";
 
@@ -361,6 +362,8 @@ export default function MapView({
           />
 
           <WeatherOverlay weather={weather} />
+
+          <ReportMarkers />
         </MapContainer>
       </div>
 
