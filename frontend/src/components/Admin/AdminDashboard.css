@@ -696,6 +696,12 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
 
+.cluster-card.is-expanded {
+  border-color: var(--a-accent);
+  border-left: 3px solid var(--a-accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
 .cluster-header {
   padding: 16px 20px;
 }
@@ -1062,6 +1068,13 @@
   border-radius: var(--a-radius);
   background: var(--a-panel);
   overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inbox-card.is-expanded {
+  border-color: var(--a-accent);
+  border-left: 3px solid var(--a-accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
 
 .inbox-card-header {

@@ -738,7 +738,7 @@ export default function AdminDashboard() {
                     const hasApproved = cluster.reports.some(r => r.status === 'approved');
 
                     return (
-                      <div key={cluster.id} className={`cluster-card severity-${cluster.max_severity}`}>
+                      <div key={cluster.id} className={`cluster-card severity-${cluster.max_severity}${isExpanded ? ' is-expanded' : ''}`}>
                         <div className="cluster-header">
                           <div className="cluster-header-top">
                             <div className="cluster-title-group">
@@ -959,7 +959,7 @@ export default function AdminDashboard() {
                     const isThreadOpen = messageThreadReport === item.id;
 
                     return (
-                      <div key={item.id} className="inbox-card">
+                      <div key={item.id} className={`inbox-card${isThreadOpen ? ' is-expanded' : ''}`}>
                         <div className="inbox-card-header">
                           <div className="inbox-card-info">
                             <div className="inbox-card-badges">
