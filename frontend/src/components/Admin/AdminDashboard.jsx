@@ -973,7 +973,6 @@ export default function AdminDashboard() {
                                         <div key={msg.id} style={{
                                           padding: '8px 12px', borderRadius: '8px',
                                           background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
-                                          borderLeft: msg.sender_is_admin ? '3px solid #2563eb' : '3px solid transparent',
                                           fontSize: '13px',
                                         }}>
                                           <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>
@@ -1114,7 +1113,6 @@ export default function AdminDashboard() {
                                   <div key={msg.id} style={{
                                     padding: '8px 12px', borderRadius: '8px',
                                     background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
-                                    borderLeft: msg.sender_is_admin ? '3px solid #2563eb' : '3px solid transparent',
                                     fontSize: '13px',
                                   }}>
                                     <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>

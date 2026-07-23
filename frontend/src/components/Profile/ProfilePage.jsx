@@ -499,12 +499,6 @@ export default function ProfilePage() {
                               <span className="report-detail-value">"{report.custom_description}"</span>
                             </div>
                           )}
-                          {report.admin_notes && (
-                            <div className="report-detail-row">
-                              <span className="report-detail-label">Admin reply:</span>
-                              <span className="report-detail-value" style={{ color: '#2563eb' }}>{report.admin_notes}</span>
-                            </div>
-                          )}
                         </div>
 
                         {report.status === 'approved' && (
