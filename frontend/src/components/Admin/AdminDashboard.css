@@ -718,7 +718,11 @@
   flex-wrap: wrap;
 }
 
-.cluster-severity-icon { font-size: 18px; line-height: 1; }
+.cluster-severity-icon { display: flex; align-items: center; flex-shrink: 0; }
+.cluster-severity-icon svg { width: 20px; height: 20px; }
+.sev-icon-1 { color: var(--a-text-muted); }
+.sev-icon-2 { color: var(--a-amber); }
+.sev-icon-3 { color: var(--a-red); }
 
 .cluster-issue-name {
   font-weight: 700;

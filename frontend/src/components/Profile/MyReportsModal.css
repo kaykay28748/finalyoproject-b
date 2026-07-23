@@ -165,15 +165,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
   flex-shrink: 0;
-  color: #fff;
+  color: #9ca3af;
 }
 
-.myreports-severity.sev-1 { background: #22c55e; }
-.myreports-severity.sev-2 { background: #f59e0b; }
-.myreports-severity.sev-3 { background: #ef4444; }
+.myreports-severity svg {
+  width: 20px;
+  height: 20px;
+}
+
+.myreports-severity.sev-1 { color: #6b7280; }
+.myreports-severity.sev-2 { color: #d97706; }
+.myreports-severity.sev-3 { color: #dc2626; }
+
+.ug-root.dark .myreports-severity.sev-1 { color: #9ca3af; }
+.ug-root.dark .myreports-severity.sev-2 { color: #fbbf24; }
+.ug-root.dark .myreports-severity.sev-3 { color: #f87171; }
 
 .myreports-card-info {
   flex: 1;
