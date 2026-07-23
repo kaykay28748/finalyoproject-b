@@ -135,6 +135,7 @@ export default function ProfilePage() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [expandedReport, setExpandedReport] = useState(null);
 
   // Load dark mode from IndexedDB
   useEffect(() => {
@@ -458,174 +459,154 @@ export default function ProfilePage() {
       <div className="profile-section">
         <h3>My Reports</h3>
         {reportsLoading ? (
-          <p style={{ fontSize: '14px', color: '#94a3b8', padding: '12px 0' }}>Loading reports...</p>
+          <p className="report-empty-state">Loading reports...</p>
         ) : myReports.length === 0 ? (
-          <p style={{ fontSize: '14px', color: '#94a3b8', padding: '12px 0' }}>
+          <p className="report-empty-state">
             You haven't submitted any reports yet.
           </p>
         ) : (
-          <div className="profile-settings-list" style={{ flexDirection: 'column', gap: '12px' }}>
+          <div className="profile-settings-list">
             {myReports.map((report) => {
               const severityLabels = { 1: 'Mild', 2: 'Moderate', 3: 'Severe' };
-              const severityColors = { 1: '#22c55e', 2: '#f59e0b', 3: '#ef4444' };
-              const statusColors = {
-                pending: '#f59e0b',
-                approved: '#22c55e',
-                rejected: '#ef4444',
-                resolved: '#6366f1',
-              };
               const statusLabels = {
                 pending: 'Under Review',
                 approved: 'Approved',
                 rejected: 'Rejected',
                 resolved: 'Resolved',
               };
+              const isExpanded = expandedReport === report.id;
               const isMessagesOpen = expandedReportMessages === report.id;
 
               return (
-                <div
-                  key={report.id}
-                  style={{
-                    background: 'var(--panel, #fff)',
-                    border: '1px solid var(--border, #e2e8f0)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '600', fontSize: '14px' }}>
-                      #{report.id} — {report.location_name || 'Unnamed location'}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        padding: '2px 10px',
-                        borderRadius: '20px',
-                        background: `${statusColors[report.status]}18`,
-                        color: statusColors[report.status],
-                      }}
-                    >
+                <div className="report-row" key={report.id}>
+                  <button
+                    className="report-row-btn"
+                    onClick={() => setExpandedReport(isExpanded ? null : report.id)}
+                  >
+                    <div className={`report-row-icon severity-${report.severity}`}>
+                      {report.severity === 1 ? '!' : report.severity === 2 ? '!!' : '!!!'}
+                    </div>
+                    <div className="report-row-info">
+                      <strong>{report.location_name || 'Report #' + report.id}</strong>
+                      <span>
+                        {severityLabels[report.severity] || 'Unknown'} · {report.issue_type?.replace(/_/g, ' ')} · {new Date(report.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <span className={`report-status-badge ${report.status}`}>
                       {statusLabels[report.status] || report.status}
                     </span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--sub, #64748b)', marginBottom: '8px' }}>
-                    <span style={{ color: severityColors[report.severity], fontWeight: '600' }}>
-                      {severityLabels[report.severity] || 'Unknown'}
+                    <span className="report-row-arrow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points={isExpanded ? "18 15 12 9 6 15" : "9 18 15 12 9 6"} />
+                      </svg>
                     </span>
-                    {' · '}
-                    {report.issue_type?.replace(/_/g, ' ')}
-                    {' · '}
-                    {new Date(report.created_at).toLocaleDateString()}
-                  </div>
+                  </button>
 
-                  {report.status === 'approved' && (
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => handleResolveReport(report.id)}
-                        disabled={resolvingId === report.id}
-                        style={{
-                          fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                          borderRadius: '8px', border: '1px solid #6366f1',
-                          background: resolvingId === report.id ? '#6366f120' : 'transparent',
-                          color: '#6366f1', cursor: resolvingId === report.id ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
-                      </button>
-                      <button
-                        onClick={() => handleConfirmFixed(report.id)}
-                        disabled={confirmingId === report.id}
-                        style={{
-                          fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                          borderRadius: '8px', border: '1px solid #22c55e',
-                          background: confirmingId === report.id ? '#22c55e20' : 'transparent',
-                          color: '#16a34a', cursor: confirmingId === report.id ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {confirmingId === report.id ? 'Confirming...' : '✓ Issue Fixed'}
-                      </button>
-                    </div>
-                  )}
-
-                  {confirmResult?.reportId === report.id && (
-                    <div style={{
-                      marginTop: '8px', padding: '8px 12px', borderRadius: '8px',
-                      background: confirmResult.error ? '#fef2f2' : '#f0fdf4',
-                      color: confirmResult.error ? '#ef4444' : '#16a34a',
-                      fontSize: '13px', fontWeight: '600',
-                    }}>
-                      {confirmResult.message}
-                    </div>
-                  )}
-
-                  {/* Messages Thread Toggle */}
-                  {report.status !== 'rejected' && (
-                    <button
-                      onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
-                      style={{
-                        marginTop: '10px', fontSize: '12px', fontWeight: '600',
-                        padding: '4px 0', border: 'none', background: 'none',
-                        color: '#2563eb', cursor: 'pointer', textDecoration: 'underline',
-                      }}
-                    >
-                      {isMessagesOpen ? 'Hide Messages' : 'Messages'}
-                    </button>
-                  )}
-
-                  {isMessagesOpen && (
-                    <div style={{ marginTop: '8px', borderTop: '1px solid var(--border, #e2e8f0)', paddingTop: '10px' }}>
-                      {messagesLoading ? (
-                        <p style={{ fontSize: '12px', color: '#94a3b8' }}>Loading...</p>
-                      ) : reportMessages.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                          {reportMessages.map(msg => (
-                            <div key={msg.id} style={{
-                              padding: '8px 12px', borderRadius: '8px',
-                              background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
-                              borderLeft: msg.sender_is_admin ? '3px solid #2563eb' : '3px solid transparent',
-                              fontSize: '13px',
-                            }}>
-                              <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>
-                                {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
-                              </div>
-                              <div style={{ color: 'var(--text)' }}>{msg.message}</div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>No messages yet.</p>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          placeholder="Reply to admin..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
-                          disabled={sendingMessage}
-                          style={{
-                            flex: 1, padding: '8px 12px', borderRadius: '8px',
-                            border: '1px solid var(--border)', fontSize: '13px',
-                            background: 'var(--bg, #fff)', color: 'var(--text)',
-                          }}
-                        />
-                        <button
-                          onClick={handleSendMessage}
-                          disabled={sendingMessage || !newMessage.trim()}
-                          style={{
-                            fontSize: '13px', fontWeight: '600', padding: '8px 16px',
-                            borderRadius: '8px', border: 'none',
-                            background: '#2563eb', color: '#fff', cursor: 'pointer',
-                            opacity: sendingMessage || !newMessage.trim() ? 0.5 : 1,
-                          }}
-                        >
-                          {sendingMessage ? '...' : 'Send'}
-                        </button>
+                  <div className={`report-detail-panel ${isExpanded ? 'open' : ''}`}>
+                    {/* Report Details */}
+                    <div className="report-detail-section">
+                      <div className="report-detail-row">
+                        <span className="report-detail-label">Type:</span>
+                        <span className="report-detail-value">{report.issue_type?.replace(/_/g, ' ')}</span>
                       </div>
+                      <div className="report-detail-row">
+                        <span className="report-detail-label">Reported:</span>
+                        <span className="report-detail-value">{new Date(report.created_at).toLocaleString()}</span>
+                      </div>
+                      {report.custom_description && (
+                        <div className="report-detail-row">
+                          <span className="report-detail-label">Note:</span>
+                          <span className="report-detail-value">"{report.custom_description}"</span>
+                        </div>
+                      )}
+                      {report.admin_notes && (
+                        <div className="report-detail-row">
+                          <span className="report-detail-label">Admin reply:</span>
+                          <span className="report-detail-value" style={{ color: '#2563eb' }}>{report.admin_notes}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Action Buttons */}
+                    {report.status === 'approved' && (
+                      <div className="report-detail-section">
+                        <div className="report-actions-row">
+                          <button
+                            className="report-action-btn confirm"
+                            onClick={() => handleConfirmFixed(report.id)}
+                            disabled={confirmingId === report.id}
+                          >
+                            {confirmingId === report.id ? 'Confirming...' : 'Confirm Issue Fixed'}
+                          </button>
+                          <button
+                            className="report-action-btn resolve"
+                            onClick={() => handleResolveReport(report.id)}
+                            disabled={resolvingId === report.id}
+                          >
+                            {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
+                          </button>
+                        </div>
+
+                        {confirmResult?.reportId === report.id && (
+                          <div className={`report-confirm-result ${confirmResult.error ? 'error' : 'success'}`}>
+                            {confirmResult.message}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Messages */}
+                    {report.status !== 'rejected' && (
+                      <div className="report-detail-section">
+                        <button
+                          className="report-messages-toggle"
+                          onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
+                        >
+                          {isMessagesOpen ? 'Hide Messages' : 'Messages with Admin'}
+                        </button>
+
+                        {isMessagesOpen && (
+                          <div className="report-thread">
+                            {messagesLoading ? (
+                              <p className="report-msg-empty">Loading messages...</p>
+                            ) : reportMessages.length > 0 ? (
+                              <div>
+                                {reportMessages.map(msg => (
+                                  <div key={msg.id} className={`report-msg-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                    <div className={`report-msg-meta ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                      {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
+                                    </div>
+                                    <div className="report-msg-text">{msg.message}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="report-msg-empty">No messages yet.</p>
+                            )}
+
+                            <div className="report-msg-input-row">
+                              <input
+                                type="text"
+                                className="report-msg-input"
+                                placeholder="Reply to admin..."
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
+                                disabled={sendingMessage}
+                              />
+                              <button
+                                className="report-msg-send"
+                                onClick={handleSendMessage}
+                                disabled={sendingMessage || !newMessage.trim()}
+                              >
+                                {sendingMessage ? '...' : 'Send'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -636,26 +617,37 @@ export default function ProfilePage() {
       {/* Messages Inbox */}
       {inbox.length > 0 && (
         <div className="profile-section">
-          <h3>Messages ({inbox.length})</h3>
-          <div className="profile-settings-list" style={{ flexDirection: 'column', gap: '8px' }}>
+          <h3>
+            Messages
+            <span className="report-inbox-badge">{inbox.length}</span>
+          </h3>
+          <div className="profile-settings-list">
             {inbox.map(item => (
-              <button
-                key={item.id}
-                className="profile-setting-btn"
-                onClick={() => {
-                  navigate('/');
-                  // TODO: open report in map or show detail
-                }}
-                style={{ justifyContent: 'flex-start', textAlign: 'left' }}
-              >
-                <div className="profile-setting-info">
-                  <strong style={{ color: '#2563eb' }}>
-                    {item.issue_type?.replace(/_/g, ' ')} — {item.location_name || 'Report #' + item.id}
-                  </strong>
-                  <span>{item.unread_count} unread message{item.unread_count > 1 ? 's' : ''} · {new Date(item.latest_message_at).toLocaleString()}</span>
-                </div>
-                <span className="profile-setting-arrow"><IconArrowRight /></span>
-              </button>
+              <div key={item.id} className="report-row">
+                <button
+                  className="report-row-btn"
+                  onClick={() => {
+                    setExpandedReport(item.id);
+                    loadMessages(item.id);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  <div className="report-row-icon" style={{ background: '#2563eb', fontSize: '14px' }}>
+                    ✉
+                  </div>
+                  <div className="report-row-info">
+                    <strong>{item.location_name || 'Report #' + item.id}</strong>
+                    <span>
+                      {item.issue_type?.replace(/_/g, ' ')} · {item.unread_count} unread · {new Date(item.latest_message_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <span className="report-row-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </span>
+                </button>
+              </div>
             ))}
           </div>
         </div>
