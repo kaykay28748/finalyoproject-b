@@ -527,19 +527,16 @@ router.get('/inbox', verifyToken, async (req, res) => {
        FROM accessibility_reports ar
        JOIN (
          SELECT rm.report_id,
-                COUNT(CASE WHEN rm2.id IS NOT NULL THEN 1 END) AS unread_count,
-                MAX(CASE WHEN rm2.id IS NOT NULL THEN rm2.created_at END) AS latest_message_at
+                COUNT(*) AS unread_count,
+                MAX(rm.created_at) AS latest_message_at
          FROM report_messages rm
-         LEFT JOIN report_messages rm2 ON rm.report_id = rm2.report_id
-           AND rm2.sender_id != $1 AND rm2.read_at IS NULL
+         WHERE rm.sender_id != $1 AND rm.read_at IS NULL
          GROUP BY rm.report_id
        ) sub ON ar.id = sub.report_id
        WHERE sub.unread_count > 0
          AND (ar.submitted_by = $1 OR EXISTS (
            SELECT 1 FROM report_messages rm3
-           WHERE rm3.report_id = ar.id AND rm3.sender_id IN (
-             SELECT id FROM users WHERE is_admin = 1
-           )
+           WHERE rm3.report_id = ar.id AND rm3.sender_id = $1
          ))
        ORDER BY sub.latest_message_at DESC`,
       [userId]
@@ -549,6 +546,60 @@ router.get('/inbox', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('[Reports] Inbox error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// GET /api/reports/inbox/admin - Admin inbox: reports with unread messages from users
+// =============================================
+router.get('/inbox/admin', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    if (!userId) {
+      return res.status(400).json({ error: 'Valid user ID not found' });
+    }
+
+    // Verify caller is admin
+    if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
+      // dev-mode bypass
+    } else {
+      const userCheck = await query(
+        'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
+        [userId]
+      );
+      if (!userCheck.rows[0]?.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+    }
+
+    // Reports where a non-admin user sent an unread message
+    const result = await query(
+      `SELECT ar.id, ar.location_name, ar.issue_type, ar.severity, ar.status, ar.submitted_by,
+              sub.unread_count,
+              sub.latest_message_at,
+              sub.latest_message_preview
+       FROM accessibility_reports ar
+       JOIN (
+         SELECT rm.report_id,
+                COUNT(*) AS unread_count,
+                MAX(rm.created_at) AS latest_message_at,
+                (ARRAY_AGG(rm.message ORDER BY rm.created_at DESC))[1] AS latest_message_preview
+         FROM report_messages rm
+         JOIN users u ON rm.sender_id = u.id
+         WHERE (u.is_admin IS NULL OR u.is_admin = 0 OR u.is_admin = false)
+           AND rm.read_at IS NULL
+         GROUP BY rm.report_id
+       ) sub ON ar.id = sub.report_id
+       WHERE sub.unread_count > 0
+       ORDER BY sub.latest_message_at DESC`,
+      []
+    );
+
+    res.json({ success: true, inbox: result.rows });
+
+  } catch (error) {
+    console.error('[Reports] Admin inbox error:', error);
     res.status(500).json({ error: error.message });
   }
 });

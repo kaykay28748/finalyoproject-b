@@ -293,3 +293,17 @@ export async function getReportInbox() {
   if (!response.ok) throw new Error(data.error || 'Failed to fetch inbox');
   return data;
 }
+
+/**
+ * Get admin inbox: reports with unread messages from non-admin users.
+ * @returns {Promise<Object>} Inbox items with unread counts
+ */
+export async function getReportAdminInbox() {
+  const token = sessionStorage.getItem('accessToken');
+  const response = await fetch(`${API_URL}/api/reports/inbox/admin`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to fetch admin inbox');
+  return data;
+}

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
 import { API_URL } from '../../config';
-import { getReports, updateReportStatus, getReportClusters, resolveCluster, getReportMessages, sendReportMessage } from '../../services/reportService';
+import { getReports, updateReportStatus, getReportClusters, resolveCluster, getReportMessages, sendReportMessage, getReportAdminInbox } from '../../services/reportService';
 import { isTokenValid } from '../Profile/auth';
 import './AdminDashboard.css';
 
@@ -182,6 +182,9 @@ export default function AdminDashboard() {
   const [newMessage,       setNewMessage]       = useState({});
   const [sendingMessage,   setSendingMessage]   = useState(null);
   const [messageThreadReport, setMessageThreadReport] = useState(null);
+  const [adminInbox,          setAdminInbox]          = useState([]);
+  const [adminInboxLoading,   setAdminInboxLoading]   = useState(false);
+  const [unreadMsgCount,      setUnreadMsgCount]      = useState(0);
 
   // Use a ref for the interval so it never re-registers on tab change
   const intervalRef = useRef(null);
@@ -220,6 +223,20 @@ export default function AdminDashboard() {
       setClusters(data.clusters || []);
     } catch (err) {
       console.error('[Admin] Fetch clusters error:', err);
+    }
+  }, []);
+
+  // ── Fetch admin inbox (reports with unread user messages) ─────────────────────
+  const fetchAdminInbox = useCallback(async () => {
+    setAdminInboxLoading(true);
+    try {
+      const data = await getReportAdminInbox();
+      setAdminInbox(data.inbox || []);
+      setUnreadMsgCount((data.inbox || []).reduce((sum, i) => sum + (i.unread_count || 0), 0));
+    } catch (err) {
+      console.error('[Admin] Fetch inbox error:', err);
+    } finally {
+      setAdminInboxLoading(false);
     }
   }, []);
 
@@ -308,6 +325,13 @@ export default function AdminDashboard() {
       fetchClusters();
     }
   }, [activeTab, fetchReports, fetchClusters]);
+
+  // ── Load admin inbox when switching to Messages tab ────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      fetchAdminInbox();
+    }
+  }, [activeTab, fetchAdminInbox]);
 
   // ── Approve / Reject ─────────────────────────────────────────────────────────
   const handleUpdateReport = useCallback(async (reportId, status) => {
@@ -398,6 +422,7 @@ export default function AdminDashboard() {
   const tabTitle = {
     overview: 'Dashboard',
     reports:  'Accessibility Reports',
+    messages: 'User Messages',
     feedback: 'Path Ratings',
     users:    'User Management',
     activity: 'Activity Log',
@@ -430,6 +455,7 @@ export default function AdminDashboard() {
           {[
             { key: 'overview',  label: 'Overview', Icon: Icons.Dashboard },
             { key: 'reports',   label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount },
+            { key: 'messages',  label: 'Messages', Icon: Icons.Activity, badge: unreadMsgCount },
             { key: 'feedback',  label: 'Ratings',  Icon: Icons.Star },
             { key: 'users',     label: 'Users',    Icon: Icons.Users },
             { key: 'activity',  label: 'Activity', Icon: Icons.Activity },
@@ -976,6 +1002,162 @@ export default function AdminDashboard() {
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Messages ───────────────────────────────────────────────────────── */}
+        {activeTab === 'messages' && (
+          <div className="admin-card full-width">
+            <div className="admin-table-header">
+              <h3>Unread User Messages</h3>
+              <span className="admin-table-stats">
+                {adminInbox.length} report{adminInbox.length !== 1 ? 's' : ''} with new messages
+              </span>
+            </div>
+
+            {adminInboxLoading ? (
+              <div className="admin-loading" style={{ padding: '40px' }}>
+                <div className="admin-loading-spinner" />
+                <p>Loading messages...</p>
+              </div>
+            ) : adminInbox.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--sub, #94a3b8)' }}>
+                <p>No unread messages from users.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
+                {adminInbox.map(item => {
+                  const rSeverity = SEVERITY_CONFIG[item.severity] || SEVERITY_CONFIG[2];
+                  const msgs = reportMessages[item.id] || [];
+                  const isThreadOpen = messageThreadReport === item.id;
+
+                  return (
+                    <div key={item.id} style={{
+                      border: '1px solid var(--border, #e2e8f0)',
+                      borderRadius: '12px',
+                      background: 'var(--bg, #f8fafc)',
+                      overflow: 'hidden',
+                    }}>
+                      {/* Report summary row */}
+                      <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontWeight: '700', fontSize: '14px' }}>#{item.id}</span>
+                            <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', background: rSeverity.bg, color: rSeverity.color }}>
+                              {rSeverity.label}
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', background: '#ef444418', color: '#ef4444' }}>
+                              {item.unread_count} unread
+                            </span>
+                          </div>
+                          {item.location_name && (
+                            <div style={{ fontSize: '13px', color: 'var(--sub, #64748b)', marginBottom: '2px' }}>
+                              📍 {item.location_name}
+                            </div>
+                          )}
+                          {item.latest_message_preview && (
+                            <div style={{ fontSize: '13px', color: 'var(--text)', fontStyle: 'italic', marginTop: '4px' }}>
+                              "{item.latest_message_preview}"
+                            </div>
+                          )}
+                          <div style={{ fontSize: '11px', color: 'var(--sub, #94a3b8)', marginTop: '4px' }}>
+                            {item.issue_type?.replace(/_/g, ' ')} · {new Date(item.latest_message_at).toLocaleString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setMessageThreadReport(isThreadOpen ? null : item.id);
+                            if (!isThreadOpen) loadMessages(item.id);
+                          }}
+                          style={{
+                            fontSize: '13px', fontWeight: '600', padding: '6px 14px',
+                            borderRadius: '8px', border: '1px solid #2563eb',
+                            background: isThreadOpen ? '#2563eb20' : 'transparent',
+                            color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {isThreadOpen ? 'Close' : 'View Thread'}
+                        </button>
+                      </div>
+
+                      {/* Expanded message thread */}
+                      {isThreadOpen && (
+                        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border, #e2e8f0)' }}>
+                          <div style={{ paddingTop: '12px' }}>
+                            {messagesLoading ? (
+                              <p style={{ fontSize: '12px', color: '#94a3b8' }}>Loading messages...</p>
+                            ) : msgs.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                                {msgs.map(msg => (
+                                  <div key={msg.id} style={{
+                                    padding: '8px 12px', borderRadius: '8px',
+                                    background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
+                                    borderLeft: msg.sender_is_admin ? '3px solid #2563eb' : '3px solid transparent',
+                                    fontSize: '13px',
+                                  }}>
+                                    <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>
+                                      {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
+                                    </div>
+                                    <div style={{ color: 'var(--text)' }}>{msg.message}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>No messages yet.</p>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="text"
+                                placeholder="Reply to reporter..."
+                                value={newMessage[item.id] || ''}
+                                onChange={(e) => setNewMessage(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(item.id); }}
+                                disabled={sendingMessage === item.id}
+                                style={{
+                                  flex: 1, padding: '8px 12px', borderRadius: '8px',
+                                  border: '1px solid var(--border)', fontSize: '13px',
+                                  background: 'var(--bg, #fff)', color: 'var(--text)',
+                                }}
+                              />
+                              <button
+                                onClick={() => handleSendMessage(item.id)}
+                                disabled={sendingMessage === item.id || !(newMessage[item.id] || '').trim()}
+                                style={{
+                                  fontSize: '13px', fontWeight: '600', padding: '8px 16px',
+                                  borderRadius: '8px', border: 'none',
+                                  background: '#2563eb', color: '#fff', cursor: 'pointer',
+                                  opacity: sendingMessage === item.id || !(newMessage[item.id] || '').trim() ? 0.5 : 1,
+                                }}
+                              >
+                                {sendingMessage === item.id ? '...' : 'Send'}
+                              </button>
+                            </div>
+
+                            {/* Quick actions */}
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  window.location.hash = '';
+                                  switchTab('reports');
+                                }}
+                                style={{
+                                  fontSize: '12px', fontWeight: '600', padding: '4px 12px',
+                                  borderRadius: '6px', border: '1px solid var(--border)',
+                                  background: 'transparent', color: 'var(--sub, #64748b)', cursor: 'pointer',
+                                }}
+                              >
+                                View in Reports
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
