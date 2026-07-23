@@ -5,7 +5,7 @@ import { useAuthContext } from "../../context/AuthContext";
 import { API_URL } from "../../config";
 import { loadPreferences, savePreferences } from "../../services/preferencesStore";
 import { isTokenValid } from "./auth";
-import { getMyReports, updateReportStatus, confirmReportResolved, getReportMessages, sendReportMessage, getReportInbox } from "../../services/reportService";
+import { getMyReports, updateReportStatus, getReportMessages } from "../../services/reportService";
 import EditProfileModal from "./EditProfileModal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import DeleteAccountModal from "./DeleteAccountModal";
@@ -126,15 +126,9 @@ export default function ProfilePage() {
   const [myReports, setMyReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState(null);
-  const [confirmingId, setConfirmingId] = useState(null);
-  const [confirmResult, setConfirmResult] = useState(null);
-  const [inbox, setInbox] = useState([]);
-  const [inboxLoading, setInboxLoading] = useState(false);
   const [expandedReportMessages, setExpandedReportMessages] = useState(null);
   const [reportMessages, setReportMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
-  const [newMessage, setNewMessage] = useState('');
-  const [sendingMessage, setSendingMessage] = useState(false);
   const [expandedReport, setExpandedReport] = useState(null);
   const [showReports, setShowReports] = useState(false);
 
@@ -260,39 +254,6 @@ export default function ProfilePage() {
     }
   }, []);
 
-  // Community confirm that an approved report's issue is fixed
-  const handleConfirmFixed = useCallback(async (reportId) => {
-    setConfirmingId(reportId);
-    setConfirmResult(null);
-    try {
-      const result = await confirmReportResolved(reportId);
-      setConfirmResult({ reportId, message: result.message, autoResolved: result.auto_resolved });
-      if (result.auto_resolved) {
-        setMyReports(prev =>
-          prev.map(r => r.id === reportId ? { ...r, status: 'resolved' } : r)
-        );
-      }
-    } catch (err) {
-      console.error("[ProfilePage] Failed to confirm:", err);
-      setConfirmResult({ reportId, message: err.message, error: true });
-    } finally {
-      setConfirmingId(null);
-    }
-  }, []);
-
-  // Fetch inbox (reports with unread messages)
-  const fetchInbox = useCallback(async () => {
-    setInboxLoading(true);
-    try {
-      const data = await getReportInbox();
-      setInbox(data.inbox || []);
-    } catch (err) {
-      console.error("[ProfilePage] Inbox fetch error:", err);
-    } finally {
-      setInboxLoading(false);
-    }
-  }, []);
-
   // Load messages for a report thread
   const loadMessages = useCallback(async (reportId) => {
     setMessagesLoading(true);
@@ -307,28 +268,13 @@ export default function ProfilePage() {
     }
   }, []);
 
-  // Send a message on a report
-  const handleSendMessage = useCallback(async () => {
-    if (!expandedReportMessages || !newMessage.trim()) return;
-    setSendingMessage(true);
-    try {
-      await sendReportMessage(expandedReportMessages, newMessage.trim());
-      setNewMessage('');
-      await loadMessages(expandedReportMessages);
-    } catch (err) {
-      console.error("[ProfilePage] Send message error:", err);
-    } finally {
-      setSendingMessage(false);
-    }
-  }, [expandedReportMessages, newMessage, loadMessages]);
-
-  // Fetch reports + inbox when profile is ready
+  // Fetch reports when profile is ready
   useEffect(() => {
     if (!profile) return;
-    fetchInbox();
-  }, [profile, fetchInbox]);
+    fetchMyReports();
+  }, [profile, fetchMyReports]);
 
-  // Fetch reports + poll only when section is open
+  // Poll reports only when section is open
   useEffect(() => {
     if (!profile || !showReports) return;
     fetchMyReports();
@@ -565,13 +511,6 @@ export default function ProfilePage() {
                           <div className="report-detail-section">
                             <div className="report-actions-row">
                               <button
-                                className="report-action-btn confirm"
-                                onClick={() => handleConfirmFixed(report.id)}
-                                disabled={confirmingId === report.id}
-                              >
-                                {confirmingId === report.id ? 'Confirming...' : 'Confirm Issue Fixed'}
-                              </button>
-                              <button
                                 className="report-action-btn resolve"
                                 onClick={() => handleResolveReport(report.id)}
                                 disabled={resolvingId === report.id}
@@ -579,65 +518,39 @@ export default function ProfilePage() {
                                 {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
                               </button>
                             </div>
-
-                            {confirmResult?.reportId === report.id && (
-                              <div className={`report-confirm-result ${confirmResult.error ? 'error' : 'success'}`}>
-                                {confirmResult.message}
-                              </div>
-                            )}
                           </div>
                         )}
 
-                        {report.status !== 'rejected' && (
-                          <div className="report-detail-section">
-                            <button
-                              className="report-messages-toggle"
-                              onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
-                            >
-                              {isMessagesOpen ? 'Hide Messages' : 'Messages with Admin'}
-                            </button>
+                        {/* Admin Messages — read-only */}
+                        <div className="report-detail-section">
+                          <button
+                            className="report-messages-toggle"
+                            onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
+                          >
+                            {isMessagesOpen ? 'Hide Messages' : 'Messages from Admin'}
+                          </button>
 
-                            {isMessagesOpen && (
-                              <div className="report-thread">
-                                {messagesLoading ? (
-                                  <p className="report-msg-empty">Loading messages...</p>
-                                ) : reportMessages.length > 0 ? (
-                                  <div>
-                                    {reportMessages.map(msg => (
-                                      <div key={msg.id} className={`report-msg-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                        <div className={`report-msg-meta ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                          {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
-                                        </div>
-                                        <div className="report-msg-text">{msg.message}</div>
+                          {isMessagesOpen && (
+                            <div className="report-thread">
+                              {messagesLoading ? (
+                                <p className="report-msg-empty">Loading messages...</p>
+                              ) : reportMessages.length > 0 ? (
+                                <div>
+                                  {reportMessages.map(msg => (
+                                    <div key={msg.id} className={`report-msg-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                      <div className={`report-msg-meta ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                        {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
                                       </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="report-msg-empty">No messages yet.</p>
-                                )}
-
-                                <div className="report-msg-input-row">
-                                  <input
-                                    type="text"
-                                    className="report-msg-input"
-                                    placeholder="Reply to admin..."
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
-                                    disabled={sendingMessage}
-                                  />
-                                  <button
-                                    className="report-msg-send"
-                                    onClick={handleSendMessage}
-                                    disabled={sendingMessage || !newMessage.trim()}
-                                  >
-                                    {sendingMessage ? '...' : 'Send'}
-                                  </button>
+                                      <div className="report-msg-text">{msg.message}</div>
+                                    </div>
+                                  ))}
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                              ) : (
+                                <p className="report-msg-empty">No messages yet.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -647,49 +560,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-
-      {/* Messages Inbox */}
-      {inbox.length > 0 && (
-        <div className="profile-section">
-          <h3>
-            Messages
-            <span className="report-inbox-badge">{inbox.length}</span>
-          </h3>
-          <div className="profile-settings-list">
-            {inbox.map(item => (
-              <div key={item.id} className="report-row">
-                <button
-                  className="report-row-btn"
-                  onClick={() => {
-                    setShowReports(true);
-                    setExpandedReport(item.id);
-                    loadMessages(item.id);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  <div className="report-row-icon" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', fontSize: '14px' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                      <polyline points="22,6 12,13 2,6" />
-                    </svg>
-                  </div>
-                  <div className="report-row-info">
-                    <strong>{item.location_name || 'Report #' + item.id}</strong>
-                    <span>
-                      {item.issue_type?.replace(/_/g, ' ')} · {item.unread_count} unread · {new Date(item.latest_message_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <span className="report-row-arrow">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Support & Feedback */}
       <div className="profile-section">

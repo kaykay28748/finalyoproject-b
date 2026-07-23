@@ -921,29 +921,44 @@ export default function AdminDashboard() {
 
                                 {/* Individual report actions */}
                                 {report.status === 'pending' && (
-                                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                                    <button
-                                      onClick={() => handleRejectReport(report.id)}
+                                  <div style={{ marginTop: '8px' }}>
+                                    <textarea
+                                      placeholder="Message for reporter (optional, sent with approval/rejection)..."
+                                      value={adminNotes[report.id] || ''}
+                                      onChange={(e) => setAdminNotes(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                      rows={2}
                                       disabled={isReportProcessing}
                                       style={{
-                                        fontSize: '12px', fontWeight: '600', padding: '4px 12px',
-                                        borderRadius: '6px', border: '1px solid #ef4444',
-                                        background: 'transparent', color: '#ef4444', cursor: 'pointer',
+                                        width: '100%', boxSizing: 'border-box', padding: '8px',
+                                        borderRadius: '6px', border: '1px solid var(--border)',
+                                        background: 'var(--bg, #fff)', color: 'var(--text)',
+                                        fontSize: '12px', resize: 'vertical', marginBottom: '8px',
                                       }}
-                                    >
-                                      {isReportProcessing ? '...' : 'Reject'}
-                                    </button>
-                                    <button
-                                      onClick={() => handleApproveReport(report.id)}
-                                      disabled={isReportProcessing}
-                                      style={{
-                                        fontSize: '12px', fontWeight: '600', padding: '4px 12px',
-                                        borderRadius: '6px', border: '1px solid #22c55e',
-                                        background: 'transparent', color: '#22c55e', cursor: 'pointer',
-                                      }}
-                                    >
-                                      {isReportProcessing ? '...' : 'Approve'}
-                                    </button>
+                                    />
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                      <button
+                                        onClick={() => handleRejectReport(report.id)}
+                                        disabled={isReportProcessing}
+                                        style={{
+                                          fontSize: '12px', fontWeight: '600', padding: '4px 12px',
+                                          borderRadius: '6px', border: '1px solid #ef4444',
+                                          background: 'transparent', color: '#ef4444', cursor: 'pointer',
+                                        }}
+                                      >
+                                        {isReportProcessing ? '...' : 'Reject'}
+                                      </button>
+                                      <button
+                                        onClick={() => handleApproveReport(report.id)}
+                                        disabled={isReportProcessing}
+                                        style={{
+                                          fontSize: '12px', fontWeight: '600', padding: '4px 12px',
+                                          borderRadius: '6px', border: '1px solid #22c55e',
+                                          background: 'transparent', color: '#22c55e', cursor: 'pointer',
+                                        }}
+                                      >
+                                        {isReportProcessing ? '...' : 'Approve'}
+                                      </button>
+                                    </div>
                                   </div>
                                 )}
 

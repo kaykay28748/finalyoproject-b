@@ -278,104 +278,7 @@ router.post('/cluster/resolve', verifyToken, async (req, res) => {
 });
 
 // =============================================
-// POST /api/reports/:id/confirm-resolved - Anyone can confirm a report is fixed
-// =============================================
-router.post('/:id/confirm-resolved', verifyToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const reportId = parseInt(req.params.id, 10);
-
-    if (!userId || isNaN(reportId)) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
-
-    // Check report exists
-    const reportResult = await query(
-      `SELECT id, status FROM accessibility_reports WHERE id = ? AND deleted_at IS NULL`,
-      [reportId]
-    );
-    if (reportResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Report not found' });
-    }
-
-    const report = reportResult.rows[0];
-    if (report.status === 'resolved' || report.status === 'rejected') {
-      return res.status(400).json({ error: 'Report is already resolved or rejected' });
-    }
-
-    // Insert confirmation (UNIQUE constraint prevents duplicates)
-    await query(
-      `INSERT OR IGNORE INTO report_confirmations (report_id, user_id) VALUES (?, ?)`,
-      [reportId, userId]
-    );
-
-    // Count confirmations
-    const countResult = await query(
-      `SELECT COUNT(*) as count FROM report_confirmations WHERE report_id = ?`,
-      [reportId]
-    );
-    const confirmCount = parseInt(countResult.rows[0].count, 10);
-
-    // Auto-resolve at 3+ confirmations
-    let autoResolved = false;
-    if (confirmCount >= 3 && report.status === 'approved') {
-      await query(
-        `UPDATE accessibility_reports
-         SET status = 'resolved',
-             admin_notes = 'Auto-resolved: 3+ community confirmations',
-             reviewed_by = ?,
-             reviewed_at = CURRENT_TIMESTAMP,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [userId, reportId]
-      );
-      autoResolved = true;
-      console.log(`[Reports] Report #${reportId} auto-resolved after ${confirmCount} confirmations`);
-    }
-
-    res.json({
-      success: true,
-      confirm_count: confirmCount,
-      auto_resolved: autoResolved,
-      message: autoResolved
-        ? `Report auto-resolved after ${confirmCount} confirmations`
-        : `Confirmation recorded (${confirmCount}/3 needed for auto-resolve)`,
-    });
-
-  } catch (error) {
-    console.error('[Reports] Confirm-resolved error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// GET /api/reports/:id/confirmations - Get confirmation count for a report
-// =============================================
-router.get('/:id/confirmations', verifyToken, async (req, res) => {
-  try {
-    const reportId = parseInt(req.params.id, 10);
-    if (isNaN(reportId)) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
-
-    const result = await query(
-      `SELECT COUNT(*) as count FROM report_confirmations WHERE report_id = ?`,
-      [reportId]
-    );
-
-    res.json({
-      success: true,
-      confirm_count: parseInt(result.rows[0].count, 10),
-    });
-
-  } catch (error) {
-    console.error('[Reports] Confirmations fetch error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// =============================================
-// POST /api/reports/:id/messages - Send a message on a report
+// POST /api/reports/:id/messages - Send a message on a report (admin only)
 // =============================================
 router.post('/:id/messages', verifyToken, async (req, res) => {
   try {
@@ -390,38 +293,29 @@ router.post('/:id/messages', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Check report exists and user has access
+    // Check report exists
     const reportResult = await query(
-      `SELECT id, submitted_by FROM accessibility_reports WHERE id = ? AND deleted_at IS NULL`,
+      `SELECT id FROM accessibility_reports WHERE id = ? AND deleted_at IS NULL`,
       [reportId]
     );
     if (reportResult.rows.length === 0) {
       return res.status(404).json({ error: 'Report not found' });
     }
 
-    const report = reportResult.rows[0];
-    let isAllowed = false;
-
-    // Dev-mode bypass
+    // Admin-only
+    let isAdmin = false;
     if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
-      isAllowed = true;
+      isAdmin = true;
     } else {
       const userCheck = await query(
         'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
         [userId]
       );
-      if (userCheck.rows[0]?.is_admin) {
-        isAllowed = true;
-      }
+      isAdmin = !!userCheck.rows[0]?.is_admin;
     }
 
-    // Reporter can message on their own report
-    if (!isAllowed && report.submitted_by === userId) {
-      isAllowed = true;
-    }
-
-    if (!isAllowed) {
-      return res.status(403).json({ error: 'Access denied' });
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
     }
 
     const result = await query(
@@ -854,6 +748,15 @@ router.patch('/:id', verifyToken, async (req, res) => {
 
     if (updateResult.rows.length === 0) {
       return res.status(404).json({ error: 'Report not found or already deleted' });
+    }
+
+    // If admin provided notes, also save as a message so the user sees it
+    if (admin_notes && admin_notes.trim()) {
+      await query(
+        `INSERT INTO report_messages (report_id, sender_id, message)
+         VALUES (?, ?, ?)`,
+        [reportId, userId, admin_notes.trim()]
+      );
     }
 
     // EMAIL DISABLED - Render free tier blocks SMTP
