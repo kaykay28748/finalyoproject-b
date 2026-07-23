@@ -136,6 +136,7 @@ export default function ProfilePage() {
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [expandedReport, setExpandedReport] = useState(null);
+  const [showReports, setShowReports] = useState(false);
 
   // Load dark mode from IndexedDB
   useEffect(() => {
@@ -321,17 +322,19 @@ export default function ProfilePage() {
     }
   }, [expandedReportMessages, newMessage, loadMessages]);
 
-  // Load reports + inbox when profile is ready + poll every 30s for status changes
+  // Fetch reports + inbox when profile is ready
   useEffect(() => {
     if (!profile) return;
-    fetchMyReports();
     fetchInbox();
-    const interval = setInterval(() => {
-      fetchMyReports();
-      fetchInbox();
-    }, 30000);
+  }, [profile, fetchInbox]);
+
+  // Fetch reports + poll only when section is open
+  useEffect(() => {
+    if (!profile || !showReports) return;
+    fetchMyReports();
+    const interval = setInterval(fetchMyReports, 30000);
     return () => clearInterval(interval);
-  }, [profile, fetchMyReports, fetchInbox]);
+  }, [profile, showReports, fetchMyReports]);
 
   if (isLoading) {
     return (
@@ -458,160 +461,191 @@ export default function ProfilePage() {
       {/* My Reports */}
       <div className="profile-section">
         <h3>My Reports</h3>
-        {reportsLoading ? (
-          <p className="report-empty-state">Loading reports...</p>
-        ) : myReports.length === 0 ? (
-          <p className="report-empty-state">
-            You haven't submitted any reports yet.
-          </p>
-        ) : (
-          <div className="profile-settings-list">
-            {myReports.map((report) => {
-              const severityLabels = { 1: 'Mild', 2: 'Moderate', 3: 'Severe' };
-              const statusLabels = {
-                pending: 'Under Review',
-                approved: 'Approved',
-                rejected: 'Rejected',
-                resolved: 'Resolved',
-              };
-              const isExpanded = expandedReport === report.id;
-              const isMessagesOpen = expandedReportMessages === report.id;
+        <div className="profile-settings-list">
+          <button
+            className="profile-setting-btn"
+            onClick={() => {
+              setShowReports(!showReports);
+              if (!showReports) fetchMyReports();
+            }}
+          >
+            <span className="profile-setting-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            </span>
+            <div className="profile-setting-info">
+              <strong>My Reports</strong>
+              <span>
+                {reportsLoading ? 'Loading...' : `${myReports.length} report${myReports.length !== 1 ? 's' : ''} submitted`}
+              </span>
+            </div>
+            <span className="profile-setting-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points={showReports ? "18 15 12 9 6 15" : "9 18 15 12 9 6"} />
+              </svg>
+            </span>
+          </button>
 
-              return (
-                <div className="report-row" key={report.id}>
-                  <button
-                    className="report-row-btn"
-                    onClick={() => setExpandedReport(isExpanded ? null : report.id)}
-                  >
-                    <div className={`report-row-icon severity-${report.severity}`}>
-                      {report.severity === 1 ? '!' : report.severity === 2 ? '!!' : '!!!'}
-                    </div>
-                    <div className="report-row-info">
-                      <strong>{report.location_name || 'Report #' + report.id}</strong>
-                      <span>
-                        {severityLabels[report.severity] || 'Unknown'} · {report.issue_type?.replace(/_/g, ' ')} · {new Date(report.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <span className={`report-status-badge ${report.status}`}>
-                      {statusLabels[report.status] || report.status}
-                    </span>
-                    <span className="report-row-arrow">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points={isExpanded ? "18 15 12 9 6 15" : "9 18 15 12 9 6"} />
-                      </svg>
-                    </span>
-                  </button>
+          {/* Reports list — only shown when expanded */}
+          <div className={`report-detail-panel ${showReports ? 'open' : ''}`}>
+            {reportsLoading && myReports.length === 0 ? (
+              <p className="report-empty-state">Loading reports...</p>
+            ) : myReports.length === 0 ? (
+              <p className="report-empty-state">
+                You haven't submitted any reports yet.
+              </p>
+            ) : (
+              <div className="profile-settings-list">
+                {myReports.map((report) => {
+                  const severityLabels = { 1: 'Mild', 2: 'Moderate', 3: 'Severe' };
+                  const statusLabels = {
+                    pending: 'Under Review',
+                    approved: 'Approved',
+                    rejected: 'Rejected',
+                    resolved: 'Resolved',
+                  };
+                  const isExpanded = expandedReport === report.id;
+                  const isMessagesOpen = expandedReportMessages === report.id;
 
-                  <div className={`report-detail-panel ${isExpanded ? 'open' : ''}`}>
-                    {/* Report Details */}
-                    <div className="report-detail-section">
-                      <div className="report-detail-row">
-                        <span className="report-detail-label">Type:</span>
-                        <span className="report-detail-value">{report.issue_type?.replace(/_/g, ' ')}</span>
-                      </div>
-                      <div className="report-detail-row">
-                        <span className="report-detail-label">Reported:</span>
-                        <span className="report-detail-value">{new Date(report.created_at).toLocaleString()}</span>
-                      </div>
-                      {report.custom_description && (
-                        <div className="report-detail-row">
-                          <span className="report-detail-label">Note:</span>
-                          <span className="report-detail-value">"{report.custom_description}"</span>
+                  return (
+                    <div className="report-row" key={report.id}>
+                      <button
+                        className="report-row-btn"
+                        onClick={() => setExpandedReport(isExpanded ? null : report.id)}
+                      >
+                        <div className={`report-row-icon severity-${report.severity}`}>
+                          {report.severity === 1 ? '!' : report.severity === 2 ? '!!' : '!!!'}
                         </div>
-                      )}
-                      {report.admin_notes && (
-                        <div className="report-detail-row">
-                          <span className="report-detail-label">Admin reply:</span>
-                          <span className="report-detail-value" style={{ color: '#2563eb' }}>{report.admin_notes}</span>
+                        <div className="report-row-info">
+                          <strong>{report.location_name || 'Report #' + report.id}</strong>
+                          <span>
+                            {severityLabels[report.severity] || 'Unknown'} · {report.issue_type?.replace(/_/g, ' ')} · {new Date(report.created_at).toLocaleDateString()}
+                          </span>
                         </div>
-                      )}
-                    </div>
+                        <span className={`report-status-badge ${report.status}`}>
+                          {statusLabels[report.status] || report.status}
+                        </span>
+                        <span className="report-row-arrow">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points={isExpanded ? "18 15 12 9 6 15" : "9 18 15 12 9 6"} />
+                          </svg>
+                        </span>
+                      </button>
 
-                    {/* Action Buttons */}
-                    {report.status === 'approved' && (
-                      <div className="report-detail-section">
-                        <div className="report-actions-row">
-                          <button
-                            className="report-action-btn confirm"
-                            onClick={() => handleConfirmFixed(report.id)}
-                            disabled={confirmingId === report.id}
-                          >
-                            {confirmingId === report.id ? 'Confirming...' : 'Confirm Issue Fixed'}
-                          </button>
-                          <button
-                            className="report-action-btn resolve"
-                            onClick={() => handleResolveReport(report.id)}
-                            disabled={resolvingId === report.id}
-                          >
-                            {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
-                          </button>
-                        </div>
-
-                        {confirmResult?.reportId === report.id && (
-                          <div className={`report-confirm-result ${confirmResult.error ? 'error' : 'success'}`}>
-                            {confirmResult.message}
+                      <div className={`report-detail-panel ${isExpanded ? 'open' : ''}`}>
+                        <div className="report-detail-section">
+                          <div className="report-detail-row">
+                            <span className="report-detail-label">Type:</span>
+                            <span className="report-detail-value">{report.issue_type?.replace(/_/g, ' ')}</span>
                           </div>
-                        )}
-                      </div>
-                    )}
+                          <div className="report-detail-row">
+                            <span className="report-detail-label">Reported:</span>
+                            <span className="report-detail-value">{new Date(report.created_at).toLocaleString()}</span>
+                          </div>
+                          {report.custom_description && (
+                            <div className="report-detail-row">
+                              <span className="report-detail-label">Note:</span>
+                              <span className="report-detail-value">"{report.custom_description}"</span>
+                            </div>
+                          )}
+                          {report.admin_notes && (
+                            <div className="report-detail-row">
+                              <span className="report-detail-label">Admin reply:</span>
+                              <span className="report-detail-value" style={{ color: '#2563eb' }}>{report.admin_notes}</span>
+                            </div>
+                          )}
+                        </div>
 
-                    {/* Messages */}
-                    {report.status !== 'rejected' && (
-                      <div className="report-detail-section">
-                        <button
-                          className="report-messages-toggle"
-                          onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
-                        >
-                          {isMessagesOpen ? 'Hide Messages' : 'Messages with Admin'}
-                        </button>
-
-                        {isMessagesOpen && (
-                          <div className="report-thread">
-                            {messagesLoading ? (
-                              <p className="report-msg-empty">Loading messages...</p>
-                            ) : reportMessages.length > 0 ? (
-                              <div>
-                                {reportMessages.map(msg => (
-                                  <div key={msg.id} className={`report-msg-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                    <div className={`report-msg-meta ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                      {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
-                                    </div>
-                                    <div className="report-msg-text">{msg.message}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="report-msg-empty">No messages yet.</p>
-                            )}
-
-                            <div className="report-msg-input-row">
-                              <input
-                                type="text"
-                                className="report-msg-input"
-                                placeholder="Reply to admin..."
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
-                                disabled={sendingMessage}
-                              />
+                        {report.status === 'approved' && (
+                          <div className="report-detail-section">
+                            <div className="report-actions-row">
                               <button
-                                className="report-msg-send"
-                                onClick={handleSendMessage}
-                                disabled={sendingMessage || !newMessage.trim()}
+                                className="report-action-btn confirm"
+                                onClick={() => handleConfirmFixed(report.id)}
+                                disabled={confirmingId === report.id}
                               >
-                                {sendingMessage ? '...' : 'Send'}
+                                {confirmingId === report.id ? 'Confirming...' : 'Confirm Issue Fixed'}
+                              </button>
+                              <button
+                                className="report-action-btn resolve"
+                                onClick={() => handleResolveReport(report.id)}
+                                disabled={resolvingId === report.id}
+                              >
+                                {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
                               </button>
                             </div>
+
+                            {confirmResult?.reportId === report.id && (
+                              <div className={`report-confirm-result ${confirmResult.error ? 'error' : 'success'}`}>
+                                {confirmResult.message}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {report.status !== 'rejected' && (
+                          <div className="report-detail-section">
+                            <button
+                              className="report-messages-toggle"
+                              onClick={() => isMessagesOpen ? setExpandedReportMessages(null) : loadMessages(report.id)}
+                            >
+                              {isMessagesOpen ? 'Hide Messages' : 'Messages with Admin'}
+                            </button>
+
+                            {isMessagesOpen && (
+                              <div className="report-thread">
+                                {messagesLoading ? (
+                                  <p className="report-msg-empty">Loading messages...</p>
+                                ) : reportMessages.length > 0 ? (
+                                  <div>
+                                    {reportMessages.map(msg => (
+                                      <div key={msg.id} className={`report-msg-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                        <div className={`report-msg-meta ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                          {msg.sender_is_admin ? 'Admin' : 'You'} · {new Date(msg.created_at).toLocaleString()}
+                                        </div>
+                                        <div className="report-msg-text">{msg.message}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="report-msg-empty">No messages yet.</p>
+                                )}
+
+                                <div className="report-msg-input-row">
+                                  <input
+                                    type="text"
+                                    className="report-msg-input"
+                                    placeholder="Reply to admin..."
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
+                                    disabled={sendingMessage}
+                                  />
+                                  <button
+                                    className="report-msg-send"
+                                    onClick={handleSendMessage}
+                                    disabled={sendingMessage || !newMessage.trim()}
+                                  >
+                                    {sendingMessage ? '...' : 'Send'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Messages Inbox */}
@@ -627,13 +661,17 @@ export default function ProfilePage() {
                 <button
                   className="report-row-btn"
                   onClick={() => {
+                    setShowReports(true);
                     setExpandedReport(item.id);
                     loadMessages(item.id);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
-                  <div className="report-row-icon" style={{ background: '#2563eb', fontSize: '14px' }}>
-                    ✉
+                  <div className="report-row-icon" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', fontSize: '14px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
                   </div>
                   <div className="report-row-info">
                     <strong>{item.location_name || 'Report #' + item.id}</strong>
