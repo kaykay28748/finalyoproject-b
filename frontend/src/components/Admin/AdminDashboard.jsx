@@ -364,6 +364,11 @@ export default function AdminDashboard() {
     try {
       await updateReportStatus(reportId, status, adminNotes[reportId] || '');
       setAdminNotes(prev => ({ ...prev, [reportId]: '' }));
+      // Optimistic: update report status in clusters so buttons vanish immediately
+      setClusters(prev => prev.map(c => ({
+        ...c,
+        reports: c.reports.map(r => r.id === reportId ? { ...r, status } : r),
+      })));
       addToast('success', `Report #${reportId} ${status}`);
       await fetchReports();
       fetchData();
@@ -881,7 +886,8 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* ── Messages Inbox ──────────────────────────────────────────────── */}
+            {/* ── Messages Inbox (hidden when cluster is expanded) ──────────── */}
+            {!expandedCluster && (
             <div className="admin-card full-width inbox-section">
               <div className="inbox-section-header">
                 <h3>Messages Inbox</h3>
@@ -974,6 +980,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+            )}
           </>
         )}
 
