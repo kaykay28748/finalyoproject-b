@@ -31,12 +31,15 @@ router.post('/sync', async (req, res) => {
 
     const username = supabaseUser.user_metadata?.username || supabaseUser.email.split('@')[0];
 
-    // Perform an UPSERT to ensure the user exists in our local metadata table
+    // Perform an UPSERT to ensure the user exists in our local metadata table.
+    // Conflict on email (natural key) — handles the case where a user signed up
+    // under one auth provider (e.g. real Supabase) and now logs in under another
+    // (e.g. dev mock), which assigns a different ID but the same email.
     const result = await query(
       `INSERT INTO users (id, email, username, updated_at)
        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(id) DO UPDATE SET
-         email = excluded.email,
+       ON CONFLICT(email) DO UPDATE SET
+         id = excluded.id,
          username = excluded.username,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id, email, username, is_admin, created_at`,

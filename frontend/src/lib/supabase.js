@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 // MOCK SUPABASE CLIENT FOR DEVELOPMENT
 // ============================================
 
+const MOCK_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 class MockSupabaseClient {
   constructor() {
     this._session = null;
@@ -14,7 +16,15 @@ class MockSupabaseClient {
     if (savedSession) {
       try {
         this._session = JSON.parse(savedSession);
-        this._user = this._session?.user || null;
+        // Migrate stale sessions from old mock token format
+        if (this._session?.access_token !== 'mock-token') {
+          console.log('[Mock Supabase] Clearing stale session with old token format');
+          this._session = null;
+          this._user = null;
+          localStorage.removeItem('mock_supabase_session');
+        } else {
+          this._user = this._session?.user || null;
+        }
       } catch (e) {
         // ignore
       }
@@ -36,12 +46,12 @@ class MockSupabaseClient {
       console.log('[Mock Supabase] signInWithPassword:', email);
       
       this._user = {
-        id: `mock-user-${Date.now()}`,
+        id: MOCK_USER_ID,
         email: email,
         user_metadata: { username: email.split('@')[0], full_name: email.split('@')[0] }
       };
       this._session = {
-        access_token: 'mock-access-token',
+        access_token: 'mock-token',
         refresh_token: 'mock-refresh-token',
         user: this._user
       };
@@ -55,12 +65,12 @@ class MockSupabaseClient {
       console.log('[Mock Supabase] signUp:', email);
       
       this._user = {
-        id: `mock-user-${Date.now()}`,
+        id: MOCK_USER_ID,
         email: email,
         user_metadata: options?.data || { username: email.split('@')[0] }
       };
       this._session = {
-        access_token: 'mock-access-token',
+        access_token: 'mock-token',
         refresh_token: 'mock-refresh-token',
         user: this._user
       };

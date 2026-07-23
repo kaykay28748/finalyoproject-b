@@ -173,6 +173,7 @@ export default function AdminDashboard() {
   const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
   const [processingReport, setProcessingReport] = useState(null);
   const [adminNotes,       setAdminNotes]       = useState({});
+  const [successMessage,   setSuccessMessage]   = useState('');
 
   // Use a ref for the interval so it never re-registers on tab change
   const intervalRef = useRef(null);
@@ -222,7 +223,7 @@ export default function AdminDashboard() {
         fetch(`${API_URL}/admin/stats`,    { headers }),
         fetch(`${API_URL}/admin/users`,    { headers }),
         fetch(`${API_URL}/admin/activity`, { headers }),
-        fetch(`${API_URL}/api/reports/feedback`, { headers }), // Assume backend exposes this
+        fetch(`${API_URL}/api/reports/feedback`, { headers }),
       ]);
 
       // Any 401/403 means token expired or invalid — redirect to login
@@ -235,12 +236,15 @@ export default function AdminDashboard() {
         return;
       }
 
-      const [statsData, usersData, activityData, feedbackData] = await Promise.all([
-        statsRes.json(),
-        usersRes.json(),
-        activityRes.json(),
-        feedbackRes.json().catch(() => ({ feedback: [] })),
-      ]);
+      // Parse each response, falling back to defaults on error
+      const statsData    = statsRes.ok    ? await statsRes.json()    : {};
+      const usersData    = usersRes.ok    ? await usersRes.json()    : { users: [] };
+      const activityData = activityRes.ok ? await activityRes.json() : { activity: [] };
+      const feedbackData = feedbackRes.ok ? await feedbackRes.json() : { feedback: [] };
+
+      if (!statsRes.ok) {
+        console.error('[Admin] Stats fetch failed:', statsRes.status);
+      }
 
       const parsedActivity = (activityData.activity || []).map(item => {
         let parsedMeta = {};
@@ -287,18 +291,20 @@ export default function AdminDashboard() {
   // ── Approve / Reject ─────────────────────────────────────────────────────────
   const handleUpdateReport = useCallback(async (reportId, status) => {
     setProcessingReport(reportId);
-    setError(''); // clear any previous error
+    setError('');
+    setSuccessMessage('');
     try {
       await updateReportStatus(reportId, status, adminNotes[reportId] || '');
       setAdminNotes(prev => ({ ...prev, [reportId]: '' }));
-      // Refresh both the list and the sidebar badge
+      setSuccessMessage(`Report #${reportId} ${status} successfully`);
       await fetchReports();
-      // Non-blocking stats refresh — we don't need to await this
       fetchData();
     } catch (err) {
       setError(err.message || `Failed to ${status} report`);
     } finally {
       setProcessingReport(null);
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(''), 3000);
     }
   }, [adminNotes, fetchReports, fetchData]);
 
@@ -415,6 +421,20 @@ export default function AdminDashboard() {
               className="admin-error-dismiss"
               onClick={() => setError('')}
               aria-label="Dismiss error"
+            >
+              <Icons.X />
+            </button>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="admin-success">
+            <Icons.Check />
+            <span>{successMessage}</span>
+            <button
+              className="admin-success-dismiss"
+              onClick={() => setSuccessMessage('')}
+              aria-label="Dismiss"
             >
               <Icons.X />
             </button>

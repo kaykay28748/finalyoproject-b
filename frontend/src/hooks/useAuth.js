@@ -4,7 +4,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { API_URL } from '../config';
-import { isUsingMockSupabase } from '../lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -15,19 +14,7 @@ export function useAuth() {
  
 
 const syncUserWithBackend = useCallback(async (supabaseUser, accessToken) => {
-  // 🔥 FIX: Skip backend sync in dev mode with mock Supabase
-  if (isUsingMockSupabase()) {
-    console.log('[useAuth] Mock mode: skipping backend sync, using mock user');
-    return {
-      id: supabaseUser.id,
-      email: supabaseUser.email,
-      username: supabaseUser.user_metadata?.username || supabaseUser.email.split('@')[0],
-      created_at: new Date().toISOString(),
-      isMockUser: true
-    };
-  }
-
-  // Original code continues here for production
+  // Always sync with backend — even in mock/dev mode — so the user exists in the DB
   try {
     const response = await fetch(`${API_URL}/auth/sync`, {
       method: 'POST',

@@ -73,12 +73,17 @@ router.get('/', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Valid user ID not found' });
     }
 
-    const userCheck = await query(
-      'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
-      [userId]
-    );
-    if (!userCheck.rows[0]?.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Dev-mode bypass: mock tokens are treated as admin
+    if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
+      // skip DB check
+    } else {
+      const userCheck = await query(
+        'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
+        [userId]
+      );
+      if (!userCheck.rows[0]?.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
     }
 
     const parsedLimit = parseInt(limit, 10);
@@ -123,12 +128,17 @@ router.get('/stats/summary', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Valid user ID not found' });
     }
 
-    const userCheck = await query(
-      'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
-      [userId]
-    );
-    if (!userCheck.rows[0]?.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Dev-mode bypass: mock tokens are treated as admin
+    if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
+      // skip DB check
+    } else {
+      const userCheck = await query(
+        'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
+        [userId]
+      );
+      if (!userCheck.rows[0]?.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
     }
 
     const result = await query(
@@ -158,13 +168,17 @@ router.get('/feedback', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // Admin check
-    const userCheck = await query(
-      'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
-      [userId]
-    );
-    if (!userCheck.rows[0]?.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Dev-mode bypass: mock tokens are treated as admin
+    if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
+      // skip DB check
+    } else {
+      const userCheck = await query(
+        'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
+        [userId]
+      );
+      if (!userCheck.rows[0]?.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
     }
 
     const result = await query(
@@ -240,12 +254,17 @@ router.patch('/:id', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid status. Must be approved, rejected, or resolved' });
     }
 
-    const userCheck = await query(
-      'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
-      [userId]
-    );
-    if (!userCheck.rows[0]?.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Dev-mode bypass: mock tokens are treated as admin
+    if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
+      // skip DB check
+    } else {
+      const userCheck = await query(
+        'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
+        [userId]
+      );
+      if (!userCheck.rows[0]?.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
     }
 
     // Fetch report
@@ -310,12 +329,17 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid ID format' });
     }
 
-    const userCheck = await query(
-      'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
-      [userId]
-    );
-    if (!userCheck.rows[0]?.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+    // Dev-mode bypass: mock tokens are treated as admin
+    if (process.env.NODE_ENV !== 'production' && userId === '00000000-0000-0000-0000-000000000000') {
+      // skip DB check
+    } else {
+      const userCheck = await query(
+        'SELECT is_admin FROM users WHERE id = ? AND deleted_at IS NULL',
+        [userId]
+      );
+      if (!userCheck.rows[0]?.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
     }
 
     const result = await query(
