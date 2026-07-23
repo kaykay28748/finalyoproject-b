@@ -2,11 +2,10 @@
 // Displays approved accessibility reports as color-coded markers on the map.
 // Fetches from the public GET /api/reports/approved endpoint.
 
-import { useEffect, useState, useCallback, memo } from "react";
+import { useEffect, useState, memo } from "react";
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { API_URL } from "../../config";
-import { confirmReportResolved } from "../../services/reportService";
 
 const SEVERITY_CONFIG = {
   1: { color: "#22c55e", label: "Mild",    emoji: "⚠️" },
@@ -41,45 +40,6 @@ function createReportIcon(severity) {
 
 function ReportMarkers() {
   const [reports, setReports] = useState([]);
-  const [confirming, setConfirming] = useState(null);
-  const [confirmResult, setConfirmResult] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchReports() {
-      try {
-        const res = await fetch(`${API_URL}/api/reports/approved`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data.success && Array.isArray(data.reports)) {
-          setReports(data.reports);
-        }
-      } catch (err) {
-        console.warn("[ReportMarkers] Failed to load reports:", err.message);
-      }
-    }
-
-    fetchReports();
-    const interval = setInterval(fetchReports, 60000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
-
-  const handleConfirm = useCallback(async (reportId) => {
-    setConfirming(reportId);
-    setConfirmResult(null);
-    try {
-      const result = await confirmReportResolved(reportId);
-      setConfirmResult({ reportId, message: result.message, autoResolved: result.auto_resolved });
-      if (result.auto_resolved) {
-        setReports(prev => prev.filter(r => r.id !== reportId));
-      }
-    } catch (err) {
-      setConfirmResult({ reportId, message: err.message, error: true });
-    } finally {
-      setConfirming(null);
-    }
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,32 +91,6 @@ function ReportMarkers() {
                 <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
                   Reported {new Date(report.created_at).toLocaleDateString()}
                 </div>
-
-                {/* Confirm Fixed button */}
-                {confirmResult?.reportId === report.id ? (
-                  <div style={{
-                    marginTop: 8, padding: '6px 10px', borderRadius: 6,
-                    background: confirmResult.error ? '#fef2f2' : '#f0fdf4',
-                    color: confirmResult.error ? '#ef4444' : '#16a34a',
-                    fontSize: 12, fontWeight: 600,
-                  }}>
-                    {confirmResult.message}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleConfirm(report.id)}
-                    disabled={confirming === report.id}
-                    style={{
-                      marginTop: 8, padding: '6px 12px', borderRadius: 6,
-                      border: '1px solid #22c55e', background: '#22c55e10',
-                      color: '#16a34a', fontSize: 12, fontWeight: 600,
-                      cursor: confirming === report.id ? 'wait' : 'pointer',
-                      width: '100%',
-                    }}
-                  >
-                    {confirming === report.id ? 'Confirming...' : '✓ Issue Fixed?'}
-                  </button>
-                )}
               </div>
             </Popup>
           </Marker>
