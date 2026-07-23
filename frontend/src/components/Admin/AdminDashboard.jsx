@@ -132,28 +132,68 @@ function formatNumber(num) {
   return String(num);
 }
 
-function formatCoordinate(lat, lng) {
-  // Postgres numeric columns come back as strings from the pg driver
-  const numLat = parseFloat(lat);
-  const numLng = parseFloat(lng);
-  if (isNaN(numLat) || isNaN(numLng)) return 'Invalid coordinates';
-  return `${numLat.toFixed(6)}, ${numLng.toFixed(6)}`;
-}
-
 function getActivityDisplay(item) {
   const meta = item.parsedMetadata || {};
   switch (item.activity_type) {
     case 'route_calculated':
-      return `🗺️ Route: ${meta.start_location || '?'} → ${meta.end_location || '?'} (${meta.profile_used || 'standard'})`;
+      return `Route: ${meta.start_location || '?'} → ${meta.end_location || '?'} (${meta.profile_used || 'standard'})`;
     case 'search':
-      return `🔍 Searched: "${meta.query || '?'}" → ${meta.selected_result || '?'}`;
+      return `Searched: "${meta.query || '?'}" → ${meta.selected_result || '?'}`;
     case 'login':
-      return `🔐 Logged in from ${meta.browser || 'device'}`;
+      return `Logged in from ${meta.browser || 'device'}`;
     case 'register':
-      return `📝 New user registered: ${meta.email || ''}`;
+      return `New user registered: ${meta.email || ''}`;
     default:
       return item.activity_type;
   }
+}
+
+// ── Skeleton Loader ───────────────────────────────────────────────────────────
+function SkeletonLoader() {
+  return (
+    <div className="admin-dashboard">
+      <aside className="admin-sidebar">
+        <div className="admin-sidebar-header">
+          <div className="admin-logo">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#2563eb" opacity="0.3"/>
+            </svg>
+            <div className="skeleton" style={{ width: 120, height: 18 }} />
+          </div>
+        </div>
+        <div className="admin-nav" style={{ padding: '20px 12px' }}>
+          {[80, 65, 70, 55, 50, 65].map((w, i) => (
+            <div key={i} className="skeleton" style={{ width: `${w}%`, height: 38, borderRadius: 10, marginBottom: 4 }} />
+          ))}
+        </div>
+      </aside>
+      <main className="admin-main">
+        <div style={{ marginBottom: 28 }}>
+          <div className="skeleton" style={{ width: 220, height: 26, marginBottom: 8 }} />
+          <div className="skeleton" style={{ width: 160, height: 14 }} />
+        </div>
+        <div className="skeleton-stats">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton-stat-card">
+              <div className="skeleton skeleton-stat-icon" />
+              <div className="skeleton-stat-lines">
+                <div className="skeleton skeleton-stat-value" />
+                <div className="skeleton skeleton-stat-label" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="skeleton-card">
+          <div className="skeleton skeleton-card-title" />
+          <div className="skeleton-card-lines">
+            <div className="skeleton skeleton-line w-full" />
+            <div className="skeleton skeleton-line w-3-4" />
+            <div className="skeleton skeleton-line w-1-2" />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -165,7 +205,7 @@ export default function AdminDashboard() {
   const [activity,         setActivity]         = useState([]);
   const [reports,          setReports]          = useState([]);
   const [feedback,         setFeedback]         = useState([]);
-  const [pendingCount,     setPendingCount]      = useState(0); // sidebar badge — always fresh
+  const [pendingCount,     setPendingCount]      = useState(0);
   const [isLoading,        setIsLoading]        = useState(true);
   const [error,            setError]            = useState('');
   const [lastUpdated,      setLastUpdated]      = useState(null);
@@ -173,7 +213,6 @@ export default function AdminDashboard() {
   const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
   const [processingReport, setProcessingReport] = useState(null);
   const [adminNotes,       setAdminNotes]       = useState({});
-  const [successMessage,   setSuccessMessage]   = useState('');
   const [clusters,         setClusters]         = useState([]);
   const [expandedCluster,  setExpandedCluster]  = useState(null);
   const [clusterNotes,     setClusterNotes]     = useState({});
@@ -185,27 +224,36 @@ export default function AdminDashboard() {
   const [adminInbox,          setAdminInbox]          = useState([]);
   const [adminInboxLoading,   setAdminInboxLoading]   = useState(false);
   const [unreadMsgCount,      setUnreadMsgCount]      = useState(0);
+  const [toasts,              setToasts]              = useState([]);
 
-  // Use a ref for the interval so it never re-registers on tab change
   const intervalRef = useRef(null);
 
-  // ── Fetch pending count for sidebar badge (always, regardless of tab) ──────
+  // ── Toast helpers ────────────────────────────────────────────────────────────
+  const addToast = useCallback((type, text) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, type, text }]);
+    if (type === 'success') setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+  }, []);
+
+  const dismissToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  // ── Fetch pending count for sidebar badge ─────────────────────────────────────
   const fetchPendingCount = useCallback(async () => {
     try {
       const token = getToken();
       if (!token) return;
-      const res  = await fetch(`${API_URL}/api/reports/stats/summary`, {
+      const res = await fetch(`${API_URL}/api/reports/stats/summary`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
       const data = await res.json();
       setPendingCount(Number(data.stats?.pending) || 0);
-    } catch {
-      // silent — badge is non-critical
-    }
+    } catch { /* silent */ }
   }, []);
 
-  // ── Fetch reports list (used by Reports tab + after approve/reject) ─────────
+  // ── Fetch reports list ────────────────────────────────────────────────────────
   const fetchReports = useCallback(async () => {
     try {
       const data = await getReports('pending', 100);
@@ -216,7 +264,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // ── Fetch report clusters (grouped by proximity + issue type) ────────────────
+  // ── Fetch report clusters ─────────────────────────────────────────────────────
   const fetchClusters = useCallback(async () => {
     try {
       const data = await getReportClusters();
@@ -226,7 +274,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // ── Fetch admin inbox (reports with unread user messages) ─────────────────────
+  // ── Fetch admin inbox ─────────────────────────────────────────────────────────
   const fetchAdminInbox = useCallback(async () => {
     setAdminInboxLoading(true);
     try {
@@ -240,20 +288,14 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // ── Fetch main dashboard data ────────────────────────────────────────────────
+  // ── Fetch main dashboard data ─────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
       const token = getToken();
-      if (!token) {
-        window.location.href = '/';
-        return;
-      }
-      const headers = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      };
+      if (!token) { window.location.href = '/'; return; }
 
-      // Added feedbackRes to the parallel fetch
+      const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
       const [statsRes, usersRes, activityRes, feedbackRes] = await Promise.all([
         fetch(`${API_URL}/admin/stats`,    { headers }),
         fetch(`${API_URL}/admin/users`,    { headers }),
@@ -261,9 +303,7 @@ export default function AdminDashboard() {
         fetch(`${API_URL}/api/reports/feedback`, { headers }),
       ]);
 
-      // Any 401/403 means token expired or invalid — redirect to login
       if ([statsRes, usersRes, activityRes, feedbackRes].some(r => r.status === 401 || r.status === 403)) {
-        console.warn('[Admin] Auth session invalid, redirecting to login');
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
@@ -271,25 +311,18 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Parse each response, falling back to defaults on error
       const statsData    = statsRes.ok    ? await statsRes.json()    : {};
       const usersData    = usersRes.ok    ? await usersRes.json()    : { users: [] };
       const activityData = activityRes.ok ? await activityRes.json() : { activity: [] };
       const feedbackData = feedbackRes.ok ? await feedbackRes.json() : { feedback: [] };
 
-      if (!statsRes.ok) {
-        console.error('[Admin] Stats fetch failed:', statsRes.status);
-      }
-
       const parsedActivity = (activityData.activity || []).map(item => {
         let parsedMeta = {};
         try {
           if (item.metadata) {
-            parsedMeta = typeof item.metadata === 'string'
-              ? JSON.parse(item.metadata)
-              : item.metadata;
+            parsedMeta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
           }
-        } catch { /* ignore malformed metadata */ }
+        } catch { /* ignore */ }
         return { ...item, parsedMetadata: parsedMeta };
       });
 
@@ -299,8 +332,6 @@ export default function AdminDashboard() {
       setFeedback(feedbackData.feedback || []);
       setLastUpdated(new Date());
       setError('');
-
-      // Always refresh pending count so sidebar badge is accurate
       await fetchPendingCount();
     } catch (err) {
       console.error('[Admin] Fetch error:', err);
@@ -310,74 +341,66 @@ export default function AdminDashboard() {
     }
   }, [fetchPendingCount]);
 
-  // ── Initial load + stable 30-second poll (never re-registers) ───────────────
+  // ── Initial load + 30s poll ───────────────────────────────────────────────────
   useEffect(() => {
     fetchData();
     intervalRef.current = setInterval(fetchData, 30_000);
     return () => clearInterval(intervalRef.current);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // fetchData is stable (no deps change) so the empty array is safe here
 
-  // ── Load reports + clusters when switching to Reports tab ────────────────────
+  // ── Load reports + clusters on Reports tab ─────────────────────────────────────
   useEffect(() => {
     if (activeTab === 'reports') {
       fetchReports();
       fetchClusters();
-    }
-  }, [activeTab, fetchReports, fetchClusters]);
-
-  // ── Load admin inbox when switching to Messages tab ────────────────────────────
-  useEffect(() => {
-    if (activeTab === 'messages') {
       fetchAdminInbox();
     }
-  }, [activeTab, fetchAdminInbox]);
+  }, [activeTab, fetchReports, fetchClusters, fetchAdminInbox]);
 
-  // ── Approve / Reject ─────────────────────────────────────────────────────────
+  // ── Approve / Reject ──────────────────────────────────────────────────────────
   const handleUpdateReport = useCallback(async (reportId, status) => {
     setProcessingReport(reportId);
     setError('');
-    setSuccessMessage('');
     try {
       await updateReportStatus(reportId, status, adminNotes[reportId] || '');
       setAdminNotes(prev => ({ ...prev, [reportId]: '' }));
-      setSuccessMessage(`Report #${reportId} ${status} successfully`);
+      addToast('success', `Report #${reportId} ${status}`);
       await fetchReports();
       fetchData();
     } catch (err) {
-      setError(err.message || `Failed to ${status} report`);
+      const msg = err.message || `Failed to ${status} report`;
+      setError(msg);
+      addToast('error', msg);
     } finally {
       setProcessingReport(null);
-      // Auto-clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(''), 3000);
     }
-  }, [adminNotes, fetchReports, fetchData]);
+  }, [adminNotes, fetchReports, fetchData, addToast]);
 
   const handleApproveReport = (id) => handleUpdateReport(id, 'approved');
   const handleRejectReport  = (id) => handleUpdateReport(id, 'rejected');
 
-  // ── Cluster bulk resolve ─────────────────────────────────────────────────────
+  // ── Cluster bulk resolve ──────────────────────────────────────────────────────
   const handleClusterResolve = useCallback(async (cluster, status) => {
     const reportIds = cluster.reports.map(r => r.id);
     setClusterProcessing(cluster.id);
     setError('');
-    setSuccessMessage('');
     try {
       await resolveCluster(reportIds, status, clusterNotes[cluster.id] || '');
       setClusterNotes(prev => ({ ...prev, [cluster.id]: '' }));
-      setSuccessMessage(`${cluster.reports.length} report(s) ${status} successfully`);
+      addToast('success', `${cluster.reports.length} report(s) ${status}`);
       await fetchReports();
       await fetchClusters();
       fetchData();
     } catch (err) {
-      setError(err.message || `Failed to ${status} cluster`);
+      const msg = err.message || `Failed to ${status} cluster`;
+      setError(msg);
+      addToast('error', msg);
     } finally {
       setClusterProcessing(null);
-      setTimeout(() => setSuccessMessage(''), 3000);
     }
-  }, [clusterNotes, fetchReports, fetchClusters, fetchData]);
+  }, [clusterNotes, fetchReports, fetchClusters, fetchData, addToast]);
 
-  // ── Messaging: load messages for a report ────────────────────────────────────
+  // ── Messaging ─────────────────────────────────────────────────────────────────
   const loadMessages = useCallback(async (reportId) => {
     try {
       const data = await getReportMessages(reportId);
@@ -390,39 +413,32 @@ export default function AdminDashboard() {
   const handleSendMessage = useCallback(async (reportId) => {
     const text = (newMessage[reportId] || '').trim();
     if (!text) return;
-
     setSendingMessage(reportId);
     try {
       await sendReportMessage(reportId, text);
       setNewMessage(prev => ({ ...prev, [reportId]: '' }));
       await loadMessages(reportId);
     } catch (err) {
-      setError(err.message || 'Failed to send message');
+      const msg = err.message || 'Failed to send message';
+      setError(msg);
+      addToast('error', msg);
     } finally {
       setSendingMessage(null);
     }
-  }, [newMessage, loadMessages]);
+  }, [newMessage, loadMessages, addToast]);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
     setMobileMenuOpen(false);
-    setError(''); // clear errors on tab switch
+    setError('');
   };
 
   // ── Loading state ─────────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="admin-loading">
-        <div className="admin-loading-spinner" />
-        <p>Loading dashboard...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <SkeletonLoader />;
 
   const tabTitle = {
     overview: 'Dashboard',
-    reports:  'Accessibility Reports',
-    messages: 'User Messages',
+    reports:  'Reports & Messages',
     feedback: 'Path Ratings',
     users:    'User Management',
     activity: 'Activity Log',
@@ -430,7 +446,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-dashboard">
-      {/* Mobile menu toggle */}
       <button
         className="admin-mobile-menu-btn"
         onClick={() => setMobileMenuOpen(o => !o)}
@@ -453,12 +468,11 @@ export default function AdminDashboard() {
 
         <nav className="admin-nav">
           {[
-            { key: 'overview',  label: 'Overview', Icon: Icons.Dashboard },
-            { key: 'reports',   label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount },
-            { key: 'messages',  label: 'Messages', Icon: Icons.Activity, badge: unreadMsgCount },
-            { key: 'feedback',  label: 'Ratings',  Icon: Icons.Star },
-            { key: 'users',     label: 'Users',    Icon: Icons.Users },
-            { key: 'activity',  label: 'Activity', Icon: Icons.Activity },
+            { key: 'overview', label: 'Overview', Icon: Icons.Dashboard },
+            { key: 'reports',  label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount + unreadMsgCount },
+            { key: 'feedback', label: 'Ratings',  Icon: Icons.Star },
+            { key: 'users',    label: 'Users',    Icon: Icons.Users },
+            { key: 'activity', label: 'Activity', Icon: Icons.Activity },
           ].map(({ key, label, Icon, badge }) => (
             <button
               key={key}
@@ -511,25 +525,7 @@ export default function AdminDashboard() {
           <div className="admin-error">
             <Icons.AlertIcon />
             <span>{error}</span>
-            <button
-              className="admin-error-dismiss"
-              onClick={() => setError('')}
-              aria-label="Dismiss error"
-            >
-              <Icons.X />
-            </button>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="admin-success">
-            <Icons.Check />
-            <span>{successMessage}</span>
-            <button
-              className="admin-success-dismiss"
-              onClick={() => setSuccessMessage('')}
-              aria-label="Dismiss"
-            >
+            <button className="admin-error-dismiss" onClick={() => setError('')} aria-label="Dismiss error">
               <Icons.X />
             </button>
           </div>
@@ -545,33 +541,24 @@ export default function AdminDashboard() {
                   <span className="stat-card-value">{formatNumber(stats?.users?.total)}</span>
                   <span className="stat-card-label">Total Users</span>
                 </div>
-                <div className="stat-card-trend positive">
-                  +{stats?.users?.newThisWeek || 0} this week
-                </div>
+                <div className="stat-card-trend positive">+{stats?.users?.newThisWeek || 0} this week</div>
               </div>
-
               <div className="stat-card">
                 <div className="stat-card-icon green"><Icons.TrendingUp /></div>
                 <div className="stat-card-content">
                   <span className="stat-card-value">{stats?.users?.activeToday || 0}</span>
                   <span className="stat-card-label">Active Today</span>
                 </div>
-                <div className="stat-card-trend">
-                  {stats?.users?.activeWeek || 0} active this week
-                </div>
+                <div className="stat-card-trend">{stats?.users?.activeWeek || 0} active this week</div>
               </div>
-
               <div className="stat-card">
                 <div className="stat-card-icon purple"><Icons.RouteIcon /></div>
                 <div className="stat-card-content">
                   <span className="stat-card-value">{stats?.routes?.today || 0}</span>
                   <span className="stat-card-label">Routes Today</span>
                 </div>
-                <div className="stat-card-trend">
-                  {formatNumber(stats?.routes?.total)} total routes
-                </div>
+                <div className="stat-card-trend">{formatNumber(stats?.routes?.total)} total routes</div>
               </div>
-
               <div className="stat-card">
                 <div className="stat-card-icon orange"><Icons.Activity /></div>
                 <div className="stat-card-content">
@@ -591,26 +578,20 @@ export default function AdminDashboard() {
                         <div className="profile-bar-header">
                           <span className="profile-name">{p.profile_used}</span>
                           <span className="profile-percent">
-                            {stats.routes?.total
-                              ? ((p.count / stats.routes.total) * 100).toFixed(0)
-                              : 0}%
+                            {stats.routes?.total ? ((p.count / stats.routes.total) * 100).toFixed(0) : 0}%
                           </span>
                         </div>
                         <div className="progress-bar">
                           <div
                             className="progress-fill"
-                            style={{
-                              width: stats.routes?.total
-                                ? `${(p.count / stats.routes.total) * 100}%`
-                                : '0%'
-                            }}
+                            style={{ width: stats.routes?.total ? `${(p.count / stats.routes.total) * 100}%` : '0%' }}
                           />
                         </div>
                         <div className="profile-count">{p.count} routes</div>
                       </div>
                     ))
                   ) : (
-                    <div className="no-data">No route data yet.</div>
+                    <div className="admin-empty"><p>No route data yet.</p></div>
                   )}
                 </div>
               </div>
@@ -627,28 +608,8 @@ export default function AdminDashboard() {
                       </div>
                     ))
                   ) : (
-                    <div className="no-data">No destination data yet</div>
+                    <div className="admin-empty"><p>No destination data yet</p></div>
                   )}
-                </div>
-              </div>
-            </div>
-
-            <div className="admin-card full-width">
-              <h3>Security Overview (Last 24h)</h3>
-              <div className="security-stats-grid">
-                <div className="security-stat">
-                  <span className="security-label">Failed Logins</span>
-                  <span className={`security-value ${stats?.security?.failedLogins24h > 10 ? 'warning' : ''}`}>
-                    {stats?.security?.failedLogins24h || 0}
-                  </span>
-                </div>
-                <div className="security-stat">
-                  <span className="security-label">Password Resets</span>
-                  <span className="security-value">{stats?.security?.passwordResets24h || 0}</span>
-                </div>
-                <div className="security-stat">
-                  <span className="security-label">Rate Limit Hits</span>
-                  <span className="security-value">{stats?.security?.rateLimitHits24h || 0}</span>
                 </div>
               </div>
             </div>
@@ -668,517 +629,352 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-                {activity.length === 0 && (
-                  <div className="no-data">No activity yet.</div>
-                )}
+                {activity.length === 0 && <div className="admin-empty"><p>No activity yet.</p></div>}
               </div>
             </div>
           </>
         )}
 
-        {/* ── Feedback / Ratings Tab ────────────────────────────────────────── */}
+        {/* ── Feedback / Ratings ─────────────────────────────────────────────── */}
         {activeTab === 'feedback' && (
           <div className="admin-card full-width">
             <div className="admin-table-header">
               <h3>Path Feedback & Ratings</h3>
-              <p>User feedback on specific route profiles</p>
+              <span className="admin-table-stats">{feedback.length} total ratings</span>
             </div>
-            <div className="feedback-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', padding: '20px 0' }}>
+            <div className="feedback-grid">
               {feedback.length > 0 ? feedback.map((item) => (
-                <div key={item.id} className="feedback-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: '700', textTransform: 'capitalize', color: 'var(--profile-color)' }}>{item.profile_key}</span>
-                    <div style={{ color: '#f59e0b' }}>
+                <div key={item.id} className="feedback-card">
+                  <div className="feedback-card-top">
+                    <span className="feedback-profile">{item.profile_key}</span>
+                    <div className="feedback-stars">
                       {'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}
                     </div>
                   </div>
-                  <p style={{ fontSize: '14px', color: 'var(--text)', marginBottom: '12px' }}>
-                    {item.comment || "No comment provided."}
-                  </p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--sub)' }}>
-                    <span>User ID: {item.user_id?.substring(0, 8) || 'Guest'}</span>
+                  <p className="feedback-comment">{item.comment || "No comment provided."}</p>
+                  <div className="feedback-meta">
+                    <span>User: {item.user_id?.substring(0, 8) || 'Guest'}</span>
                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               )) : (
-                <div className="no-data">No feedback yet.</div>
+                <div className="admin-empty"><p>No feedback yet.</p></div>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Reports (Cluster View) ──────────────────────────────────────── */}
+        {/* ── Reports + Messages (merged) ────────────────────────────────────── */}
         {activeTab === 'reports' && (
-          <div className="admin-card full-width">
-            <div className="admin-table-header">
-              <h3>Accessibility Reports — Cluster View</h3>
-              <span className="admin-table-stats">
-                {clusters.length} cluster(s) · {reports.length} pending report(s)
-              </span>
-            </div>
-
-            {clusters.length === 0 ? (
-              <div className="no-data" style={{ textAlign: 'center', padding: '48px 20px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-                <p>No reports to review. All clear!</p>
+          <>
+            {/* ── Pending Clusters ──────────────────────────────────────────── */}
+            <div className="admin-card full-width">
+              <div className="admin-table-header">
+                <h3>Pending Reports</h3>
+                <span className="admin-table-stats">
+                  {clusters.length} cluster{clusters.length !== 1 ? 's' : ''} · {reports.length} pending
+                </span>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px 0' }}>
-                {clusters.map((cluster) => {
-                  const severity = SEVERITY_CONFIG[cluster.max_severity] || SEVERITY_CONFIG[2];
-                  const isExpanded = expandedCluster === cluster.id;
-                  const isProcessing = clusterProcessing === cluster.id;
-                  const hasPending = cluster.reports.some(r => r.status === 'pending');
-                  const hasApproved = cluster.reports.some(r => r.status === 'approved');
 
-                  return (
-                    <div key={cluster.id} style={{
-                      background: 'var(--panel, #fff)',
-                      border: `2px solid ${hasPending ? severity.border : 'var(--border, #e2e8f0)'}`,
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                    }}>
-                      {/* Cluster Header */}
-                      <div style={{
-                        padding: '16px 20px',
-                        borderBottom: isExpanded ? '1px solid var(--border, #e2e8f0)' : 'none',
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '20px' }}>
-                                {cluster.max_severity === 3 ? '🔴' : cluster.max_severity === 2 ? '🟡' : '🟢'}
-                              </span>
-                              <span style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text)' }}>
-                                {ISSUE_TYPE_LABELS[cluster.issue_type] || cluster.issue_type}
-                              </span>
-                              {cluster.location_name && (
-                                <span style={{ fontSize: '13px', color: 'var(--sub, #64748b)' }}>
-                                  — {cluster.location_name}
+              {clusters.length === 0 ? (
+                <div className="admin-empty">
+                  <div className="admin-empty-icon">&#10003;</div>
+                  <p>No reports to review. All clear!</p>
+                </div>
+              ) : (
+                <div className="clusters-list">
+                  {clusters.map((cluster) => {
+                    const sev = SEVERITY_CONFIG[cluster.max_severity] || SEVERITY_CONFIG[2];
+                    const isExpanded = expandedCluster === cluster.id;
+                    const isProcessing = clusterProcessing === cluster.id;
+                    const hasPending = cluster.reports.some(r => r.status === 'pending');
+                    const hasApproved = cluster.reports.some(r => r.status === 'approved');
+
+                    return (
+                      <div key={cluster.id} className={`cluster-card severity-${cluster.max_severity}`}>
+                        <div className="cluster-header">
+                          <div className="cluster-header-top">
+                            <div className="cluster-title-group">
+                              <div className="cluster-title-row">
+                                <span className="cluster-severity-icon">
+                                  {cluster.max_severity === 3 ? '\u{1F534}' : cluster.max_severity === 2 ? '\u{1F7E1}' : '\u{1F7E2}'}
                                 </span>
-                              )}
+                                <span className="cluster-issue-name">
+                                  {ISSUE_TYPE_LABELS[cluster.issue_type] || cluster.issue_type}
+                                </span>
+                                {cluster.location_name && (
+                                  <span className="cluster-location">&mdash; {cluster.location_name}</span>
+                                )}
+                              </div>
+                              <div className="cluster-coords">
+                                {cluster.lat.toFixed(5)}, {cluster.lng.toFixed(5)}
+                              </div>
                             </div>
-                            <div style={{ fontSize: '12px', color: 'var(--sub, #64748b)' }}>
-                              📍 {cluster.lat.toFixed(5)}, {cluster.lng.toFixed(5)}
-                            </div>
+                            <span className={`cluster-severity-badge severity-badge-${cluster.max_severity}`}>
+                              Severity {cluster.avg_severity}
+                            </span>
                           </div>
 
-                          <span style={{
-                            fontSize: '12px',
-                            fontWeight: '700',
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            background: severity.bg,
-                            color: severity.color,
-                          }}>
-                            Severity {cluster.avg_severity}
-                          </span>
-                        </div>
+                          <div className="cluster-stats-row">
+                            <span><strong>{cluster.report_count}</strong> report{cluster.report_count > 1 ? 's' : ''}</span>
+                            {cluster.open_count > 0 && <span className="pending">{cluster.open_count} pending</span>}
+                            {cluster.approved_count > 0 && <span className="approved">{cluster.approved_count} approved</span>}
+                            {cluster.resolved_count > 0 && <span className="resolved">{cluster.resolved_count} resolved</span>}
+                            {cluster.rejected_count > 0 && <span className="rejected">{cluster.rejected_count} rejected</span>}
+                          </div>
+                          <div className="cluster-dates">
+                            First: {new Date(cluster.first_reported).toLocaleDateString()} · Latest: {new Date(cluster.latest_reported).toLocaleString()}
+                          </div>
 
-                        {/* Stats Row */}
-                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text)' }}>
-                          <span><strong>{cluster.report_count}</strong> report{cluster.report_count > 1 ? 's' : ''}</span>
-                          {cluster.open_count > 0 && <span style={{ color: '#f59e0b' }}>{cluster.open_count} pending</span>}
-                          {cluster.approved_count > 0 && <span style={{ color: '#22c55e' }}>{cluster.approved_count} approved</span>}
-                          {cluster.resolved_count > 0 && <span style={{ color: '#6366f1' }}>{cluster.resolved_count} resolved</span>}
-                          {cluster.rejected_count > 0 && <span style={{ color: '#ef4444' }}>{cluster.rejected_count} rejected</span>}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--sub, #94a3b8)', marginTop: '4px' }}>
-                          First: {new Date(cluster.first_reported).toLocaleDateString()} · Latest: {new Date(cluster.latest_reported).toLocaleString()}
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          <button
-                            onClick={() => {
-                              setExpandedCluster(isExpanded ? null : cluster.id);
-                              if (!isExpanded) {
-                                cluster.reports.forEach(r => loadMessages(r.id));
-                              }
-                            }}
-                            style={{
-                              fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                              borderRadius: '8px', border: '1px solid var(--border)',
-                              background: 'transparent', color: 'var(--text)', cursor: 'pointer',
-                            }}
-                          >
-                            {isExpanded ? 'Collapse' : `View ${cluster.report_count} report${cluster.report_count > 1 ? 's' : ''}`}
-                          </button>
-
-                          {hasPending && (
-                            <>
-                              <button
-                                onClick={() => handleClusterResolve(cluster, 'rejected')}
-                                disabled={isProcessing}
-                                style={{
-                                  fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                                  borderRadius: '8px', border: '1px solid #ef4444',
-                                  background: isProcessing ? '#ef444420' : 'transparent',
-                                  color: '#ef4444', cursor: isProcessing ? 'wait' : 'pointer',
-                                }}
-                              >
-                                {isProcessing ? '...' : 'Reject All'}
-                              </button>
-                              <button
-                                onClick={() => handleClusterResolve(cluster, 'approved')}
-                                disabled={isProcessing}
-                                style={{
-                                  fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                                  borderRadius: '8px', border: '1px solid #22c55e',
-                                  background: isProcessing ? '#22c55e20' : 'transparent',
-                                  color: '#22c55e', cursor: isProcessing ? 'wait' : 'pointer',
-                                }}
-                              >
-                                {isProcessing ? '...' : 'Approve All'}
-                              </button>
-                            </>
-                          )}
-
-                          {hasApproved && !hasPending && (
+                          <div className="cluster-actions">
                             <button
-                              onClick={() => handleClusterResolve(cluster, 'resolved')}
-                              disabled={isProcessing}
-                              style={{
-                                fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                                borderRadius: '8px', border: '1px solid #6366f1',
-                                background: isProcessing ? '#6366f120' : 'transparent',
-                                color: '#6366f1', cursor: isProcessing ? 'wait' : 'pointer',
+                              className="btn btn-outline"
+                              onClick={() => {
+                                setExpandedCluster(isExpanded ? null : cluster.id);
+                                if (!isExpanded) cluster.reports.forEach(r => loadMessages(r.id));
                               }}
                             >
-                              {isProcessing ? '...' : 'Resolve All'}
+                              {isExpanded ? 'Collapse' : `View ${cluster.report_count} report${cluster.report_count > 1 ? 's' : ''}`}
                             </button>
-                          )}
+                            {hasPending && (
+                              <>
+                                <button
+                                  className="btn btn-reject"
+                                  onClick={() => handleClusterResolve(cluster, 'rejected')}
+                                  disabled={isProcessing}
+                                >
+                                  {isProcessing ? '...' : 'Reject All'}
+                                </button>
+                                <button
+                                  className="btn btn-approve"
+                                  onClick={() => handleClusterResolve(cluster, 'approved')}
+                                  disabled={isProcessing}
+                                >
+                                  {isProcessing ? '...' : 'Approve All'}
+                                </button>
+                              </>
+                            )}
+                            {hasApproved && !hasPending && (
+                              <button
+                                className="btn btn-resolve"
+                                onClick={() => handleClusterResolve(cluster, 'resolved')}
+                                disabled={isProcessing}
+                              >
+                                {isProcessing ? '...' : 'Resolve All'}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Expanded: Individual Reports */}
-                      {isExpanded && (
-                        <div style={{ padding: '16px 20px' }}>
-                          {/* Admin Notes */}
-                          <textarea
-                            placeholder="Admin notes for this cluster (visible to reporters)..."
-                            value={clusterNotes[cluster.id] || ''}
-                            onChange={(e) => setClusterNotes(prev => ({ ...prev, [cluster.id]: e.target.value }))}
-                            rows={2}
-                            disabled={isProcessing}
-                            style={{
-                              width: '100%', boxSizing: 'border-box', padding: '10px',
-                              borderRadius: '8px', border: '1px solid var(--border)',
-                              background: 'var(--bg, #f8fafc)', color: 'var(--text)',
-                              fontSize: '13px', resize: 'vertical', marginBottom: '12px',
-                            }}
-                          />
+                        {isExpanded && (
+                          <div className="cluster-expanded">
+                            <textarea
+                              className="cluster-notes-textarea"
+                              placeholder="Admin notes for this cluster (visible to reporters)..."
+                              value={clusterNotes[cluster.id] || ''}
+                              onChange={(e) => setClusterNotes(prev => ({ ...prev, [cluster.id]: e.target.value }))}
+                              rows={2}
+                              disabled={isProcessing}
+                            />
 
-                          {cluster.reports.map((report) => {
-                            const rSeverity = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG[2];
-                            const isReportProcessing = processingReport === report.id;
-                            const msgs = reportMessages[report.id] || [];
+                            <div className="cluster-reports">
+                              {cluster.reports.map((report) => {
+                                const rSev = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG[2];
+                                const isReportProcessing = processingReport === report.id;
+                                const msgs = reportMessages[report.id] || [];
 
-                            return (
-                              <div key={report.id} style={{
-                                border: '1px solid var(--border, #e2e8f0)',
-                                borderRadius: '12px', padding: '14px', marginBottom: '12px',
-                                background: 'var(--bg, #f8fafc)',
-                              }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontWeight: '700', fontSize: '14px' }}>#{report.id}</span>
-                                    <span style={{
-                                      fontSize: '11px', fontWeight: '600', padding: '2px 8px',
-                                      borderRadius: '12px', background: rSeverity.bg, color: rSeverity.color,
-                                    }}>
-                                      {rSeverity.label}
-                                    </span>
-                                    <span style={{
-                                      fontSize: '11px', fontWeight: '600', padding: '2px 8px',
-                                      borderRadius: '12px',
-                                      background: report.status === 'pending' ? '#f59e0b18' : report.status === 'approved' ? '#22c55e18' : '#6366f118',
-                                      color: report.status === 'pending' ? '#f59e0b' : report.status === 'approved' ? '#22c55e' : '#6366f1',
-                                    }}>
-                                      {report.status}
-                                    </span>
-                                  </div>
-                                  <span style={{ fontSize: '11px', color: 'var(--sub, #94a3b8)' }}>
-                                    {new Date(report.created_at).toLocaleString()}
-                                  </span>
-                                </div>
-
-                                {report.location_name && (
-                                  <div style={{ fontSize: '13px', color: 'var(--sub, #64748b)', marginBottom: '4px' }}>
-                                    📍 {report.location_name}
-                                  </div>
-                                )}
-                                {report.custom_description && (
-                                  <div style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '8px', fontStyle: 'italic' }}>
-                                    "{report.custom_description}"
-                                  </div>
-                                )}
-                                {report.admin_notes && (
-                                  <div style={{ fontSize: '12px', color: '#6366f1', marginBottom: '8px', padding: '6px 10px', background: '#6366f110', borderRadius: '6px' }}>
-                                    Admin note: {report.admin_notes}
-                                  </div>
-                                )}
-
-                                {/* Individual report actions */}
-                                {report.status === 'pending' && (
-                                  <div style={{ marginTop: '8px' }}>
-                                    <textarea
-                                      placeholder="Message for reporter (optional, sent with approval/rejection)..."
-                                      value={adminNotes[report.id] || ''}
-                                      onChange={(e) => setAdminNotes(prev => ({ ...prev, [report.id]: e.target.value }))}
-                                      rows={2}
-                                      disabled={isReportProcessing}
-                                      style={{
-                                        width: '100%', boxSizing: 'border-box', padding: '8px',
-                                        borderRadius: '6px', border: '1px solid var(--border)',
-                                        background: 'var(--bg, #fff)', color: 'var(--text)',
-                                        fontSize: '12px', resize: 'vertical', marginBottom: '8px',
-                                      }}
-                                    />
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                      <button
-                                        onClick={() => handleRejectReport(report.id)}
-                                        disabled={isReportProcessing}
-                                        style={{
-                                          fontSize: '12px', fontWeight: '600', padding: '4px 12px',
-                                          borderRadius: '6px', border: '1px solid #ef4444',
-                                          background: 'transparent', color: '#ef4444', cursor: 'pointer',
-                                        }}
-                                      >
-                                        {isReportProcessing ? '...' : 'Reject'}
-                                      </button>
-                                      <button
-                                        onClick={() => handleApproveReport(report.id)}
-                                        disabled={isReportProcessing}
-                                        style={{
-                                          fontSize: '12px', fontWeight: '600', padding: '4px 12px',
-                                          borderRadius: '6px', border: '1px solid #22c55e',
-                                          background: 'transparent', color: '#22c55e', cursor: 'pointer',
-                                        }}
-                                      >
-                                        {isReportProcessing ? '...' : 'Approve'}
-                                      </button>
+                                return (
+                                  <div key={report.id} className="cluster-report-card">
+                                    <div className="cluster-report-header">
+                                      <div className="cluster-report-badges">
+                                        <span className="badge badge-id">#{report.id}</span>
+                                        <span className={`badge badge-severity-${report.severity}`}>{rSev.label}</span>
+                                        <span className={`badge badge-${report.status}`}>{report.status}</span>
+                                      </div>
+                                      <span className="cluster-report-date">
+                                        {new Date(report.created_at).toLocaleString()}
+                                      </span>
                                     </div>
-                                  </div>
-                                )}
 
-                                {/* Message Thread */}
-                                <div style={{ marginTop: '12px', borderTop: '1px solid var(--border, #e2e8f0)', paddingTop: '12px' }}>
-                                  <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--sub, #64748b)', marginBottom: '8px' }}>
-                                    Messages ({msgs.length})
-                                  </div>
-                                  {msgs.length > 0 && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-                                      {msgs.map(msg => (
-                                        <div key={msg.id} style={{
-                                          padding: '8px 12px', borderRadius: '8px',
-                                          background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
-                                          fontSize: '13px',
-                                        }}>
-                                          <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>
-                                            {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
-                                          </div>
-                                          <div style={{ color: 'var(--text)' }}>{msg.message}</div>
+                                    {report.location_name && (
+                                      <div className="cluster-report-location">{report.location_name}</div>
+                                    )}
+                                    {report.custom_description && (
+                                      <div className="cluster-report-desc">"{report.custom_description}"</div>
+                                    )}
+                                    {report.admin_notes && (
+                                      <div className="cluster-report-admin-note">Admin note: {report.admin_notes}</div>
+                                    )}
+
+                                    {report.status === 'pending' && (
+                                      <div className="report-actions-section">
+                                        <textarea
+                                          className="report-notes-textarea"
+                                          placeholder="Message for reporter (optional)..."
+                                          value={adminNotes[report.id] || ''}
+                                          onChange={(e) => setAdminNotes(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                          rows={2}
+                                          disabled={isReportProcessing}
+                                        />
+                                        <div className="report-action-row">
+                                          <button
+                                            className="btn btn-reject"
+                                            onClick={() => handleRejectReport(report.id)}
+                                            disabled={isReportProcessing}
+                                          >
+                                            {isReportProcessing ? '...' : 'Reject'}
+                                          </button>
+                                          <button
+                                            className="btn btn-approve"
+                                            onClick={() => handleApproveReport(report.id)}
+                                            disabled={isReportProcessing}
+                                          >
+                                            {isReportProcessing ? '...' : 'Approve'}
+                                          </button>
                                         </div>
-                                      ))}
+                                      </div>
+                                    )}
+
+                                    <div className="message-thread-section">
+                                      <div className="message-thread-label">Messages ({msgs.length})</div>
+                                      {msgs.length > 0 && (
+                                        <div className="message-list">
+                                          {msgs.map(msg => (
+                                            <div key={msg.id} className={`message-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                              <div className={`message-sender ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                                {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
+                                              </div>
+                                              <div className="message-text">{msg.message}</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <div className="message-input-row">
+                                        <input
+                                          type="text"
+                                          className="message-input"
+                                          placeholder="Send a message to the reporter..."
+                                          value={newMessage[report.id] || ''}
+                                          onChange={(e) => setNewMessage(prev => ({ ...prev, [report.id]: e.target.value }))}
+                                          onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(report.id); }}
+                                          disabled={sendingMessage === report.id}
+                                        />
+                                        <button
+                                          className="btn btn-primary"
+                                          onClick={() => handleSendMessage(report.id)}
+                                          disabled={sendingMessage === report.id || !(newMessage[report.id] || '').trim()}
+                                        >
+                                          {sendingMessage === report.id ? '...' : 'Send'}
+                                        </button>
+                                      </div>
                                     </div>
-                                  )}
-
-                                  {/* Send Message Input */}
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input
-                                      type="text"
-                                      placeholder="Send a message to the reporter..."
-                                      value={newMessage[report.id] || ''}
-                                      onChange={(e) => setNewMessage(prev => ({ ...prev, [report.id]: e.target.value }))}
-                                      onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(report.id); }}
-                                      disabled={sendingMessage === report.id}
-                                      style={{
-                                        flex: 1, padding: '8px 12px', borderRadius: '8px',
-                                        border: '1px solid var(--border)', fontSize: '13px',
-                                        background: 'var(--bg, #fff)', color: 'var(--text)',
-                                      }}
-                                    />
-                                    <button
-                                      onClick={() => handleSendMessage(report.id)}
-                                      disabled={sendingMessage === report.id || !(newMessage[report.id] || '').trim()}
-                                      style={{
-                                        fontSize: '13px', fontWeight: '600', padding: '8px 16px',
-                                        borderRadius: '8px', border: 'none',
-                                        background: '#2563eb', color: '#fff', cursor: 'pointer',
-                                        opacity: sendingMessage === report.id || !(newMessage[report.id] || '').trim() ? 0.5 : 1,
-                                      }}
-                                    >
-                                      {sendingMessage === report.id ? '...' : 'Send'}
-                                    </button>
                                   </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Messages ───────────────────────────────────────────────────────── */}
-        {activeTab === 'messages' && (
-          <div className="admin-card full-width">
-            <div className="admin-table-header">
-              <h3>Unread User Messages</h3>
-              <span className="admin-table-stats">
-                {adminInbox.length} report{adminInbox.length !== 1 ? 's' : ''} with new messages
-              </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {adminInboxLoading ? (
-              <div className="admin-loading" style={{ padding: '40px' }}>
-                <div className="admin-loading-spinner" />
-                <p>Loading messages...</p>
+            {/* ── Messages Inbox ──────────────────────────────────────────────── */}
+            <div className="admin-card full-width inbox-section">
+              <div className="inbox-section-header">
+                <h3>Messages Inbox</h3>
+                <span className="admin-table-stats">
+                  {adminInbox.length} report{adminInbox.length !== 1 ? 's' : ''} with new messages
+                </span>
               </div>
-            ) : adminInbox.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--sub, #94a3b8)' }}>
-                <p>No unread messages from users.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
-                {adminInbox.map(item => {
-                  const rSeverity = SEVERITY_CONFIG[item.severity] || SEVERITY_CONFIG[2];
-                  const msgs = reportMessages[item.id] || [];
-                  const isThreadOpen = messageThreadReport === item.id;
 
-                  return (
-                    <div key={item.id} style={{
-                      border: '1px solid var(--border, #e2e8f0)',
-                      borderRadius: '12px',
-                      background: 'var(--bg, #f8fafc)',
-                      overflow: 'hidden',
-                    }}>
-                      {/* Report summary row */}
-                      <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: '700', fontSize: '14px' }}>#{item.id}</span>
-                            <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', background: rSeverity.bg, color: rSeverity.color }}>
-                              {rSeverity.label}
-                            </span>
-                            <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', background: '#ef444418', color: '#ef4444' }}>
-                              {item.unread_count} unread
-                            </span>
-                          </div>
-                          {item.location_name && (
-                            <div style={{ fontSize: '13px', color: 'var(--sub, #64748b)', marginBottom: '2px' }}>
-                              📍 {item.location_name}
+              {adminInboxLoading ? (
+                <div className="admin-empty"><p>Loading messages...</p></div>
+              ) : adminInbox.length === 0 ? (
+                <div className="admin-empty"><p>No unread messages from users.</p></div>
+              ) : (
+                <div className="inbox-list">
+                  {adminInbox.map(item => {
+                    const rSev = SEVERITY_CONFIG[item.severity] || SEVERITY_CONFIG[2];
+                    const msgs = reportMessages[item.id] || [];
+                    const isThreadOpen = messageThreadReport === item.id;
+
+                    return (
+                      <div key={item.id} className="inbox-card">
+                        <div className="inbox-card-header">
+                          <div className="inbox-card-info">
+                            <div className="inbox-card-badges">
+                              <span className="badge badge-id">#{item.id}</span>
+                              <span className={`badge badge-severity-${item.severity}`}>{rSev.label}</span>
+                              <span className="badge badge-pending">{item.unread_count} unread</span>
                             </div>
-                          )}
-                          {item.latest_message_preview && (
-                            <div style={{ fontSize: '13px', color: 'var(--text)', fontStyle: 'italic', marginTop: '4px' }}>
-                              "{item.latest_message_preview}"
+                            {item.location_name && (
+                              <div className="inbox-card-location">{item.location_name}</div>
+                            )}
+                            {item.latest_message_preview && (
+                              <div className="inbox-card-preview">"{item.latest_message_preview}"</div>
+                            )}
+                            <div className="inbox-card-meta">
+                              {item.issue_type?.replace(/_/g, ' ')} · {new Date(item.latest_message_at).toLocaleString()}
                             </div>
-                          )}
-                          <div style={{ fontSize: '11px', color: 'var(--sub, #94a3b8)', marginTop: '4px' }}>
-                            {item.issue_type?.replace(/_/g, ' ')} · {new Date(item.latest_message_at).toLocaleString()}
                           </div>
+                          <button
+                            className={`btn ${isThreadOpen ? 'btn-outline' : 'btn-primary'}`}
+                            onClick={() => {
+                              setMessageThreadReport(isThreadOpen ? null : item.id);
+                              if (!isThreadOpen) loadMessages(item.id);
+                            }}
+                          >
+                            {isThreadOpen ? 'Close' : 'View Thread'}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => {
-                            setMessageThreadReport(isThreadOpen ? null : item.id);
-                            if (!isThreadOpen) loadMessages(item.id);
-                          }}
-                          style={{
-                            fontSize: '13px', fontWeight: '600', padding: '6px 14px',
-                            borderRadius: '8px', border: '1px solid #2563eb',
-                            background: isThreadOpen ? '#2563eb20' : 'transparent',
-                            color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {isThreadOpen ? 'Close' : 'View Thread'}
-                        </button>
-                      </div>
 
-                      {/* Expanded message thread */}
-                      {isThreadOpen && (
-                        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border, #e2e8f0)' }}>
-                          <div style={{ paddingTop: '12px' }}>
-                            {messagesLoading ? (
-                              <p style={{ fontSize: '12px', color: '#94a3b8' }}>Loading messages...</p>
-                            ) : msgs.length > 0 ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                        {isThreadOpen && (
+                          <div className="inbox-thread-expanded">
+                            {msgs.length > 0 ? (
+                              <div className="message-list">
                                 {msgs.map(msg => (
-                                  <div key={msg.id} style={{
-                                    padding: '8px 12px', borderRadius: '8px',
-                                    background: msg.sender_is_admin ? '#2563eb10' : '#f1f5f9',
-                                    fontSize: '13px',
-                                  }}>
-                                    <div style={{ fontSize: '11px', fontWeight: '600', color: msg.sender_is_admin ? '#2563eb' : 'var(--text)', marginBottom: '2px' }}>
+                                  <div key={msg.id} className={`message-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
+                                    <div className={`message-sender ${msg.sender_is_admin ? 'admin' : 'user'}`}>
                                       {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
                                     </div>
-                                    <div style={{ color: 'var(--text)' }}>{msg.message}</div>
+                                    <div className="message-text">{msg.message}</div>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>No messages yet.</p>
+                              <p style={{ fontSize: 12, color: 'var(--a-text-muted)', margin: '0 0 8px' }}>No messages yet.</p>
                             )}
 
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div className="message-input-row">
                               <input
                                 type="text"
+                                className="message-input"
                                 placeholder="Reply to reporter..."
                                 value={newMessage[item.id] || ''}
                                 onChange={(e) => setNewMessage(prev => ({ ...prev, [item.id]: e.target.value }))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(item.id); }}
                                 disabled={sendingMessage === item.id}
-                                style={{
-                                  flex: 1, padding: '8px 12px', borderRadius: '8px',
-                                  border: '1px solid var(--border)', fontSize: '13px',
-                                  background: 'var(--bg, #fff)', color: 'var(--text)',
-                                }}
                               />
                               <button
+                                className="btn btn-primary"
                                 onClick={() => handleSendMessage(item.id)}
                                 disabled={sendingMessage === item.id || !(newMessage[item.id] || '').trim()}
-                                style={{
-                                  fontSize: '13px', fontWeight: '600', padding: '8px 16px',
-                                  borderRadius: '8px', border: 'none',
-                                  background: '#2563eb', color: '#fff', cursor: 'pointer',
-                                  opacity: sendingMessage === item.id || !(newMessage[item.id] || '').trim() ? 0.5 : 1,
-                                }}
                               >
                                 {sendingMessage === item.id ? '...' : 'Send'}
                               </button>
                             </div>
-
-                            {/* Quick actions */}
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                              <button
-                                onClick={() => {
-                                  window.location.hash = '';
-                                  switchTab('reports');
-                                }}
-                                style={{
-                                  fontSize: '12px', fontWeight: '600', padding: '4px 12px',
-                                  borderRadius: '6px', border: '1px solid var(--border)',
-                                  background: 'transparent', color: 'var(--sub, #64748b)', cursor: 'pointer',
-                                }}
-                              >
-                                View in Reports
-                              </button>
-                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* ── Users ──────────────────────────────────────────────────────────── */}
@@ -1228,6 +1024,7 @@ export default function AdminDashboard() {
           <div className="admin-card full-width">
             <div className="admin-table-header">
               <h3>Full Activity Log</h3>
+              <span className="admin-table-stats">{activity.length} events</span>
             </div>
             <div className="admin-table-wrapper">
               <table className="admin-table">
@@ -1241,15 +1038,13 @@ export default function AdminDashboard() {
                 <tbody>
                   {activity.map((a) => (
                     <tr key={a.id}>
-                      <td data-label="User">{a.username || a.email}</td>
-                      <td data-label="Activity">{getActivityDisplay(a)}</td>
-                      <td data-label="Time">{new Date(a.created_at).toLocaleString()}</td>
+                      <td>{a.username || a.email}</td>
+                      <td>{getActivityDisplay(a)}</td>
+                      <td>{new Date(a.created_at).toLocaleString()}</td>
                     </tr>
                   ))}
                   {activity.length === 0 && (
-                    <tr>
-                      <td colSpan="3" className="no-data">No activity recorded</td>
-                    </tr>
+                    <tr><td colSpan="3" className="admin-empty"><p>No activity recorded</p></td></tr>
                   )}
                 </tbody>
               </table>
@@ -1257,6 +1052,21 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* ── Toast Container ──────────────────────────────────────────────────── */}
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map((t) => (
+            <div key={t.id} className={`toast toast-${t.type}`}>
+              {t.type === 'success' ? <Icons.Check /> : <Icons.AlertIcon />}
+              <span>{t.text}</span>
+              <button className="toast-dismiss" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
+                <Icons.X />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
