@@ -1,0 +1,33 @@
+name: Deploy Frontend and Backend
+
+on:
+  push:
+    branches:
+      - main  # Change to master if that is your default branch
+
+jobs:
+  deploy-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Detects changes using native git diff
+      - name: Check what changed
+        id: changed-files
+        run: |
+          git fetch origin ${{ github.event.before }} --depth=1 || true
+
+          echo "changed=$(git diff --name-only HEAD^ HEAD | tr '\n' ' ')" >> $GITHUB_OUTPUT
+
+      # Triggers backend if anything in the backend folder changes
+      - name: Trigger Backend Deploy
+        if: contains(steps.changed-files.outputs.changed, 'backend/')
+        run: |
+          curl -X POST ${{ secrets.RENDER_BACKEND_HOOK }}
+
+      # Triggers frontend if anything in the frontend folder changes
+      - name: Trigger Frontend Deploy
+        if: contains(steps.changed-files.outputs.changed, 'frontend/')
+        run: |
+          curl -X POST ${{ secrets.RENDER_FRONTEND_HOOK }}
