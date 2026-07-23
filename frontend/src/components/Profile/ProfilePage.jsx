@@ -1,5 +1,5 @@
 // frontend/src/components/Profile/ProfilePage.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
 import { API_URL } from "../../config";
