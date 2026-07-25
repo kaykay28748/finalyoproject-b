@@ -4,6 +4,7 @@ import "./CompassButton.css";
 
 export default function CompassButton({
   heading,
+  mapBearing = 0,
   isHeadingUp,
   onToggle,
   permissionState,
@@ -35,8 +36,10 @@ export default function CompassButton({
     }
   };
 
-  // Compass needle rotation — points to north relative to device heading
-  const needleRotation = heading != null ? -heading : 0;
+  // Compass needle rotation: show actual map bearing (manual rotation, heading-up, etc.)
+  // Negative because the needle points to north relative to the rotated map
+  const isRotated = Math.abs(mapBearing) > 0.5;
+  const needleRotation = -mapBearing;
 
   return (
     <div className="compass-container">
@@ -65,7 +68,7 @@ export default function CompassButton({
       )}
 
       <button
-        className={`compass-btn ${isHeadingUp ? "compass-btn--active" : ""}`}
+        className={`compass-btn ${isHeadingUp ? "compass-btn--active" : ""} ${isRotated ? "compass-btn--rotated" : ""}`}
         onClick={handleClick}
         aria-label={isHeadingUp ? "Switch to north up" : "Switch to heading up"}
         title={isHeadingUp ? "North up" : "Heading up"}
@@ -73,10 +76,8 @@ export default function CompassButton({
         <div
           className="compass-needle-wrap"
           style={{
-            transform: isHeadingUp
-              ? `rotate(${needleRotation}deg)`
-              : "rotate(0deg)",
-            transition: isHeadingUp ? "none" : "transform 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1)",
+            transform: `rotate(${needleRotation}deg)`,
+            transition: isHeadingUp ? "none" : "transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)",
           }}
         >
           {/* North (red) */}

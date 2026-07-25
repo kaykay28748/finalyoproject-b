@@ -44,14 +44,50 @@ const SafeMapLibre3DView = lazy(() =>
 );
 
 // ── MapBearingController — syncs bearing prop to the Leaflet map instance ────
-const MapBearingController = memo(function MapBearingController({ bearing }) {
+// Only forces bearing when heading-up mode is active. When off, the user's
+// manual two-finger rotation is respected.
+const MapBearingController = memo(function MapBearingController({ bearing, isActive }) {
   const map = useMap();
 
   useEffect(() => {
-    if (map && typeof map.setBearing === "function") {
+    if (isActive && map && typeof map.setBearing === "function") {
       map.setBearing(bearing || 0);
     }
-  }, [map, bearing]);
+  }, [map, bearing, isActive]);
+
+  return null;
+});
+
+// ── MapRotationListener — captures manual two-finger rotation ──────────────
+// Fires on every Leaflet "rotate" event and pushes the actual map bearing up
+// so the compass needle can reflect user-initiated rotation.
+const MapRotationListener = memo(function MapRotationListener({ onRotate }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const handleRotate = (e) => {
+      onRotate(e.bearing ?? map.getBearing?.() ?? 0);
+    };
+    map.on("rotate", handleRotate);
+    return () => { map.off("rotate", handleRotate); };
+  }, [map, onRotate]);
+
+  return null;
+});
+
+// ── MapSnapToNorth — imperatively snaps the map to bearing 0 ───────────────
+const MapSnapToNorth = memo(function MapSnapToNorth({ trigger }) {
+  const map = useMap();
+  const prev = useRef(0);
+
+  useEffect(() => {
+    if (trigger !== prev.current && map && typeof map.setBearing === "function") {
+      map.setBearing(0);
+      map.fire("rotate", { bearing: 0 });
+    }
+    prev.current = trigger;
+  }, [trigger, map]);
 
   return null;
 });
@@ -315,6 +351,8 @@ export default function MapView({
   // ── Heading / Compass state ────────────────────────────────────────────
   const [isHeadingUp, setIsHeadingUp] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
+  const [displayBearing, setDisplayBearing] = useState(0); // actual map bearing for compass
+  const [snapTrigger, setSnapTrigger] = useState(0);       // counter to trigger snap-to-north
   const { heading: deviceHeading, permissionState: headingPermission, requestPermission: requestHeadingPermission } = useDeviceHeading();
 
   // ── Compute map bearing for heading-up mode ────────────────────────────
@@ -344,7 +382,7 @@ export default function MapView({
 
   useEffect(() => {
     if (!isHeadingUp) {
-      setMapBearing(0);
+      // Don't force bearing to 0 — let manual rotation persist
       return;
     }
 
@@ -359,7 +397,19 @@ export default function MapView({
   }, [isHeadingUp, deviceHeading, currentRouteDirection]);
 
   const handleCompassToggle = () => {
-    setIsHeadingUp((prev) => !prev);
+    if (isHeadingUp) {
+      // Currently heading-up → snap to north
+      setIsHeadingUp(false);
+      setMapBearing(0);
+      setSnapTrigger((n) => n + 1);
+    } else if (Math.abs(displayBearing) > 1) {
+      // Manually rotated → snap to north
+      setMapBearing(0);
+      setSnapTrigger((n) => n + 1);
+    } else {
+      // Already north → enable heading-up
+      setIsHeadingUp(true);
+    }
   };
 
   return (
@@ -398,9 +448,12 @@ export default function MapView({
           zoomDelta={0.5}
           wheelPxPerZoomLevel={100}
           bearing={mapBearing}
+          rotation={true}
           style={{ height: "100%", width: "100%" }}
         >
-          <MapBearingController bearing={mapBearing} />
+          <MapBearingController bearing={mapBearing} isActive={isHeadingUp} />
+          <MapRotationListener onRotate={setDisplayBearing} />
+          <MapSnapToNorth trigger={snapTrigger} />
           <MapDragGuard />
           <TileLayerSwitcher layer={mapLayer} />
           <SmoothFly target={flyTarget} />
@@ -600,6 +653,7 @@ export default function MapView({
       {/* ── Compass (right side, below LayerSwitcher) ────────────── */}
       <CompassButton
         heading={deviceHeading}
+        mapBearing={displayBearing}
         isHeadingUp={isHeadingUp}
         onToggle={handleCompassToggle}
         permissionState={headingPermission}

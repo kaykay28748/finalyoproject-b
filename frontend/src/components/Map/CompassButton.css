@@ -65,6 +65,12 @@
   background: rgba(0, 122, 255, 0.16);
 }
 
+/* Map manually rotated — subtle visual cue that rotation is active */
+.compass-btn--rotated:not(.compass-btn--active) {
+  background: rgba(0, 0, 0, 0.06);
+  border: 1.5px solid rgba(0, 0, 0, 0.18);
+}
+
 /* ── Needle ────────────────────────────────────────────── */
 .compass-needle-wrap {
   width: 32px;
@@ -186,6 +192,11 @@
     0 2px 8px rgba(10, 132, 255, 0.20),
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.ug-root.dark .compass-btn--rotated:not(.compass-btn--active) {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1.5px solid rgba(255, 255, 255, 0.20);
 }
 
 .ug-root.dark .compass-center {
