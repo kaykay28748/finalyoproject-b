@@ -1233,8 +1233,9 @@ body.dragging-legend .map-blur-overlay {
 .legend-sheet--with-bar .legend-mode-strip {
   flex: 1;
   align-content: center;
-  padding: 12px 12px 8px;
+  padding: 12px;
   overflow-x: visible;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .legend-sheet--with-bar .legend-mode-btn {
