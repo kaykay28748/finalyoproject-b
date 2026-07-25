@@ -411,6 +411,7 @@ const Legend = forwardRef(function Legend(
   const pendingRouteSummaryRef = useRef(null);
   const lastRouteSigRef = useRef(null); // Senior Fix: Track if destination actually changed
   const lastAnnouncedStepRef = useRef(-1); // Track last spoken turn index
+  const pendingDragDownRef = useRef(null); // Track pending drag-down gesture from sheet body
 
   const { isVoiceEnabled, toggleVoice, speak, speakTurn, speakArrival } = useVoiceGuidance();
   const focus = useFocus();
