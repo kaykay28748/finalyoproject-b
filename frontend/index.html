@@ -34,6 +34,15 @@
     />
   </head>
   <body>
+    <!-- Set --vh immediately before first paint to prevent PWA bottom-bar flash -->
+    <script>
+      (function(){
+        function setVH(){document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px')}
+        setVH();
+        window.addEventListener('resize',setVH);
+        window.addEventListener('orientationchange',function(){setTimeout(setVH,150)});
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

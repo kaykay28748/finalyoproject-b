@@ -2,10 +2,28 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 input::placeholder { opacity: 0.5; }
 
-/* Ensure full height layout */
-html, body, #root {
+/* Ensure full height layout — edge-to-edge on all devices */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #0d0d0d;
+}
+
+#root {
   height: 100%;
   background: #0d0d0d;
+}
+
+/* PWA standalone mode: use JS-calculated viewport height to fill
+   behind the system navigation / home indicator bar */
+@media (display-mode: standalone) {
+  html, body, #root {
+    height: 100dvh;
+  }
+  #root {
+    height: calc(var(--vh, 0.01px) * 100);
+  }
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────────*/
@@ -109,11 +127,15 @@ html, body, #root {
 .ug-root {
   position: relative;
   width: 100%;
+  /* Use JS-calculated viewport height for PWA accuracy, fallback to dvh, then vh */
+  height: 100vh;
   height: 100dvh;
+  height: calc(var(--vh, 0.01px) * 100);
   display: flex;
   flex-direction: column;
   font-family: "Outfit", sans-serif;
   overflow: hidden;
+  overscroll-behavior: none;
   background: var(--bg);
   box-sizing: border-box;
 }
