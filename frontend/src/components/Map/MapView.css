@@ -2,16 +2,10 @@
 
 /* Edge-to-edge: map-wrap fills the entire .ug-root via absolute inset,
    not flex. This avoids flex/Suspense/containment issues that can
-   leave gaps at the top (behind the status bar).
-
-   bottom is clamped to the home-indicator safe area so the map only
-   bleeds behind the status bar, not the bottom bar. */
+   leave gaps at the top (behind the status bar). */
 .map-wrap {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: env(safe-area-inset-bottom, 0px);
+  inset: 0;
   overflow: hidden;
 }
 

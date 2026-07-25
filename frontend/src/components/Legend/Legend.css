@@ -86,12 +86,13 @@
   box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Ensure tail matches root background so no dark strip shows below the sheet */
+/* Ensure tail matches the legend sheet theme so the safe area
+   (home indicator zone) looks like part of the legend, not a gap */
 .legend-sheet::after {
-  background: var(--bg, #f0f6ff);
+  background: #ffffff;
 }
 .ug-root.dark .legend-sheet::after {
-  background: var(--bg, #0d0d0d);
+  background: #0f172a;
 }
 
 /* Dragging state — zero transition so transform follows finger instantly */
