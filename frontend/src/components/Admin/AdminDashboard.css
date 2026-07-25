@@ -71,12 +71,9 @@
 .admin-dashboard {
   display: flex;
   min-height: 100vh;
-  min-height: 100dvh;
   background: var(--a-bg);
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--a-text);
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ============================================
@@ -89,8 +86,7 @@
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: env(safe-area-inset-top, 0px);
-  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  height: 100vh;
   overflow-y: auto;
   transition: transform 0.2s ease;
   z-index: 100;

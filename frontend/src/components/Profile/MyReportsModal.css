@@ -10,8 +10,6 @@
   z-index: 2000;
   transition: background 0.3s ease, backdrop-filter 0.3s ease;
   pointer-events: none;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .myreports-overlay--visible {
@@ -26,7 +24,7 @@
   border-radius: 0;
   width: 100%;
   max-width: none;
-  height: 100%;
+  height: 100dvh;
   max-height: none;
   overflow-y: auto;
   overflow-x: hidden;

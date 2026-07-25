@@ -1,10 +1,16 @@
 /* ProfilePage.css - Complete file */
 
+.ug-root {
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg);
+  overflow: hidden;
+}
+
 .profile-page-layout {
   display: flex;
   flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .profile-body {
