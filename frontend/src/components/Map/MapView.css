@@ -1,8 +1,14 @@
 /* MapView.css - Cleaned (no duplicates) */
 
+<<<<<<< HEAD
 /* Edge-to-edge: map-wrap fills the entire .ug-root via absolute inset,
    not flex. This avoids flex/Suspense/containment issues that can
    leave gaps at the top (behind the status bar). */
+=======
+/* Edge-to-edge: map-wrap fills the entire .ug-root via absolute inset.
+   viewport-fit=cover lets 100dvh include the full viewport, and
+   inset:0 extends the map behind both status bar and home bar. */
+>>>>>>> 0405073073bf24101ccc1679a56085f55cb4910c
 .map-wrap {
   position: absolute;
   inset: 0;
