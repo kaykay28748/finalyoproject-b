@@ -1,11 +1,9 @@
 /* MapView.css - Cleaned (no duplicates) */
 
-/* Edge-to-edge: position:fixed fills the entire viewport directly,
-   including behind the status bar and system nav bar when
-   viewport-fit=cover is set. This breaks out of .ug-root (which is
-   only 100dvh and excludes the nav-bar area on Android standalone PWA). */
+/* Edge-to-edge: map-wrap fills the entire .ug-root via absolute inset.
+   Without viewport-fit=cover, 100dvh = visible area, so no gap. */
 .map-wrap {
-  position: fixed;
+  position: absolute;
   inset: 0;
   overflow: hidden;
 }
