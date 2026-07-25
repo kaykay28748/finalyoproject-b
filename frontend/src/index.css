@@ -113,7 +113,6 @@ html, body, #root {
   font-family: "Outfit", sans-serif;
   overflow: hidden;
   background: var(--bg);
-  padding-top: env(safe-area-inset-top);
   box-sizing: border-box;
 }
 

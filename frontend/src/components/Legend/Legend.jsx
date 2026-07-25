@@ -496,6 +496,14 @@ const Legend = forwardRef(function Legend(
       el.classList.add("legend-sheet--browser-ios");
     }
 
+    // Capture-phase touchstart: block touches from reaching Leaflet
+    // BEFORE Leaflet's own passive touchstart listener can grab them.
+    const captureTouchStart = (e) => {
+      e.stopPropagation();
+      document.body.classList.add("dragging-legend");
+    };
+    el.addEventListener("touchstart", captureTouchStart, { capture: true, passive: false });
+
     let initialSnapped = false;
     const ro = new ResizeObserver(() => {
       recalcPositions();
@@ -506,7 +514,10 @@ const Legend = forwardRef(function Legend(
     });
     ro.observe(el);
 
-    return () => ro.disconnect();
+    return () => {
+      el.removeEventListener("touchstart", captureTouchStart, { capture: true });
+      ro.disconnect();
+    };
   }, []);
 
   // ── Recalc when sheet becomes visible ────────────────────────────────────
@@ -965,6 +976,11 @@ const Legend = forwardRef(function Legend(
 
   const handleSheetTouchEnd = () => {
     pendingDragDownRef.current = null;
+    // Clean up the class added by capture-phase touchstart
+    // (only if isDragging didn't take over — that useEffect handles its own cleanup)
+    if (!isDragging) {
+      document.body.classList.remove("dragging-legend");
+    }
   };
 
   // ── Global move/up listeners while dragging ──────────────────────────────
