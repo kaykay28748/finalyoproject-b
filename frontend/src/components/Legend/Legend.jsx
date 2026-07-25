@@ -368,7 +368,7 @@ const Legend = forwardRef(function Legend(
   const [indicatorLeft, setIndicatorLeft] = useState(4);
   const [indicatorWidth, setIndicatorWidth] = useState(56);
 
-  const peekHeight = window.innerWidth >= 1024 ? 120 : 100;
+  const peekHeight = window.innerWidth >= 1024 ? 140 : 120;
 
   const updateIndicator = useCallback(() => {
     const strip = modeStripRef.current;
