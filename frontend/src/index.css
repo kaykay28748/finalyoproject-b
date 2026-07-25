@@ -239,16 +239,23 @@ html, body, #root {
 
 /* ─── Map loader ─────────────────────────────────────────────────────────────*/
 .map-loader {
-  flex: 1;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: #1a1a2e;
-  color: var(--sub);
+  background: #f0f6ff;
+  color: #64748b;
   font-family: "Outfit", sans-serif;
   font-size: 14px;
   font-weight: 500;
+  z-index: 9999;
+}
+
+.ug-root.dark .map-loader {
+  background: #1a1a2e;
+  color: #94a3b8;
 }
 

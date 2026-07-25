@@ -448,7 +448,8 @@ export default function MapView({
           zoomDelta={0.5}
           wheelPxPerZoomLevel={100}
           bearing={mapBearing}
-          rotation={true}
+          rotate={true}
+          touchRotate={true}
           style={{ height: "100%", width: "100%" }}
         >
           <MapBearingController bearing={mapBearing} isActive={isHeadingUp} />
