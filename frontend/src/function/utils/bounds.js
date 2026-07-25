@@ -17,6 +17,6 @@ export const UG_MAX_BOUNDS = L.latLngBounds(
 export const UG_CENTER = { lat: 5.6502, lng: -0.1962 };
 
 // Default map zoom levels
-export const DEFAULT_ZOOM = 15;
+export const DEFAULT_ZOOM = 16;
 export const MIN_ZOOM     = 13;
 export const MAX_ZOOM     = 19;

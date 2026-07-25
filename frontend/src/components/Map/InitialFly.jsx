@@ -9,7 +9,10 @@ export default function InitialFly({ location }) {
 
   useEffect(() => {
     if (location && !done.current) {
-      map.flyTo([location.lat, location.lng], 17, { duration: 1.5 });
+      map.flyTo([location.lat, location.lng], 17, {
+        duration: 1.6,
+        easeLinearity: 0.25,
+      });
       done.current = true;
     }
   }, [location, map]);

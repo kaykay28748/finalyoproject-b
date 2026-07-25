@@ -145,16 +145,28 @@ const SmartFitBounds = memo(function SmartFitBounds({
       }
 
       const basePad = padding[1];
-      const topPad = isMobile ? basePad + 50 : basePad + 80;
-      const botPad = isMobile ? basePad + 50 : basePad + 80;
+      const topPad = isMobile ? basePad + 60 : basePad + 100;
+      const botPad = isMobile ? basePad + 50 : basePad + 90;
+
+      let maxZoom;
+      if (distance < 100) maxZoom = 18;
+      else if (distance < 300) maxZoom = 17;
+      else if (distance < 800) maxZoom = 16;
+      else maxZoom = 15;
+
+      const duration = distance < 200 ? 0.6 : distance < 800 ? 0.8 : 1.0;
 
       map.flyToBounds(bounds, {
         padding: [topPad, basePad, botPad, basePad],
-        maxZoom: 18,
-        duration: 0.8,
+        maxZoom,
+        duration,
+        easeLinearity: 0.25,
       });
     } else if (startPoint && !destPoint) {
-      map.flyTo([startPoint.lat, startPoint.lng], 16, { duration: 0.8 });
+      map.flyTo([startPoint.lat, startPoint.lng], 16, {
+        duration: 1.0,
+        easeLinearity: 0.25,
+      });
     }
   }, [map, startPoint, destPoint, visible]);
 
