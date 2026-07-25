@@ -10,6 +10,7 @@
 .profile-page-layout {
   display: flex;
   flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .profile-body {
@@ -31,7 +32,6 @@
   align-items: center;
   gap: 16px;
   padding: 20px 24px;
-  padding-top: calc(20px + env(safe-area-inset-top, 0px));
   background: var(--panel);
   border-bottom: 0.5px solid var(--border);
   flex-shrink: 0;
