@@ -86,9 +86,12 @@
   box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Ensure dark mode tail matches */
+/* Ensure tail matches root background so no dark strip shows below the sheet */
+.legend-sheet::after {
+  background: var(--bg, #f0f6ff);
+}
 .ug-root.dark .legend-sheet::after {
-  background: #18181a;
+  background: var(--bg, #0d0d0d);
 }
 
 /* Dragging state — zero transition so transform follows finger instantly */
