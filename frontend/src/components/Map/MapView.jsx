@@ -263,6 +263,7 @@ export default function MapView({
   onMapClick,
   onCustomLocationDragEnd,
   onRecenter,
+  isRecenterZoomed = false,
   isRouteLocked = false,
   registerLegendCollapse,
   showHeatmap = false,
@@ -568,7 +569,20 @@ export default function MapView({
       <FloatingButtonGroup
         buttons={[
           {
-            icon: (
+            icon: isRecenterZoomed ? (
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                <line x1="8" y1="11" x2="14" y2="11" />
+              </svg>
+            ) : (
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -582,7 +596,7 @@ export default function MapView({
                 <line x1="12" y1="12" x2="12" y2="18" />
               </svg>
             ),
-            label: "Recenter",
+            label: isRecenterZoomed ? "Zoom Out" : "Recenter",
             onClick: onRecenter,
             active: false,
           },

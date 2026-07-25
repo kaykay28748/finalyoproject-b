@@ -40,6 +40,7 @@ export default function App() {
   const [startText, setStartText] = useState("");
   const [destText, setDestText] = useState("");
   const [flyTarget, setFlyTarget] = useState(null);
+  const [isRecenterZoomed, setIsRecenterZoomed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [markersVisible, setMarkersVisible] = useState(false);
   const [waitingForStart, setWaitingForStart] = useState(false);
@@ -477,7 +478,10 @@ export default function App() {
   };
 
   const handleRecenter = () => {
-    if (currentLocation) setFlyTarget({ ...currentLocation, _t: Date.now() });
+    if (!currentLocation) return;
+    const zoomedIn = !isRecenterZoomed;
+    setIsRecenterZoomed(zoomedIn);
+    setFlyTarget({ ...currentLocation, zoom: zoomedIn ? 17 : 13, _t: Date.now() });
   };
 
   // ── Report modal handlers ────────────────────────────────────────────────
@@ -570,6 +574,7 @@ export default function App() {
             onMapClick={handleMapClick}
             onCustomLocationDragEnd={handleCustomLocationDragEnd}
             onRecenter={handleRecenter}
+            isRecenterZoomed={isRecenterZoomed}
             isRouteLocked={isRouteLocked}
             registerLegendCollapse={registerLegendCollapse}
             showHeatmap={showHeatmap}

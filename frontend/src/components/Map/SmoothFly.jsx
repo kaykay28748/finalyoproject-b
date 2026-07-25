@@ -9,7 +9,7 @@ export default function SmoothFly({ target }) {
 
   useEffect(() => {
     if (target && target !== prev.current) {
-      map.flyTo([target.lat, target.lng], 17, {
+      map.flyTo([target.lat, target.lng], target.zoom ?? 17, {
         duration: 1.4,
         easeLinearity: 0.25,
       });
