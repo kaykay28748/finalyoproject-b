@@ -4,8 +4,8 @@
   "description": "Context-aware campus navigation for University of Ghana",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#2563eb",
-  "background_color": "#ffffff",
+  "theme_color": "#0d0d0d",
+  "background_color": "#0d0d0d",
   "orientation": "portrait",
   "icons": [
     {

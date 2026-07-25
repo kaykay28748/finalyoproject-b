@@ -5,6 +5,7 @@ input::placeholder { opacity: 0.5; }
 /* Ensure full height layout */
 html, body, #root {
   height: 100%;
+  background: #0d0d0d;
 }
 
 /* ─── Animations ─────────────────────────────────────────────────────────────*/
@@ -243,7 +244,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: var(--bg);
+  background: #1a1a2e;
   color: var(--sub);
   font-family: "Outfit", sans-serif;
   font-size: 14px;
