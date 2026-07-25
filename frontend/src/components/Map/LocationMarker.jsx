@@ -4,9 +4,11 @@ import { currentLocationIcon, customLocationIcon } from "../../function/utils/ic
 import L from "leaflet";
 
 // Create pulsing icon with direction arrow (derived from route)
-function createPulsingIcon(speed, heading, isLowAccuracy = false, routeDirection = null) {
-  // Use route direction if available (snapped to route), otherwise use GPS heading
-  const finalHeading = routeDirection !== null ? routeDirection : (heading || 0);
+function createPulsingIcon(speed, heading, isLowAccuracy = false, routeDirection = null, deviceHeading = null) {
+  // Priority: route direction > device heading (compass) > GPS heading
+  const finalHeading = routeDirection != null && routeDirection !== 0
+    ? routeDirection
+    : (deviceHeading != null ? deviceHeading : (heading || 0));
   
   // Speed determines pulse intensity
   const pulseIntensity = Math.min(1, (speed || 0) / 3);
@@ -96,7 +98,8 @@ export function GpsLocationMarker({
   accuracy, 
   isLowAccuracy = false, 
   routeDirection = null,
-  smoothedPosition = null 
+  smoothedPosition = null,
+  deviceHeading = null 
 }) {
   const displayPosition = smoothedPosition || location;
   
@@ -104,6 +107,7 @@ export function GpsLocationMarker({
 
   const hasHeading = location?.heading && location?.heading !== 0;
   const hasSpeed = location?.speed && location?.speed > 0;
+  const hasDeviceHeading = deviceHeading != null;
   
   // Orange for low accuracy, blue for good accuracy
   const markerColor = isLowAccuracy ? "#f59e0b" : "#2563eb";
@@ -123,9 +127,9 @@ export function GpsLocationMarker({
     iconAnchor: [9, 9]
   });
 
-  // Pass routeDirection to the icon creator (for arrow alignment)
-  const markerIcon = (hasHeading || hasSpeed || routeDirection !== null)
-    ? createPulsingIcon(location?.speed, location?.heading, isLowAccuracy, routeDirection)
+  // Pass routeDirection and deviceHeading to the icon creator (for arrow alignment)
+  const markerIcon = (hasHeading || hasSpeed || routeDirection !== null || hasDeviceHeading)
+    ? createPulsingIcon(location?.speed, location?.heading, isLowAccuracy, routeDirection, deviceHeading)
     : dotIcon;
 
   // Calculate opacity based on accuracy

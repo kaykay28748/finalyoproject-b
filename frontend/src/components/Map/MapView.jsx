@@ -2,6 +2,7 @@
 import { MapContainer, useMap, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet-rotate";
 import { useEffect, useRef, useState, memo, lazy, Suspense } from "react";
 
 import TileLayerSwitcher from "./TileLayerSwitcher";
@@ -16,8 +17,10 @@ import Legend from "../Legend/Legend";
 import WeatherOverlay from "./WeatherOverlay";
 import FloatingButtonGroup from "./FloatingButtonGroup";
 import LayerSwitcher from "./LayerSwitcher";
+import CompassButton from "./CompassButton";
 import ReportMarkers from "./ReportMarkers";
 import { useWeather } from "../../hooks/useWeather";
+import { useDeviceHeading } from "../../hooks/useDeviceHeading";
 import "../Legend/Legend.css";
 
 import {
@@ -39,6 +42,19 @@ const SafeMapLibre3DView = lazy(() =>
     return { default: () => null };
   })
 );
+
+// ── MapBearingController — syncs bearing prop to the Leaflet map instance ────
+const MapBearingController = memo(function MapBearingController({ bearing }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (map && typeof map.setBearing === "function") {
+      map.setBearing(bearing || 0);
+    }
+  }, [map, bearing]);
+
+  return null;
+});
 
 // ── SmartFitBounds (memoized to prevent re-renders) ────────────────────────────
 const SmartFitBounds = memo(function SmartFitBounds({
@@ -242,6 +258,56 @@ export default function MapView({
   const [currentRouteDirection, setCurrentRouteDirection] = useState(0);
   const [smoothedRoutePosition, setSmoothedRoutePosition] = useState(null);
 
+  // ── Heading / Compass state ────────────────────────────────────────────
+  const [isHeadingUp, setIsHeadingUp] = useState(false);
+  const [mapBearing, setMapBearing] = useState(0);
+  const { heading: deviceHeading, permissionState: headingPermission, requestPermission: requestHeadingPermission } = useDeviceHeading();
+
+  // ── Compute map bearing for heading-up mode ────────────────────────────
+  const prevPositionRef = useRef(null);
+  const travelBearingRef = useRef(0);
+
+  // Compute travel bearing from consecutive GPS positions
+  useEffect(() => {
+    if (!currentLocation || !isHeadingUp) return;
+    const prev = prevPositionRef.current;
+    if (prev) {
+      const dLat = (currentLocation.lat - prev.lat) * Math.PI / 180;
+      const dLng = (currentLocation.lng - prev.lng) * Math.PI / 180;
+      const lat1 = prev.lat * Math.PI / 180;
+      const lat2 = currentLocation.lat * Math.PI / 180;
+      const y = Math.sin(dLng) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+      const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      // Only update if moved more than 3m (filter GPS jitter)
+      const dist = Math.sqrt(dLat * dLat + dLng * dLng) * 111319;
+      if (dist > 3) {
+        travelBearingRef.current = bearing;
+      }
+    }
+    prevPositionRef.current = { ...currentLocation };
+  }, [currentLocation, isHeadingUp]);
+
+  useEffect(() => {
+    if (!isHeadingUp) {
+      setMapBearing(0);
+      return;
+    }
+
+    // Priority: device heading > route bearing > travel bearing
+    if (deviceHeading != null) {
+      setMapBearing(deviceHeading);
+    } else if (currentRouteDirection && currentRouteDirection !== 0) {
+      setMapBearing(currentRouteDirection);
+    } else if (travelBearingRef.current) {
+      setMapBearing(travelBearingRef.current);
+    }
+  }, [isHeadingUp, deviceHeading, currentRouteDirection]);
+
+  const handleCompassToggle = () => {
+    setIsHeadingUp((prev) => !prev);
+  };
+
   return (
     <>
       <div className={`map-wrap ${isMapBlurred ? "map-blurred" : ""}`}>
@@ -277,8 +343,10 @@ export default function MapView({
           zoomSnap={0.5}
           zoomDelta={0.5}
           wheelPxPerZoomLevel={100}
+          bearing={mapBearing}
           style={{ height: "100%", width: "100%" }}
         >
+          <MapBearingController bearing={mapBearing} />
           <TileLayerSwitcher layer={mapLayer} />
           <SmoothFly target={flyTarget} />
           <InitialFly location={currentLocation} />
@@ -289,14 +357,14 @@ export default function MapView({
           />
           <MapClickHandler onMapClick={onMapClick} />
 
-          <GpsLocationMarker  location={currentLocation} accuracy={accuracy} routeDirection={currentRouteDirection} smoothedPosition={smoothedRoutePosition}  />
+          <GpsLocationMarker  location={currentLocation} accuracy={accuracy} routeDirection={currentRouteDirection} smoothedPosition={smoothedRoutePosition} deviceHeading={deviceHeading} />
 
           {currentLocation && (
             <Marker
               position={[currentLocation.lat, currentLocation.lng]}
               icon={L.divIcon({
                 className: "",
-                html: `<div style="width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:45px solid #2563eb;opacity:0.35;transform:rotate(${currentRouteDirection || 0}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.15));"></div>`,
+                html: `<div style="width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:45px solid #2563eb;opacity:0.35;transform:rotate(${currentRouteDirection || deviceHeading || 0}deg);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.15));"></div>`,
                 iconSize: [24, 45],
                 iconAnchor: [12, 45],
               })}
@@ -319,9 +387,8 @@ export default function MapView({
               profile={activeProfile}
               vehicleMode={vehicleMode}
               currentLocation={currentLocation}
-              routeDirection={currentRouteDirection}
-              smoothedPosition={smoothedRoutePosition}
               showProgress={true}
+              onRouteDirectionChange={setCurrentRouteDirection}
             />
           )}
 
@@ -473,6 +540,15 @@ export default function MapView({
       <LayerSwitcher
         mapLayer={mapLayer}
         onMapLayerChange={onMapLayerChange}
+      />
+
+      {/* ── Compass (right side, below LayerSwitcher) ────────────── */}
+      <CompassButton
+        heading={deviceHeading}
+        isHeadingUp={isHeadingUp}
+        onToggle={handleCompassToggle}
+        permissionState={headingPermission}
+        onRequestPermission={requestHeadingPermission}
       />
 
 
