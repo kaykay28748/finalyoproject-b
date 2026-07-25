@@ -1219,7 +1219,7 @@ body.dragging-legend .map-blur-overlay {
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-evenly;
-  padding: 6px 12px 8px;
+  padding: 6px 12px 0;
   flex-shrink: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -1232,6 +1232,7 @@ body.dragging-legend .map-blur-overlay {
   flex: 1;
   align-content: center;
   padding: 12px;
+  overflow-x: visible;
 }
 
 .legend-sheet--with-bar .legend-mode-btn {
