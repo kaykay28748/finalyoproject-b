@@ -1228,10 +1228,12 @@ body.dragging-legend .map-blur-overlay {
 
 .legend-mode-strip::-webkit-scrollbar { display: none; }
 
+.legend-mode-strip::-webkit-scrollbar { display: none; }
+
 .legend-sheet--with-bar .legend-mode-strip {
   flex: 1;
   align-content: center;
-  padding: 12px;
+  padding: 12px 12px 8px;
   overflow-x: visible;
 }
 
