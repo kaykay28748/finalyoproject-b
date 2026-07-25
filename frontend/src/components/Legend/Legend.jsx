@@ -389,14 +389,16 @@ const Legend = forwardRef(function Legend(
     // which changes button padding/sizes. useLayoutEffect fires before the
     // browser has applied those CSS changes, so getBoundingClientRect() returns
     // stale positions. A double-rAF ensures layout is fully settled.
-    let raf;
+    let raf1, raf2;
     const measure = () => {
-      raf = requestAnimationFrame(() => {
-        updateIndicator();
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => {
+          updateIndicator();
+        });
       });
     };
     measure();
-    return () => { if (raf) cancelAnimationFrame(raf); };
+    return () => { if (raf1) cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
   }, [updateIndicator, hasRoute]);
 
   useEffect(() => {
