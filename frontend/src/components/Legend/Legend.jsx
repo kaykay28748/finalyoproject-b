@@ -754,19 +754,6 @@ const Legend = forwardRef(function Legend(
     // Don't drag if the user tapped an interactive element
     if (target.closest('button, a, input, select, textarea, [role="button"]')) return;
 
-    // Don't drag from inside scrollable body — unless scroll is at boundary
-    const body = directionsRef.current?.closest('.legend-body') || target.closest('.legend-body');
-    if (body) {
-      const atTop = body.scrollTop <= 0;
-      const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
-      const draggingUp = e.type === 'touchstart'
-        ? e.touches[0].clientY > body.getBoundingClientRect().top
-        : e.clientY > body.getBoundingClientRect().top;
-      // Allow drag-down only when at top of scroll, drag-up only when at bottom
-      if (draggingUp && !atBottom) return;
-      if (!draggingUp && !atTop) return;
-    }
-
     // For standard compliance, we only preventDefault on touch to seize control from the browser
     if (e.type === 'touchstart' && e.cancelable) e.preventDefault();
     e.stopPropagation();
@@ -894,6 +881,90 @@ const Legend = forwardRef(function Legend(
     }
   };
 
+  // ── Sheet-level pending drag-down (drag DOWN anywhere to collapse) ──────
+  const seizeDragFromPending = useCallback((startClientY) => {
+    const el = sheetRef.current;
+    if (!el) return;
+
+    el.classList.remove("legend-sheet--snapping");
+    el.style.setProperty('transition', 'none', 'important');
+
+    const style = window.getComputedStyle(el);
+    const matrix = new DOMMatrix(style.transform);
+    const currentY = matrix.m42;
+
+    dragStartScrollTop.current = currentY;
+    dragStartY.current = startClientY;
+    lastDragY.current = startClientY;
+    lastDragTime.current = performance.now();
+    dragStartExpanded.current = expanded;
+    dragVelocity.current = 0;
+
+    const mid = (expandedTranslateY.current + peekTranslateY.current) / 2;
+    lastThresholdStateRef.current = currentY < mid;
+
+    setIsDragging(true);
+    el.classList.add("dragging");
+  }, [expanded]);
+
+  const handleSheetMouseDown = (e) => {
+    // Let header handle its own drag
+    if (e.target.closest('.legend-drag-header')) return;
+    handleDragStart(e);
+  };
+
+  const handleSheetTouchStart = (e) => {
+    // Always stop propagation to prevent Leaflet from grabbing the touch
+    e.stopPropagation();
+
+    if (disableDrag) return;
+    // Let header handle its own drag
+    if (e.target.closest('.legend-drag-header')) return;
+    // Don't interfere with interactive elements
+    if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+
+    const clientY = e.touches[0].clientY;
+    const body = e.target.closest('.legend-body');
+
+    pendingDragDownRef.current = {
+      startY: clientY,
+      inBody: !!body,
+      atTop: body ? body.scrollTop <= 0 : true,
+    };
+  };
+
+  const handleSheetTouchMoveCapture = (e) => {
+    const pending = pendingDragDownRef.current;
+    if (!pending) return;
+
+    const clientY = e.touches[0].clientY;
+    const deltaY = clientY - pending.startY;
+
+    // Cancel if moved upward at all
+    if (deltaY < -5) {
+      pendingDragDownRef.current = null;
+      return;
+    }
+
+    // Cancel if in body and body is scrolled — let native scroll handle it
+    if (pending.inBody && !pending.atTop) {
+      pendingDragDownRef.current = null;
+      return;
+    }
+
+    // Commit after 10px downward movement
+    if (deltaY > 10) {
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+      pendingDragDownRef.current = null;
+      seizeDragFromPending(pending.startY);
+    }
+  };
+
+  const handleSheetTouchEnd = () => {
+    pendingDragDownRef.current = null;
+  };
+
   // ── Global move/up listeners while dragging ──────────────────────────────
   useEffect(() => {
     if (!isDragging) {
@@ -965,13 +1036,17 @@ const Legend = forwardRef(function Legend(
     <div
       ref={sheetRef}
       className={`legend-sheet ${expanded ? "legend-sheet--expanded" : "legend-sheet--peek"} ${hasRoute ? "legend-sheet--with-bar" : ""}`}
-      onMouseDown={handleDragStart}
-      onTouchStart={handleDragStart}
+      onMouseDown={handleSheetMouseDown}
+      onTouchStart={handleSheetTouchStart}
+      onTouchMoveCapture={handleSheetTouchMoveCapture}
+      onTouchEnd={handleSheetTouchEnd}
     >
       {/* ── Unified top area: handle, mode strip, peek hint ── */}
       <div
         ref={headerRef}
         className="legend-drag-header"
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
       >
         <div className="legend-handle-wrap">
           <div className="legend-handle" />
@@ -1038,7 +1113,6 @@ const Legend = forwardRef(function Legend(
       {expanded && (
         <div
           className="legend-body"
-          onTouchMove={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
         >
           {!hasRoute ? (
