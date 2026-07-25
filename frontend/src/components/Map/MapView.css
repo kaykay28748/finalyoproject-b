@@ -4,7 +4,7 @@
    bypassing .ug-root's 100dvh which excludes the system nav bar
    on Android standalone PWA. */
 .map-wrap {
-  position: fixed;
+  position: absolute;
   inset: 0;
   overflow: hidden;
 }
