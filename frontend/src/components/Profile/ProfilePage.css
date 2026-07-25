@@ -10,7 +10,6 @@
 .profile-page-layout {
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .profile-body {
