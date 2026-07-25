@@ -16,13 +16,16 @@ export default function AuthPage() {
   useEffect(() => {
     // Check if user has a saved preference
     const saved = localStorage.getItem('authTheme');
+    let isDark;
     if (saved !== null) {
-      setDarkMode(saved === 'dark');
+      isDark = saved === 'dark';
     } else {
       // Detect system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setDarkMode(prefersDark);
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
+    setDarkMode(isDark);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', isDark ? '#0d0d0d' : '#d0d7e2');
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -30,6 +33,8 @@ export default function AuthPage() {
       // Only update if user hasn't manually set a preference
       if (localStorage.getItem('authTheme') === null) {
         setDarkMode(e.matches);
+        const m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', e.matches ? '#0d0d0d' : '#d0d7e2');
       }
     };
     mediaQuery.addEventListener('change', handler);

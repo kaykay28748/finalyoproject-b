@@ -168,6 +168,12 @@ export default function App() {
       .catch((err) => console.warn("[App] Failed to save preferences:", err));
   }, [activeProfile, darkMode, vehicleMode, showHeatmap, mapLayer]);
 
+  // ── Sync status bar color with theme ───────────────────────────
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', darkMode ? '#0d0d0d' : '#d0d7e2');
+  }, [darkMode]);
+
   const effectiveStartPoint = useCustomLocation && customStartPoint ? customStartPoint : startPoint;
   const effectiveStartText  = useCustomLocation && customStartPoint
     ? customStartPoint.name || "Custom location"

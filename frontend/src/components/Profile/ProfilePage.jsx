@@ -129,7 +129,10 @@ export default function ProfilePage() {
       try {
         const prefs = await loadPreferences();
         console.log("[ProfilePage] Loaded preferences:", prefs);
-        setDarkMode(prefs.darkMode === true);
+        const isDark = prefs.darkMode === true;
+        setDarkMode(isDark);
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', isDark ? '#0d0d0d' : '#d0d7e2');
       } catch (err) {
         console.warn("[ProfilePage] Failed to load preferences:", err);
       }
@@ -141,6 +144,8 @@ export default function ProfilePage() {
   const handleToggleDarkMode = async () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', newMode ? '#0d0d0d' : '#d0d7e2');
     try {
       // Persist app-wide
       await savePreferences({ darkMode: newMode });
