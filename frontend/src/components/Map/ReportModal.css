@@ -18,6 +18,8 @@
     background 0.3s ease,
     backdrop-filter 0.3s ease;
   pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .report-modal-overlay.report-modal-overlay--visible {
@@ -35,7 +37,7 @@
   border-radius: 0; /* Remove radius for full-screen look */
   width: 100%;
   max-width: none;
-  height: 100dvh; /* dynamic viewport height for mobile */
+  height: 100%; /* Fills overlay which handles safe areas */
   max-height: none;
   overflow-y: auto;
   overflow-x: hidden;
@@ -93,7 +95,6 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.07);
   position: sticky;
   top: 0; /* Ensure header sticks to top */
-  top: 0;
   background: inherit;
   z-index: 1;
 }
@@ -800,7 +801,7 @@
   .report-modal {
     width: 100%;
     border-radius: 0;
-    height: 100dvh;
+    height: 100%;
   }
 
   .report-issue-grid {
