@@ -27,8 +27,8 @@
 }
 
 .weather-banner--impact {
-  background: rgba(37, 99, 235, 0.08);
-  border-left: 3px solid #2563eb;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.15);
 }
 
 .weather-banner--loading {
@@ -164,13 +164,6 @@
   overflow: hidden;
 }
 
-/* Dark mode forecast popup - explicit dark colors */
-.ug-root.dark .forecast-popup {
-  background: #1a1a1a;
-  border-color: #2a2a2a;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 20px 40px -8px rgba(0, 0, 0, 0.55);
-}
-
 /* ─── Popup header ────────────────────────────────────────────────────────── */
 
 .forecast-popup-header {
@@ -181,19 +174,11 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.ug-root.dark .forecast-popup-header {
-  border-bottom-color: #2a2a2a;
-}
-
 .forecast-popup-title {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #111827;
-}
-
-.ug-root.dark .forecast-popup-title {
-  color: #f3f4f6;
 }
 
 .forecast-popup-title span:first-of-type {
@@ -209,11 +194,6 @@
   padding-left: 4px;
   border-left: 1px solid #e5e7eb;
   margin-left: 2px;
-}
-
-.ug-root.dark .forecast-location {
-  color: #9ca3af !important;
-  border-left-color: #2a2a2a;
 }
 
 .forecast-close-btn {
@@ -236,15 +216,6 @@
   color: #111827;
 }
 
-.ug-root.dark .forecast-close-btn {
-  color: #9ca3af;
-}
-
-.ug-root.dark .forecast-close-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f4f6;
-}
-
 /* ─── Loading / error states ──────────────────────────────────────────────── */
 
 .forecast-state {
@@ -255,10 +226,6 @@
   padding: 40px 24px;
   color: #6b7280;
   font-size: 13px;
-}
-
-.ug-root.dark .forecast-state {
-  color: #9ca3af;
 }
 
 .forecast-state--error .forecast-state-icon {
@@ -272,11 +239,6 @@
   border-top-color: #2563eb;
   border-radius: 50%;
   animation: fo-spin 0.7s linear infinite;
-}
-
-.ug-root.dark .forecast-spinner {
-  border-color: #2a2a2a;
-  border-top-color: #60a5fa;
 }
 
 /* ─── Day cards grid ──────────────────────────────────────────────────────── */
@@ -300,19 +262,10 @@
   transition: background 0.15s ease;
 }
 
-.ug-root.dark .forecast-day-card {
-  background: rgba(255, 255, 255, 0.05);
-}
-
 /* Today's card gets a subtle highlight */
 .forecast-day-card--today {
   background: rgba(37, 99, 235, 0.07);
   border-color: rgba(37, 99, 235, 0.18);
-}
-
-.ug-root.dark .forecast-day-card--today {
-  background: rgba(96, 165, 250, 0.1);
-  border-color: rgba(96, 165, 250, 0.22);
 }
 
 /* Day name */
@@ -325,16 +278,8 @@
   font-family: 'Inter', 'DM Sans', sans-serif;
 }
 
-.ug-root.dark .fdc-name {
-  color: #9ca3af;
-}
-
 .forecast-day-card--today .fdc-name {
   color: #2563eb;
-}
-
-.ug-root.dark .forecast-day-card--today .fdc-name {
-  color: #60a5fa;
 }
 
 /* Weather emoji */
@@ -352,20 +297,12 @@
   font-family: 'Syne', 'Inter', sans-serif;
 }
 
-.ug-root.dark .fdc-high {
-  color: #f3f4f6;
-}
-
 /* Low temp */
 .fdc-low {
   font-size: 12px;
   color: #6b7280;
   line-height: 1;
   font-family: 'Syne', 'Inter', sans-serif;
-}
-
-.ug-root.dark .fdc-low {
-  color: #9ca3af;
 }
 
 /* Precipitation probability */
@@ -382,9 +319,6 @@
 .precip-mid  { color: #2563eb; background: rgba(37, 99, 235, 0.09); }
 .precip-high { color: #dc2626; background: rgba(220, 38, 38, 0.09); }
 
-.ug-root.dark .precip-mid  { color: #93c5fd; background: rgba(96, 165, 250, 0.12); }
-.ug-root.dark .precip-high { color: #fca5a5; background: rgba(252, 165, 165, 0.12); }
-
 /* ─── Routing note ────────────────────────────────────────────────────────── */
 
 .forecast-routing-note {
@@ -397,12 +331,6 @@
   color: #2563eb;
   line-height: 1.4;
   font-family: 'Inter', 'DM Sans', sans-serif;
-}
-
-.ug-root.dark .forecast-routing-note {
-  background: rgba(96, 165, 250, 0.1);
-  border-color: rgba(96, 165, 250, 0.2);
-  color: #93c5fd;
 }
 
 /* ─── Animations ──────────────────────────────────────────────────────────── */
@@ -421,19 +349,99 @@
   to { transform: rotate(360deg); }
 }
 
-/* ─── Dark mode banner ────────────────────────────────────────────────────── */
+/* ─── Dark mode banner (inside .ug-root — banner is NOT portaled) ────────── */
 
 .ug-root.dark .weather-banner {
   background: rgba(255, 255, 255, 0.05);
 }
 
 .ug-root.dark .weather-banner--impact {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(96, 165, 250, 0.2);
 }
 
 .ug-root.dark .weather-refresh,
 .ug-root.dark .weather-forecast-btn {
   background: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Dark mode for forecast popup ────────────────────────────────────────── */
+/* The ForecastPopup portals to document.body, outside .ug-root.
+   The overlay receives .forecast-dark class when dark mode is active. */
+
+.forecast-dark {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.forecast-dark .forecast-popup {
+  background: #1a1a1a;
+  border-color: #2a2a2a;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 20px 40px -8px rgba(0, 0, 0, 0.55);
+}
+
+.forecast-dark .forecast-popup-header {
+  border-bottom-color: #2a2a2a;
+}
+
+.forecast-dark .forecast-popup-title {
+  color: #f3f4f6;
+}
+
+.forecast-dark .forecast-location {
+  color: #9ca3af !important;
+  border-left-color: #3a3a3a;
+}
+
+.forecast-dark .forecast-close-btn {
+  color: #9ca3af;
+}
+
+.forecast-dark .forecast-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3f4f6;
+}
+
+.forecast-dark .forecast-state {
+  color: #9ca3af;
+}
+
+.forecast-dark .forecast-spinner {
+  border-color: #2a2a2a;
+  border-top-color: #60a5fa;
+}
+
+.forecast-dark .forecast-day-card {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.forecast-dark .forecast-day-card--today {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.22);
+}
+
+.forecast-dark .fdc-name {
+  color: #9ca3af;
+}
+
+.forecast-dark .forecast-day-card--today .fdc-name {
+  color: #60a5fa;
+}
+
+.forecast-dark .fdc-high {
+  color: #f3f4f6;
+}
+
+.forecast-dark .fdc-low {
+  color: #9ca3af;
+}
+
+.forecast-dark .precip-mid  { color: #93c5fd; background: rgba(96, 165, 250, 0.12); }
+.forecast-dark .precip-high { color: #fca5a5; background: rgba(252, 165, 165, 0.12); }
+
+.forecast-dark .forecast-routing-note {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.2);
+  color: #93c5fd;
 }
 
 /* ─── Mobile ──────────────────────────────────────────────────────────────── */
@@ -474,53 +482,4 @@
 @keyframes fo-sheet-up {
   from { opacity: 0; transform: translateY(60px); }
   to   { opacity: 1; transform: translateY(0);    }
-}
-
-/* FORCE dark mode for forecast popup - ultimate fix */
-.ug-root.dark .forecast-popup,
-.ug-root.dark .forecast-popup * {
-  background-color: #1a1a1a !important;
-}
-
-.ug-root.dark .forecast-popup {
-  background: #1a1a1a !important;
-  border-color: #2a2a2a !important;
-}
-
-.ug-root.dark .forecast-day-card {
-  background: rgba(255, 255, 255, 0.05) !important;
-}
-
-.ug-root.dark .forecast-popup-header {
-  border-bottom-color: #2a2a2a !important;
-}
-
-.ug-root.dark .forecast-close-btn {
-  color: #9ca3af !important;
-}
-
-.ug-root.dark .forecast-close-btn:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #f3f4f6 !important;
-}
-
-.ug-root.dark .fdc-name,
-.ug-root.dark .forecast-location,
-.ug-root.dark .forecast-state {
-  color: #9ca3af !important;
-}
-
-.ug-root.dark .fdc-high,
-.ug-root.dark .forecast-popup-title {
-  color: #f3f4f6 !important;
-}
-
-.ug-root.dark .fdc-low {
-  color: #9ca3af !important;
-}
-
-.ug-root.dark .forecast-routing-note {
-  background: rgba(96, 165, 250, 0.1) !important;
-  border-color: rgba(96, 165, 250, 0.2) !important;
-  color: #93c5fd !important;
 }

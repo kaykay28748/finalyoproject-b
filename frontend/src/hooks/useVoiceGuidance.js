@@ -135,26 +135,12 @@ export function useVoiceGuidance() {
         isSpeakingRef.current = true;
         synthesisRef.current?.speak(utterance);
       } else {
-        // Voice turning OFF — speak one last farewell then silence
+        // Voice turning OFF — cancel everything and go silent immediately.
+        // No farewell speech. The user asked for silence, we give silence.
         queueRef.current = [];
         synthesisRef.current?.cancel();
         isSpeakingRef.current = false;
-
-        const utterance = new SpeechSynthesisUtterance('Voice guidance off.');
-        utterance.rate   = 0.95;
-        utterance.pitch  = 1;
-        utterance.volume = 1;
-        utterance.onend = () => {
-          isSpeakingRef.current     = false;
-          currentUtteranceRef.current = null;
-        };
-        utterance.onerror = () => {
-          isSpeakingRef.current     = false;
-          currentUtteranceRef.current = null;
-        };
-        currentUtteranceRef.current = utterance;
-        isSpeakingRef.current = true;
-        synthesisRef.current?.speak(utterance);
+        currentUtteranceRef.current = null;
       }
 
       return next;

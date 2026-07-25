@@ -383,7 +383,21 @@ const Legend = forwardRef(function Legend(
     setIndicatorWidth(btnRect.width);
   }, [vehicleMode]);
 
-  useLayoutEffect(() => { updateIndicator(); }, [updateIndicator, hasRoute]);
+  useLayoutEffect(() => {
+    // Senior Fix: Defer indicator calculation to after the browser paint.
+    // When hasRoute first becomes true, the sheet gains legend-sheet--with-bar
+    // which changes button padding/sizes. useLayoutEffect fires before the
+    // browser has applied those CSS changes, so getBoundingClientRect() returns
+    // stale positions. A double-rAF ensures layout is fully settled.
+    let raf;
+    const measure = () => {
+      raf = requestAnimationFrame(() => {
+        updateIndicator();
+      });
+    };
+    measure();
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [updateIndicator, hasRoute]);
 
   useEffect(() => {
     const strip = modeStripRef.current;
@@ -396,8 +410,9 @@ const Legend = forwardRef(function Legend(
   const lastAnnouncedRouteIdRef = useRef(null);
   const pendingRouteSummaryRef = useRef(null);
   const lastRouteSigRef = useRef(null); // Senior Fix: Track if destination actually changed
+  const lastAnnouncedStepRef = useRef(-1); // Track last spoken turn index
 
-  const { isVoiceEnabled, toggleVoice, speak } = useVoiceGuidance();
+  const { isVoiceEnabled, toggleVoice, speak, speakTurn, speakArrival } = useVoiceGuidance();
   const focus = useFocus();
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -566,9 +581,11 @@ const Legend = forwardRef(function Legend(
       const dirs = generateDirections(route.coordinates, route.roadNames || []);
       setDirections(dirs);
       setCurrentStepIndex(-1);
+      lastAnnouncedStepRef.current = -1;
     } else {
       setDirections([]);
       setCurrentStepIndex(-1);
+      lastAnnouncedStepRef.current = -1;
     }
   }, [route]);
 
@@ -677,6 +694,25 @@ const Legend = forwardRef(function Legend(
     }
   }, [currentLocation, route, directions]);
 
+  // ── Turn-by-turn voice announcements ─────────────────────────────────────
+  useEffect(() => {
+    if (!isVoiceEnabled || currentStepIndex < 0 || directions.length === 0) return;
+    if (currentStepIndex === lastAnnouncedStepRef.current) return;
+
+    const step = directions[currentStepIndex];
+    if (!step) return;
+
+    lastAnnouncedStepRef.current = currentStepIndex;
+
+    if (step.isDestination) {
+      speakArrival();
+    } else {
+      // Calculate remaining distance to this turn from current position
+      const distToTurn = Math.max(0, step.distance - completedDistance);
+      speakTurn(step.instruction, distToTurn);
+    }
+  }, [currentStepIndex, isVoiceEnabled, directions, completedDistance, speakTurn, speakArrival]);
+
   // ── Imperative handle ────────────────────────────────────────────────────
   useImperativeHandle(ref, () => ({
     collapse: () => {
@@ -711,7 +747,25 @@ const Legend = forwardRef(function Legend(
 
   const handleDragStart = (e) => {
     if (disableDrag) return;
-    
+
+    const target = e.target;
+
+    // Don't drag if the user tapped an interactive element
+    if (target.closest('button, a, input, select, textarea, [role="button"]')) return;
+
+    // Don't drag from inside scrollable body — unless scroll is at boundary
+    const body = directionsRef.current?.closest('.legend-body') || target.closest('.legend-body');
+    if (body) {
+      const atTop = body.scrollTop <= 0;
+      const atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
+      const draggingUp = e.type === 'touchstart'
+        ? e.touches[0].clientY > body.getBoundingClientRect().top
+        : e.clientY > body.getBoundingClientRect().top;
+      // Allow drag-down only when at top of scroll, drag-up only when at bottom
+      if (draggingUp && !atBottom) return;
+      if (!draggingUp && !atTop) return;
+    }
+
     // For standard compliance, we only preventDefault on touch to seize control from the browser
     if (e.type === 'touchstart' && e.cancelable) e.preventDefault();
     e.stopPropagation();
@@ -910,14 +964,13 @@ const Legend = forwardRef(function Legend(
     <div
       ref={sheetRef}
       className={`legend-sheet ${expanded ? "legend-sheet--expanded" : "legend-sheet--peek"} ${hasRoute ? "legend-sheet--with-bar" : ""}`}
+      onMouseDown={handleDragStart}
+      onTouchStart={handleDragStart}
     >
       {/* ── Unified top area: handle, mode strip, peek hint ── */}
       <div
         ref={headerRef}
         className="legend-drag-header"
-        onMouseDown={handleDragStart}
-        onTouchStart={handleDragStart}
-        style={{ touchAction: "none", cursor: "grab" }}
       >
         <div className="legend-handle-wrap">
           <div className="legend-handle" />

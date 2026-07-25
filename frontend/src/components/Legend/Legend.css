@@ -42,6 +42,8 @@
   padding-bottom: env(safe-area-inset-bottom, 14px);
 
   transition: background 0.3s ease;
+  cursor: grab;
+  touch-action: none;
 }
 
 /* ── Infinite Bottom Fill (The Senior SWE Way) ──────────────────────────── */
@@ -102,6 +104,19 @@
 .legend-sheet.dragging * {
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Interactive elements and scrollable area override the sheet's grab cursor */
+.legend-sheet button,
+.legend-sheet a,
+.legend-sheet input,
+.legend-sheet .legend-body {
+  cursor: default;
+}
+
+.legend-sheet button,
+.legend-sheet a {
+  cursor: pointer;
 }
 
 /* ── Drag handle ─────────────────────────────────────────────────────────── */

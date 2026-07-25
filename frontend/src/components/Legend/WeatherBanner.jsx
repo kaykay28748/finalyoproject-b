@@ -48,6 +48,9 @@ function ForecastPopup({ onClose }) {
   const [fetchError, setFetchError] = useState(false);
   const popupRef = useRef(null);
 
+  // Senior Fix: Detect theme directly since the portal renders outside .ug-root
+  const isDark = document.querySelector('.ug-root.dark') !== null;
+
   // Fetch on mount
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +81,7 @@ function ForecastPopup({ onClose }) {
   return createPortal(
     // Semi-transparent overlay — click closes; Legend stays behind it and is
     // accessible the moment the popup dismisses.
-    <div className="forecast-overlay" onClick={onClose} role="dialog"
+    <div className={`forecast-overlay${isDark ? ' forecast-dark' : ''}`} onClick={onClose} role="dialog"
       aria-modal="true" aria-label="5-day weather forecast">
 
       <div className="forecast-popup" ref={popupRef} onClick={stopProp}>
