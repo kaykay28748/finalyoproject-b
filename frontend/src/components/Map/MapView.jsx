@@ -389,7 +389,7 @@ export default function MapView({
           center={[UG_CENTER.lat, UG_CENTER.lng]}
           zoom={DEFAULT_ZOOM}
           maxBounds={UG_MAX_BOUNDS}
-          maxBoundsViscosity={0.7}
+          maxBoundsViscosity={0.4}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           zoomControl={false}
