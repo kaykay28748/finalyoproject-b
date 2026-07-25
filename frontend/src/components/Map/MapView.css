@@ -1,7 +1,8 @@
 /* MapView.css - Cleaned (no duplicates) */
 
 /* Edge-to-edge: map-wrap fills the entire .ug-root via absolute inset.
-   Without viewport-fit=cover, 100dvh = visible area, so no gap. */
+   viewport-fit=cover lets 100dvh include the full viewport, and
+   inset:0 extends the map behind both status bar and home bar. */
 .map-wrap {
   position: absolute;
   inset: 0;
