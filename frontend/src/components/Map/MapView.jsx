@@ -56,6 +56,48 @@ const MapBearingController = memo(function MapBearingController({ bearing }) {
   return null;
 });
 
+// ── MapDragGuard — disables Leaflet drag/touchZoom while legend is being
+//    interacted with. The CSS body.dragging-legend rule blocks pointer events,
+//    but this component programmatically kills in-progress gestures too.
+const MapDragGuard = memo(function MapDragGuard() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const disable = () => {
+      if (map.dragging) map.dragging.disable();
+      if (map.touchZoom) map.touchZoom.disable();
+      if (map.tap) map.tap.disable();
+    };
+    const enable = () => {
+      if (map.dragging) map.dragging.enable();
+      if (map.touchZoom) map.touchZoom.enable();
+      if (map.tap) map.tap.enable();
+    };
+
+    // Watch the body class toggled by Legend's touch handlers
+    const observer = new MutationObserver(() => {
+      if (document.body.classList.contains("dragging-legend")) {
+        disable();
+      } else {
+        enable();
+      }
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+
+    // Sync initial state in case class was already present
+    if (document.body.classList.contains("dragging-legend")) disable();
+
+    return () => {
+      observer.disconnect();
+      enable(); // always re-enable on unmount
+    };
+  }, [map]);
+
+  return null;
+});
+
 // ── SmartFitBounds (memoized to prevent re-renders) ────────────────────────────
 const SmartFitBounds = memo(function SmartFitBounds({
   startPoint,
@@ -347,6 +389,7 @@ export default function MapView({
           style={{ height: "100%", width: "100%" }}
         >
           <MapBearingController bearing={mapBearing} />
+          <MapDragGuard />
           <TileLayerSwitcher layer={mapLayer} />
           <SmoothFly target={flyTarget} />
           <InitialFly location={currentLocation} />
