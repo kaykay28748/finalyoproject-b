@@ -439,8 +439,9 @@ async function startServer() {
 ║    • POST   /auth/sync       - Sync user from Supabase    ║
 ║    • GET    /health          - Health check                ║
 ║    • GET    /admin/*         - Admin dashboard            ║
-║    • GET    /api/locationiq/* - LocationIQ proxy          ║
-║    • GET    /api/weather     - Weather proxy (with 7Timer fallback) ║
+    ║    • GET    /api/locationiq/* - LocationIQ proxy          ║
+    ║    • POST   /api/overpass    - Overpass API proxy (CORS bypass) ║
+    ║    • GET    /api/weather     - Weather proxy (with 7Timer fallback) ║
 ║    • GET    /api/weather/forecast - Weather forecast      ║
 ║    • POST   /api/reports     - Submit accessibility report ║
 ║    • GET    /api/reports     - List reports (admin)        ║
