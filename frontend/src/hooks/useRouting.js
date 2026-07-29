@@ -235,6 +235,9 @@ export function useRouting(startPoint, destPoint, triggered, profileKey = "stand
       setIsRouting(false);
     };
 
+    // Send API_URL to worker so it can use the backend Overpass proxy
+    worker.postMessage({ type: "INIT", apiUrl: API_URL });
+
     return () => {
       if (workerRef.current) {
         workerRef.current.terminate();

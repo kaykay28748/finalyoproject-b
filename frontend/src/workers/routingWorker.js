@@ -46,11 +46,11 @@ function sendToMain(type, data = {}) {
   self.postMessage({ type, ...data });
 }
 
-async function buildGraphInWorker() {
+async function buildGraphInWorker(apiUrl) {
   console.log("[Worker] Building graph...");
   
   try {
-    const graphData = await buildGraphWorker();
+    const graphData = await buildGraphWorker(apiUrl);
     
     if (graphData && Object.keys(graphData.nodes).length > 0) {
       graph = graphData;
@@ -109,8 +109,12 @@ function calculateRoute(startLat, startLng, destLat, destLng, profileKey, vehicl
 }
 
 self.onmessage = function(e) {
-  const { type, startLat, startLng, destLat, destLng, profileKey, vehicleMode, reports } = e.data;
+  const { type, startLat, startLng, destLat, destLng, profileKey, vehicleMode, reports, apiUrl } = e.data;
   
+  if (type === "INIT") {
+    buildGraphInWorker(apiUrl);
+  }
+
   if (type === "CALCULATE_ROUTE") {
     calculateRoute(startLat, startLng, destLat, destLng, profileKey, vehicleMode);
   }
@@ -120,5 +124,3 @@ self.onmessage = function(e) {
     console.log("[Worker] Updated approved reports:", reports.length);
   }
 };
-
-buildGraphInWorker();

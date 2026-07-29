@@ -4,9 +4,9 @@
 import { UG_BOUNDS } from "../function/utils/bounds";
 import { distanceKm } from "../function/utils/distance";
 import { getCachedGraph, cacheGraph } from "./cacheStore";
+import { API_URL } from "../config";
 
-const OVERPASS_API        = "https://overpass-api.de/api/interpreter";
-const OVERPASS_API_BACKUP = "https://overpass.kumi.systems/api/interpreter";
+const OVERPASS_PROXY = `${API_URL}/api/overpass`;
 
 function getBoundsValues(bounds) {
   if (bounds?._southWest && bounds?._northEast) {
@@ -71,10 +71,10 @@ export async function buildGraph() {
 
     let response;
     try {
-      response = await fetchWithRetry(OVERPASS_API, query);
+      response = await fetchWithRetry(OVERPASS_PROXY, query);
     } catch {
-      console.log("[GraphBuilder] Primary endpoint failed, trying backup...");
-      response = await fetchWithRetry(OVERPASS_API_BACKUP, query);
+      console.log("[GraphBuilder] Proxy failed, trying direct Overpass API...");
+      response = await fetchWithRetry("https://overpass-api.de/api/interpreter", query);
     }
 
     if (!response) throw new Error('No response from Overpass API');

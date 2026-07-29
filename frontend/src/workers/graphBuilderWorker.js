@@ -32,9 +32,9 @@ const DEFAULT_WEATHER_MULTIPLIERS = {
   message: null
 };
 
-// OSM Overpass API endpoint
-const OVERPASS_API = "https://overpass-api.de/api/interpreter";
-const OVERPASS_API_BACKUP = "https://overpass.kumi.systems/api/interpreter";
+// OSM Overpass API endpoint (defaults for when proxy is unavailable)
+const DIRECT_OVERPASS = "https://overpass-api.de/api/interpreter";
+const FALLBACK_OVERPASS = "https://overpass.kumi.systems/api/interpreter";
 
 function getOSMQuery(bounds) {
   const { south, west, north, east } = bounds;
@@ -49,6 +49,19 @@ function getOSMQuery(bounds) {
     >;
     out skel qt;
   `;
+}
+
+let overpassProxyUrl = null;
+
+export function setOverpassProxy(url) {
+  overpassProxyUrl = url;
+}
+
+function getOverpassEndpoints() {
+  if (overpassProxyUrl) {
+    return [overpassProxyUrl, DIRECT_OVERPASS, FALLBACK_OVERPASS];
+  }
+  return [DIRECT_OVERPASS, FALLBACK_OVERPASS];
 }
 
 async function fetchWithRetry(url, query, retries = 2) {
@@ -257,18 +270,23 @@ function calculateEdgeCostWorker(edge, profile, timePeriod, vehicleRestricted, c
   return cost;
 }
 
-export async function buildGraphWorker() {
+export async function buildGraphWorker(apiUrl) {
+  if (apiUrl) setOverpassProxy(`${apiUrl}/api/overpass`);
+
   try {
     console.log("[GraphWorker] Fetching OSM data...");
     
     const query = getOSMQuery(UG_BOUNDS_RAW);
+    const endpoints = getOverpassEndpoints();
     
     let response;
-    try {
-      response = await fetchWithRetry(OVERPASS_API, query);
-    } catch (error) {
-      console.log("[GraphWorker] Primary endpoint failed, trying backup...");
-      response = await fetchWithRetry(OVERPASS_API_BACKUP, query);
+    for (let i = 0; i < endpoints.length; i++) {
+      try {
+        response = await fetchWithRetry(endpoints[i], query);
+        if (response) break;
+      } catch {
+        console.log(`[GraphWorker] Endpoint ${i + 1} failed, trying next...`);
+      }
     }
     
     if (!response) {

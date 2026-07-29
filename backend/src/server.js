@@ -152,6 +152,45 @@ app.get('/api/locationiq/reverse', async (req, res) => {
 });
 
 // ============================================
+// OVERPASS API PROXY (bypasses CORS)
+// ============================================
+
+app.post('/api/overpass', express.text({ type: '*/*', limit: '5mb' }), async (req, res) => {
+  const body = typeof req.body === 'string' ? req.body : req.body?.toString();
+  if (!body) return res.status(400).json({ error: 'Missing Overpass QL query' });
+
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+  ];
+
+  for (let i = 0; i < endpoints.length; i++) {
+    try {
+      const response = await fetch(endpoints[i], {
+        method: 'POST',
+        body,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(45000),
+      });
+
+      if (!response.ok) {
+        console.warn(`[Overpass Proxy] ${endpoints[i]} returned HTTP ${response.status}`);
+        if (i < endpoints.length - 1) continue;
+        return res.status(response.status).json({ error: `Overpass API error: ${response.status}` });
+      }
+
+      const text = await response.text();
+      res.set('Content-Type', 'application/json');
+      return res.send(text);
+    } catch (err) {
+      console.warn(`[Overpass Proxy] ${endpoints[i]} failed: ${err.message}`);
+      if (i < endpoints.length - 1) continue;
+      return res.status(502).json({ error: 'All Overpass endpoints unreachable' });
+    }
+  }
+});
+
+// ============================================
 // WEATHER PROXY (with caching, retry logic & 7Timer fallback)
 // ============================================
 
