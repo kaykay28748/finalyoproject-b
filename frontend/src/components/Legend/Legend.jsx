@@ -386,11 +386,6 @@ const Legend = forwardRef(function Legend(
   }, [vehicleMode]);
 
   useLayoutEffect(() => {
-    // Senior Fix: Defer indicator calculation to after the browser paint.
-    // When hasRoute first becomes true, the sheet gains legend-sheet--with-bar
-    // which changes button padding/sizes. useLayoutEffect fires before the
-    // browser has applied those CSS changes, so getBoundingClientRect() returns
-    // stale positions. A double-rAF ensures layout is fully settled.
     let raf1, raf2;
     const measure = () => {
       raf1 = requestAnimationFrame(() => {
@@ -401,7 +396,7 @@ const Legend = forwardRef(function Legend(
     };
     measure();
     return () => { if (raf1) cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
-  }, [updateIndicator, hasRoute]);
+  }, [updateIndicator]);
 
   useEffect(() => {
     const strip = modeStripRef.current;
@@ -1057,7 +1052,7 @@ const Legend = forwardRef(function Legend(
     <>
     <div
       ref={sheetRef}
-      className={`legend-sheet ${expanded ? "legend-sheet--expanded" : "legend-sheet--peek"} ${hasRoute ? "legend-sheet--with-bar" : ""}`}
+      className={`legend-sheet ${expanded ? "legend-sheet--expanded" : "legend-sheet--peek"} legend-sheet--with-bar`}
       onMouseDown={handleSheetMouseDown}
       onTouchStart={handleSheetTouchStart}
       onTouchMoveCapture={handleSheetTouchMoveCapture}
@@ -1429,8 +1424,7 @@ const Legend = forwardRef(function Legend(
     </div>
 
       {/* ── Fixed profile bar (always visible at bottom of viewport) ── */}
-      {hasRoute && (
-        <div className="legend-profiles-bar">
+      <div className="legend-profiles-bar">
           {PROFILES.map((p) => {
             const IconComponent = p.icon;
             const isActive = activeProfile === p.key;
@@ -1454,7 +1448,6 @@ const Legend = forwardRef(function Legend(
             );
           })}
         </div>
-      )}
     </>
   );
 
