@@ -167,6 +167,15 @@ export function useRealtimeRoutes({
     return () => { if (progressUpdateIntervalRef.current) clearInterval(progressUpdateIntervalRef.current); };
   }, [isActive, routes, activeProfile, currentLocation, updateRouteProgress]);
 
+  // Clear route data when deactivated so stale state doesn't persist
+  useEffect(() => {
+    if (!isActive) {
+      setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
+      setRouteProgress({ completedDistance: 0, remainingDistance: 0, percentage: 0, closestPointIndex: -1 });
+      setDeviationDetected(false);
+    }
+  }, [isActive]);
+
   // Deviation detection
   useEffect(() => {
     if (!isActive || !currentLocation || !routes[activeProfile] || !graph || !endNodeId) return;

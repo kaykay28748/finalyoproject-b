@@ -492,7 +492,7 @@ export default function MapView({
 
           {markersVisible && hasValidRoute && (
             <RouteLayer
-              route={primaryRoute}
+        route={markersVisible ? primaryRoute : null}
               visible={markersVisible}
               profile={activeProfile}
               vehicleMode={vehicleMode}
