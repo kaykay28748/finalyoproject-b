@@ -650,6 +650,14 @@ const Legend = forwardRef(function Legend(
     { label: "Night", hour: 22 },
   ];
 
+  function timeAgo(date) {
+    const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
   useEffect(() => {
     if (!showHeatmap || !heatmapBounds) return;
     let cancelled = false;
@@ -1394,13 +1402,8 @@ const Legend = forwardRef(function Legend(
 
       {/* ── Heatmap ── */}
       {showHeatmap && (
-        <>
-          <div className="legend-divider" />
-          <div className="legend-heatmap">
-            <div className="legend-heatmap-header">
-              <span className="legend-heatmap-title">Popular Routes</span>
-            </div>
-            <div className="legend-heatmap-pills">
+        <div className="legend-heatmap">
+          <div className="legend-heatmap-pills">
               {TIME_SLOTS.map((slot) => (
                 <button
                   key={slot.label}
@@ -1417,11 +1420,16 @@ const Legend = forwardRef(function Legend(
               ) : heatmapPointCount > 0 ? (
                 <span>{heatmapPointCount.toLocaleString()} data point{heatmapPointCount !== 1 ? 's' : ''}</span>
               ) : (
-                <span className="heatmap-empty">No data yet</span>
+                <span className="heatmap-empty">
+                  {hasRoute
+                    ? 'Your route will help others navigate'
+                    : 'Be the first to navigate here'
+                  }
+                </span>
               )}
               {heatmapLastRefresh && (
                 <span className="heatmap-refresh-time">
-                  Updated {heatmapLastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  Updated {timeAgo(heatmapLastRefresh)}
                 </span>
               )}
             </div>
