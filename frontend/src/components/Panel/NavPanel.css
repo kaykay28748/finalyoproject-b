@@ -67,6 +67,51 @@
   transition: transform 0.2s ease;
 }
 
+.nav-mic-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--sub);
+  transition: all 0.2s ease;
+}
+
+.nav-mic-btn:hover {
+  background: var(--hover-row);
+  color: var(--text);
+}
+
+.nav-mic-btn:active {
+  transform: scale(0.88);
+}
+
+.nav-mic-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-mic-btn--listening {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+.ug-root.dark .nav-mic-btn--listening {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
 .nav-pill-avatar img {
   width: 100%;
   height: 100%;

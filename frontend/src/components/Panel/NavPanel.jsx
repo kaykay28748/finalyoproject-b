@@ -1,8 +1,9 @@
 // components/Panel/NavPanel.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuthContext } from "../../context/AuthContext";
 import { useFocus } from "../../context/FocusContext";
 import { useHaptics } from "../../hooks/useHaptics";
+import useSpeechRecognition from "../../hooks/useSpeechRecognition";
 import SearchBox from "../Search/SearchBox";
 import PortalSearchBox from "../Search/PortalSearchBox";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +11,7 @@ import logo from "./icon-192.png";
 import {
   IconSwap,
   IconDirections,
+  IconMic,
 } from "../ui/icon";
 import "./NavPanel.css";
 
@@ -152,6 +154,8 @@ export default function NavPanel({
   const focus = useFocus();
   const navigate = useNavigate();
   const { trigger } = useHaptics();
+  const { isListening, transcript, startListening, stopListening } = useSpeechRecognition();
+  const transcriptHandledRef = useRef(false);
 
   const setIsExpanded = (value) => {
     if (onExpandRequest) {
@@ -191,6 +195,24 @@ export default function NavPanel({
     setIsExpanded(false);
     if (onClose) onClose();
   };
+
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    trigger(10);
+    transcriptHandledRef.current = false;
+    startListening();
+  };
+
+  useEffect(() => {
+    if (transcript && !transcriptHandledRef.current) {
+      transcriptHandledRef.current = true;
+      onDestTextChange(transcript);
+      setIsExpanded(true);
+    }
+  }, [transcript, onDestTextChange]);
 
   const statusClass = locationError
     ? "error"
@@ -292,6 +314,14 @@ export default function NavPanel({
                   <img src={logo} alt="UG Navigator" className="nav-pill-logo" />
                 </div>
                 <span className="nav-search-text-hint">Search here...</span>
+              </button>
+              <button
+                className={`nav-mic-btn${isListening ? " nav-mic-btn--listening" : ""}`}
+                onClick={handleMicClick}
+                aria-label={isListening ? "Listening..." : "Voice search destination"}
+                title={isListening ? "Listening..." : "Search by voice"}
+              >
+                <IconMic strokeWidth={2} />
               </button>
               <Avatar
                 username={user?.username}
