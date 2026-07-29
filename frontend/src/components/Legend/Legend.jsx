@@ -216,7 +216,9 @@ const Legend = forwardRef(function Legend({
           </LegendBody>
         )}
 
-        <LegendProfileBar activeProfile={activeProfile} onProfileChange={onProfileChange} />
+        {expanded && (
+          <LegendProfileBar activeProfile={activeProfile} onProfileChange={onProfileChange} />
+        )}
       </div>
     </div>
   );
