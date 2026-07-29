@@ -1,104 +1,54 @@
-/* components/Legend/Legend.css */
-/* Modern Map Sheet Design — Inspired by Apple/Google Maps */
-
-/* Register properties for smooth interpolation of dynamic values during snaps */
-@property --sheet-blur {
-  syntax: '<length>';
-  initial-value: 25px;
-  inherits: false;
-}
-
-@property --sheet-opacity {
-  syntax: '<number>';
-  initial-value: 0.82;
-  inherits: false;
-}
-
-/* ── Sheet container ─────────────────────────────────────────────────────── */
-.legend-sheet {
+/* ── Sheet container ──────────────────────────────────────────────────────── */
+.legend-root {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  
-  /* Industry standard: Layered glass with high saturation */
-  background: rgba(255, 255, 255, var(--sheet-opacity, 0.82));
-  backdrop-filter: blur(var(--sheet-blur, 25px)) saturate(210%);
-  -webkit-backdrop-filter: blur(var(--sheet-blur, 25px)) saturate(210%);
-  
+  z-index: 999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.legend-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(25px) saturate(210%);
+  -webkit-backdrop-filter: blur(25px) saturate(210%);
   border-radius: 32px 32px 0 0;
   border: 1.5px solid rgba(255, 255, 255, 0.45);
   border-bottom: none;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.12);
-  z-index: 999;
   pointer-events: auto;
   will-change: transform;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  overflow: visible !important; 
-
-  /* Standard safe-area padding ensures content sits above the home bar */
+  overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom, 14px);
-
   transition: background 0.3s ease;
+  contain: layout paint;
 }
 
-/* ── Infinite Bottom Fill (The Senior SWE Way) ──────────────────────────── */
-/* This creates a visual "tail" that follows the sheet during drag.
-   Because it's a pseudo-element, it doesn't affect offsetHeight calculations. */
-.legend-sheet::after {
-  content: "";
-  position: absolute;
-  /* Overlap by 1px to prevent sub-pixel light leaks during high-speed drag */
-  top: calc(100% - 1px); 
-  left: 0;
-  right: 0;
-  height: 100vh;
-  /* Use a solid version of the background to ensure map is 100% blocked */
-  background: #ffffff; 
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* Initial mount slide-up */
-.legend-sheet--entering {
-  animation: sheet-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes sheet-rise {
-  from { transform: translateY(110%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-
-/* Snap animation */
-.legend-sheet--snapping {
-  /* Transition transform and the custom properties for a fluid finish */
-  transition: transform 0.44s cubic-bezier(0.2, 0.9, 0.4, 1.1),
-              --sheet-blur 0.44s cubic-bezier(0.2, 0.9, 0.4, 1.1),
-              --sheet-opacity 0.44s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-}
-
-/* Dark mode sheet */
 .ug-root.dark .legend-sheet {
-  background: rgba(15, 23, 42, var(--sheet-opacity, 0.88));
+  background: rgba(15, 23, 42, 0.88);
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Ensure tail matches the legend sheet theme so the safe area
-   (home indicator zone) looks like part of the legend, not a gap */
-.legend-sheet::after {
-  background: #ffffff;
-}
-.ug-root.dark .legend-sheet::after {
-  background: #0f172a;
+/* Snap animation */
+.legend-sheet--snapping {
+  transition: transform 0.44s cubic-bezier(0.2, 0.9, 0.4, 1.1);
 }
 
-/* Dragging state — zero transition so transform follows finger instantly */
-.legend-sheet.dragging {
-  transition: none !important;
-  animation: none !important;
+/* Dragging state — specificity overrides transition without !important */
+.legend-sheet.dragging,
+.legend-sheet.dragging legend-sheet--snapping {
+  transition: none;
+  animation: none;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -108,13 +58,26 @@
   -webkit-user-select: none;
 }
 
-/* Interactive elements get pointer cursor */
-.legend-sheet button,
-.legend-sheet a {
-  cursor: pointer;
+/* ── Drag header ──────────────────────────────────────────────────────────── */
+.legend-drag-header {
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 24px 24px 0 0;
+  outline: none;
 }
 
-/* ── Drag handle ─────────────────────────────────────────────────────────── */
+.legend-drag-header:focus-visible {
+  box-shadow: inset 0 0 0 2px #2563eb;
+}
+
+.legend-drag-header:active {
+  cursor: grabbing;
+}
+
 .legend-handle-wrap {
   display: flex;
   justify-content: center;
@@ -124,10 +87,6 @@
   position: relative;
   z-index: 10;
   flex-shrink: 0;
-}
-
-.legend-handle-wrap:active {
-  cursor: grabbing;
 }
 
 .legend-handle {
@@ -163,30 +122,185 @@
   background: rgba(96, 165, 250, 0.5);
 }
 
-/* ── Draggable expanded header ───────────────────────────────────────────── */
-.legend-drag-header {
+/* ── Peek row ─────────────────────────────────────────────────────────────── */
+.legend-peek-row {
   display: flex;
-  flex-direction: column;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  border-radius: 24px 24px 0 0;
-  transition: background 0.2s ease;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 4px;
+  flex-shrink: 0;
 }
 
-.legend-drag-header:active {
-  cursor: grabbing;
+.peek-icon {
+  width: 24px;
+  height: 24px;
 }
 
-.ug-root.dark .legend-drag-header:active {
-  background: rgba(255, 255, 255, 0.03);
+.peek-mode-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #111827);
 }
 
-/* ── Scrollable content ──────────────────────────────────────────────────── */
+.ug-root.dark .peek-mode-label {
+  color: #f3f4f6;
+}
+
+.peek-time {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #111827);
+  margin-left: auto;
+}
+
+.peek-sep {
+  color: var(--sub, #9ca3af);
+  font-size: 14px;
+}
+
+.peek-dist {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sub, #6b7280);
+}
+
+.ug-root.dark .peek-time { color: #f3f4f6; }
+.ug-root.dark .peek-sep { color: #6b7280; }
+.ug-root.dark .peek-dist { color: #9ca3af; }
+
+.peek-profile-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+.legend-peek-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 16px 8px;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.ug-root.dark .legend-peek-hint {
+  color: #6b7280;
+}
+
+/* ── Mode strip ───────────────────────────────────────────────────────────── */
+.legend-mode-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
+  padding: 4px 12px 0;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+
+.legend-mode-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.legend-mode-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 12px 10px;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  border-bottom: 3px solid transparent;
+  scroll-snap-align: center;
+}
+
+.legend-mode-btn:hover {
+  color: #6b7280;
+}
+
+.legend-mode-btn:active {
+  transform: scale(0.95);
+  transition-duration: 0.05s;
+}
+
+.legend-mode-btn--active {
+  color: var(--mode-color);
+  border-bottom-color: var(--mode-color);
+}
+
+.ug-root.dark .legend-mode-btn {
+  color: #6b7280;
+}
+
+.ug-root.dark .legend-mode-btn:hover {
+  color: #9ca3af;
+}
+
+.ug-root.dark .legend-mode-btn--active {
+  color: var(--mode-color);
+  border-bottom-color: var(--mode-color);
+}
+
+/* ── Metrics row ──────────────────────────────────────────────────────────── */
+.legend-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  flex-shrink: 0;
+}
+
+.legend-metrics-time {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text, #111827);
+}
+
+.legend-metrics-dist {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sub, #6b7280);
+}
+
+.legend-traffic-text {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.ug-root.dark .legend-traffic-text {
+  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ug-root.dark .legend-metrics-time {
+  color: #f3f4f6;
+}
+
+.ug-root.dark .legend-metrics-dist {
+  color: #9ca3af;
+}
+
+/* ── Scrollable body ──────────────────────────────────────────────────────── */
 .legend-body {
-  padding: 10px 20px 68px;
-  overflow-y: overlay;
+  padding: 8px 20px max(24px, env(safe-area-inset-bottom, 24px));
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   flex: 1;
@@ -210,153 +324,16 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Profile row ─────────────────────────────────────────────────────────── */
-.legend-profile {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-  animation: item-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* ── Tab content ──────────────────────────────────────────────────────────── */
+.legend-tab-content {
+  animation: body-fade 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.profile-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ── Voice button ─────────────────────────────────────────────────────────── */
+.legend-voice-row {
+  margin-bottom: 12px;
 }
 
-.profile-icon svg {
-  width: 18px;
-  height: 18px;
-  color: var(--text);
-}
-
-.profile-label {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  color: var(--text);
-}
-
-.legend-badge {
-  margin-left: auto;
-  font-size: 10px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-weight: 600;
-  backdrop-filter: blur(8px);
-}
-
-.legend-badge--warn {
-  background: rgba(245, 158, 11, 0.12);
-  color: #d97706;
-  border: 0.5px solid rgba(245, 158, 11, 0.25);
-}
-
-.ug-root.dark .legend-badge--warn {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-}
-
-
-
-/* ── Fixed profile bar (always at bottom of viewport, like Google Maps) ── */
-.legend-profiles-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  padding: 4px 16px 24px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(25px) saturate(210%);
-  -webkit-backdrop-filter: blur(25px) saturate(210%);
-  pointer-events: auto;
-  flex-shrink: 0;
-}
-
-.ug-root.dark .legend-profiles-bar {
-  background: rgba(15, 23, 42, 0.88);
-}
-
-/* ── Profile buttons ─────────────────────────────────────────────────────── */
-.legend-profiles {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  margin: 12px 0;
-  animation: item-in 0.3s 0.05s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.legend-profile-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 4px;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 30px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-  cursor: pointer;
-  transition:
-    transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1),
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    color 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  border: 1px solid transparent;
-}
-
-.legend-profile-btn:hover {
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.legend-profile-btn:active {
-  transform: scale(0.95);
-  transition-duration: 0.05s;
-}
-
-.legend-profile-btn--active {
-  background: var(--surface);
-  border-color: rgba(37, 99, 235, 0.2);
-  color: #2563eb;
-  /* Subtle scale-down and inner glow for the selected state */
-  transform: scale(0.97);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08), inset 0 0 10px rgba(37, 99, 235, 0.15);
-}
-
-.legend-profile-btn--active:hover {
-  background: var(--surface);
-  transform: scale(0.98);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12), inset 0 0 10px rgba(37, 99, 235, 0.15);
-}
-
-.ug-root.dark .legend-profile-btn {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.ug-root.dark .legend-profile-btn:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.ug-root.dark .legend-profile-btn--active {
-  background: rgba(96, 165, 250, 0.15);
-  border-color: rgba(96, 165, 250, 0.35);
-  color: #60a5fa;
-  transform: scale(0.97);
-  box-shadow: 0 2px 10px rgba(96, 165, 250, 0.15), inset 0 0 12px rgba(96, 165, 250, 0.1);
-}
-
-/* ── Voice button ────────────────────────────────────────────────────────── */
 .legend-voice-btn {
   display: flex;
   align-items: center;
@@ -364,23 +341,20 @@
   gap: 6px;
   width: 100%;
   padding: 10px 16px;
-  margin: 0 0 12px;
+  min-height: 44px;
   background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 0.5px solid rgba(255, 255, 255, 0.5);
   border-radius: 40px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text, #111827);
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  transition:
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease;
 }
 
 .legend-voice-btn:hover {
@@ -401,26 +375,6 @@
   box-shadow: 0 2px 10px rgba(34, 197, 94, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.legend-voice-btn--active:hover {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.42);
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.18);
-}
-
-.voice-icon {
-  font-size: 16px;
-  margin-right: 8px;
-}
-
-.voice-text {
-  flex: 1;
-  text-align: left;
-}
-
-.voice-status {
-  font-size: 14px;
-}
-
 .ug-root.dark .legend-voice-btn {
   background: rgba(255, 255, 255, 0.07);
   border-color: rgba(255, 255, 255, 0.1);
@@ -439,286 +393,14 @@
   box-shadow: 0 2px 10px rgba(34, 197, 94, 0.15);
 }
 
-/* ── Divider ─────────────────────────────────────────────────────────────── */
-.legend-divider {
-  height: 0.5px;
-  background: rgba(0, 0, 0, 0.07);
-  margin: 14px 0;
-  border-radius: 1px;
-}
-
-.ug-root.dark .legend-divider {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-/* ── Stats grid ──────────────────────────────────────────────────────────── */
-.legend-stats-grid {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  background: rgba(255, 255, 255, 0.38);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 20px;
-  padding: 14px 8px;
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  animation: item-in 0.34s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.ug-root.dark .legend-stats-grid {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.legend-stat-card {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.stat-card-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-card-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.stat-card-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-card-value {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.2;
-}
-
-.stat-card-label {
-  font-size: 10px;
-  color: var(--sub);
-  margin-top: 1px;
-}
-
-.legend-stat-divider {
-  width: 0.5px;
-  height: 32px;
-  background: rgba(0, 0, 0, 0.08);
-  flex-shrink: 0;
-}
-
-.ug-root.dark .legend-stat-divider {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* ── Traffic indicator ───────────────────────────────────────────────────── */
-.legend-traffic {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.38);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 16px;
-  margin: 8px 0 0;
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  animation: item-in 0.34s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.ug-root.dark .legend-traffic {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.09);
-}
-
-.legend-traffic-icon {
-  font-size: 20px;
-  width: 32px;
-  text-align: center;
-}
-
-.legend-traffic-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.legend-traffic-label {
-  font-size: 11px;
-  color: var(--sub);
-}
-
-.legend-traffic-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.legend-traffic-bar {
-  width: 60px;
-  height: 5px;
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.ug-root.dark .legend-traffic-bar {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.legend-traffic-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.legend-traffic-bar-fill.heavy   { background: #ef4444; }
-.legend-traffic-bar-fill.moderate { background: #f59e0b; }
-.legend-traffic-bar-fill.low      { background: #22c55e; }
-
-/* ── Heatmap section (in Legend) ─────────────────────────────────────────── */
-.legend-heatmap {
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.38);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 16px;
-  margin: 8px 0 0;
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  animation: item-in 0.34s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.ug-root.dark .legend-heatmap {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.09);
-}
-
-.legend-heatmap-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.legend-heatmap-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text, #111827);
-}
-
-.ug-root.dark .legend-heatmap-title {
-  color: #f3f4f6;
-}
-
-.legend-heatmap-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-bottom: 8px;
-}
-
-.legend-heatmap-pill {
-  font-size: 11px;
-  font-family: "Outfit", sans-serif;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 20px;
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.ug-root.dark .legend-heatmap-pill {
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #9ca3af;
-}
-
-.legend-heatmap-pill:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-}
-
-.legend-heatmap-pill--active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
-}
-
-.legend-heatmap-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  margin-bottom: 8px;
-}
-
-.legend-heatmap-stats span {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.ug-root.dark .legend-heatmap-stats span {
-  color: #9ca3af;
-}
-
-.legend-heatmap-stats .heatmap-empty {
-  font-style: italic;
-}
-
-.legend-heatmap-stats .heatmap-refresh-time {
-  opacity: 0.6;
-}
-
-.legend-heatmap-legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.legend-heatmap-legend .heatmap-legend-label {
-  font-size: 10px;
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
-.legend-heatmap-legend .heatmap-legend-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(to right,
-    #313695,
-    #4575b4,
-    #74add1,
-    #fee090,
-    #f46d43,
-    #d73027,
-    #a50026
-  );
-}
-
-/* ── Directions panel ────────────────────────────────────────────────────── */
+/* ── Directions section ──────────────────────────────────────────────────── */
 .legend-directions-section {
   margin: 12px 0 8px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.38);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.03);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   animation: item-in 0.36s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -732,7 +414,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.02);
   border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -744,12 +426,12 @@
 .directions-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text, #111827);
 }
 
 .directions-steps-count {
   font-size: 11px;
-  color: var(--sub);
+  color: var(--sub, #6b7280);
   background: rgba(0, 0, 0, 0.05);
   padding: 2px 8px;
   border-radius: 20px;
@@ -763,41 +445,19 @@
   padding: 4px 0;
 }
 
-/* Direction steps — staggered entrance */
 .legend-direction-step {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
   border-left: 2.5px solid transparent;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: background 0.15s ease, border-color 0.15s ease;
   position: relative;
-  animation: step-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* Each step arrives 40ms after the previous to better match the 0.42s body animation */
-.legend-direction-step:nth-child(1)  { animation-delay: 0.00s; }
-.legend-direction-step:nth-child(2)  { animation-delay: 0.04s; }
-.legend-direction-step:nth-child(3)  { animation-delay: 0.08s; }
-.legend-direction-step:nth-child(4)  { animation-delay: 0.12s; }
-.legend-direction-step:nth-child(5)  { animation-delay: 0.16s; }
-.legend-direction-step:nth-child(6)  { animation-delay: 0.20s; }
-.legend-direction-step:nth-child(7)  { animation-delay: 0.24s; }
-.legend-direction-step:nth-child(8)  { animation-delay: 0.28s; }
-.legend-direction-step:nth-child(9)  { animation-delay: 0.32s; }
-.legend-direction-step:nth-child(10) { animation-delay: 0.36s; }
-
-@keyframes step-in {
-  from { opacity: 0; transform: translateX(-6px); }
-  to   { opacity: 1; transform: translateX(0); }
+  min-height: 48px;
 }
 
 .legend-direction-step:hover {
-  background: rgba(255, 255, 255, 0.35);
-  transform: translateX(2px);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .ug-root.dark .legend-direction-step:hover {
@@ -831,45 +491,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.55);
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.04);
   border-radius: 50%;
-  color: var(--text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  color: var(--text, #111827);
   transition: background 0.15s ease, color 0.15s ease;
-}
-
-.direction-icon svg {
-  width: 15px;
-  height: 15px;
 }
 
 .legend-direction-step--active .direction-icon {
   background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.25);
   color: #2563eb;
-}
-
-.legend-direction-step--destination .direction-icon {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.22);
-  color: #16a34a;
 }
 
 .ug-root.dark .direction-icon {
   background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .ug-root.dark .legend-direction-step--active .direction-icon {
   background: rgba(96, 165, 250, 0.18);
-  border-color: rgba(96, 165, 250, 0.3);
   color: #60a5fa;
-}
-
-.ug-root.dark .legend-direction-step--destination .direction-icon {
-  background: rgba(74, 222, 128, 0.12);
-  color: #4ade80;
 }
 
 .direction-content {
@@ -880,13 +519,19 @@
 .direction-instruction {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text, #111827);
   line-height: 1.4;
+}
+
+.direction-destination-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #16a34a;
 }
 
 .direction-distance {
   font-size: 11px;
-  color: var(--sub);
+  color: var(--sub, #6b7280);
   margin-top: 2px;
 }
 
@@ -902,73 +547,36 @@
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(0.75); }
+  50%      { opacity: 0.5; transform: scale(0.75); }
 }
 
 .ug-root.dark .direction-active-indicator {
   background: #60a5fa;
 }
 
-/* ── Share button ────────────────────────────────────────────────────────── */
-.legend-share-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  margin: 12px 0 8px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
-  border-radius: 40px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  transition:
-    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+/* ── Alternatives ─────────────────────────────────────────────────────────── */
+.legend-divider {
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.07);
+  margin: 14px 0;
+  border-radius: 1px;
 }
 
-.legend-share-btn:hover {
-  transform: scale(1.01) translateY(-1px);
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(37, 99, 235, 0.25);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+.ug-root.dark .legend-divider {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.legend-share-btn:active {
-  transform: scale(0.99) translateY(0);
-  transition-duration: 0.05s;
-}
-
-.ug-root.dark .legend-share-btn {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.ug-root.dark .legend-share-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(96, 165, 250, 0.3);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-}
-
-/* ── Alternative routes ──────────────────────────────────────────────────── */
 .legend-alts-label {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: var(--sub);
+  color: var(--sub, #6b7280);
   margin-bottom: 10px;
+}
+
+.ug-root.dark .legend-alts-label {
+  color: #9ca3af;
 }
 
 .legend-alts {
@@ -977,34 +585,22 @@
   gap: 8px;
 }
 
-/* Staggered alt card entrance */
 .legend-alt {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
+  min-height: 44px;
   border-radius: 16px;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.38);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.03);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition:
-    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-  animation: alt-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.legend-alt:nth-child(1) { animation-delay: 0.04s; }
-.legend-alt:nth-child(2) { animation-delay: 0.09s; }
-.legend-alt:nth-child(3) { animation-delay: 0.14s; }
-
-@keyframes alt-in {
-  from { opacity: 0; transform: translateX(10px); }
-  to   { opacity: 1; transform: translateX(0); }
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+  animation: item-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .legend-alt:hover {
@@ -1022,11 +618,6 @@
   background: rgba(37, 99, 235, 0.1);
   border-color: rgba(37, 99, 235, 0.28);
   box-shadow: 0 2px 10px rgba(37, 99, 235, 0.1);
-}
-
-.legend-alt--active:hover {
-  background: rgba(37, 99, 235, 0.14);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.15);
 }
 
 .ug-root.dark .legend-alt {
@@ -1056,11 +647,7 @@
 .alt-line--primary { background: #2563eb; }
 
 .alt-line--secondary {
-  background: repeating-linear-gradient(
-    90deg,
-    #94a3b8 0px, #94a3b8 5px,
-    transparent 5px, transparent 9px
-  );
+  background: repeating-linear-gradient(90deg, #94a3b8 0px, #94a3b8 5px, transparent 5px, transparent 9px);
   height: 2px;
 }
 
@@ -1073,27 +660,120 @@
 .alt-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text, #111827);
 }
 
 .alt-time {
   font-size: 11px;
-  color: var(--sub);
+  color: var(--sub, #6b7280);
   margin-top: 1px;
 }
 
 .alt-dist {
   font-size: 11px;
-  color: var(--sub);
+  color: var(--sub, #6b7280);
   flex-shrink: 0;
 }
 
-.ug-root.dark .alt-name    { color: #f3f4f6; }
+.ug-root.dark .alt-name { color: #f3f4f6; }
 .ug-root.dark .alt-time,
-.ug-root.dark .alt-dist    { color: #9ca3af; }
-.ug-root.dark .legend-alts-label { color: #9ca3af; }
+.ug-root.dark .alt-dist { color: #9ca3af; }
 
-/* ── Warnings ────────────────────────────────────────────────────────────── */
+/* ── Share button ─────────────────────────────────────────────────────────── */
+.legend-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 8px;
+  padding: 10px 16px;
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #111827);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.legend-share-btn:hover {
+  transform: scale(1.01) translateY(-1px);
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.legend-share-btn:active {
+  transform: scale(0.99) translateY(0);
+  transition-duration: 0.05s;
+}
+
+.ug-root.dark .legend-share-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.ug-root.dark .legend-share-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+.legend-toast {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 2000;
+  animation: toast-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ug-root.dark .legend-toast {
+  background: rgba(255, 255, 255, 0.9);
+  color: #111827;
+}
+
+/* ── Fallback note ────────────────────────────────────────────────────────── */
+.legend-fallback-note {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #d97706;
+  text-align: center;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 0.5px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+}
+
+.ug-root.dark .legend-fallback-note {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* ── Warnings ─────────────────────────────────────────────────────────────── */
 .legend-warnings {
   display: flex;
   flex-direction: column;
@@ -1105,6 +785,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 14px;
+  min-height: 44px;
   border-radius: 12px;
   font-size: 12px;
   line-height: 1.4;
@@ -1112,33 +793,13 @@
   animation: item-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.legend-warning--danger {
-  background: rgba(239, 68, 68, 0.06);
-  color: #dc2626;
-}
+.legend-warning--danger { background: rgba(239, 68, 68, 0.06); color: #dc2626; }
+.legend-warning--warn   { background: rgba(245, 158, 11, 0.06); color: #d97706; }
+.legend-warning--info   { background: rgba(37, 99, 235, 0.06); color: #2563eb; }
 
-.legend-warning--warn {
-  background: rgba(245, 158, 11, 0.06);
-  color: #d97706;
-}
-
-.legend-warning--info {
-  background: rgba(37, 99, 235, 0.06);
-  color: #2563eb;
-}
-
-.ug-root.dark .legend-warning--danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-}
-.ug-root.dark .legend-warning--warn {
-  background: rgba(245, 158, 11, 0.1);
-  color: #fbbf24;
-}
-.ug-root.dark .legend-warning--info {
-  background: rgba(96, 165, 250, 0.1);
-  color: #60a5fa;
-}
+.ug-root.dark .legend-warning--danger { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+.ug-root.dark .legend-warning--warn   { background: rgba(245, 158, 11, 0.1); color: #fbbf24; }
+.ug-root.dark .legend-warning--info   { background: rgba(96, 165, 250, 0.1); color: #60a5fa; }
 
 .warning-icon {
   display: flex;
@@ -1157,196 +818,7 @@
   font-weight: 500;
 }
 
-/* ── Fallback note ───────────────────────────────────────────────────────── */
-.legend-fallback-note {
-  margin-top: 12px;
-  font-size: 11px;
-  color: #d97706;
-  text-align: center;
-  padding: 8px 12px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 0.5px solid rgba(245, 158, 11, 0.2);
-  border-radius: 12px;
-}
-
-.ug-root.dark .legend-fallback-note {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.1);
-}
-
-/* ── Shared stagger keyframe ─────────────────────────────────────────────── */
-@keyframes item-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Prevent body scroll while dragging ──────────────────────────────────── */
-body.dragging-legend {
-  overflow: hidden;
-  touch-action: none;
-}
-
-body.dragging-legend .leaflet-container,
-body.dragging-legend .map-wrap,
-body.dragging-legend .map-blur-overlay {
-  pointer-events: none !important;
-  touch-action: none !important;
-}
-
-/* ── Dark mode text overrides ────────────────────────────────────────────── */
-.ug-root.dark .stat-card-value,
-.ug-root.dark .stat-mini-value,
-.ug-root.dark .directions-title,
-.ug-root.dark .direction-instruction,
-.ug-root.dark .legend-traffic-value,
-.ug-root.dark .legend-heatmap-title { color: #f3f4f6; }
-
-.ug-root.dark .stat-card-label,
-.ug-root.dark .stat-mini-label,
-.ug-root.dark .stat-mini-sub,
-.ug-root.dark .direction-distance,
-.ug-root.dark .legend-traffic-label { color: #9ca3af; }
-
-/* ── Mode strip ──────────────────────────────────────────────────────────── */
-.legend-sheet--with-bar {
-  bottom: calc(60px + env(safe-area-inset-bottom, 14px));
-}
-
-.legend-mode-strip {
-  position: relative;
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: space-evenly;
-  padding: 6px 12px 0;
-  flex-shrink: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.legend-mode-strip::-webkit-scrollbar { display: none; }
-
-.legend-sheet--with-bar .legend-mode-strip {
-  flex: 1;
-  align-content: center;
-  padding: 12px;
-  overflow-x: visible;
-}
-
-.legend-sheet--with-bar .legend-mode-btn {
-  padding: 6px 10px 14px;
-  min-width: 44px;
-}
-
-/* ── Sliding mode indicator track ──────────────────────────────────────── */
-.mode-track {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 3px;
-  pointer-events: none;
-}
-
-.mode-btn-time {
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: inherit;
-}
-
-.mode-indicator {
-  position: absolute;
-  bottom: 0;
-  height: 5px;
-  background: var(--mode-color, #2563eb);
-  border-radius: 3px;
-  transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1), width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.ug-root.dark .mode-track {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.legend-mode-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 10px 14px;
-  border: none;
-  background: transparent;
-  color: #9ca3af;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.legend-mode-btn:hover {
-  color: #6b7280;
-}
-
-.legend-mode-btn:active {
-  transform: scale(0.95);
-  transition-duration: 0.05s;
-}
-
-.legend-mode-btn--active {
-  color: var(--mode-color);
-}
-
-.ug-root.dark .legend-mode-btn {
-  color: #6b7280;
-  background: transparent;
-}
-
-.ug-root.dark .legend-mode-btn:hover {
-  color: #9ca3af;
-}
-
-.ug-root.dark .legend-mode-btn--active {
-  color: var(--mode-color);
-}
-
-/* ── Peek affordance hint (no route set) ──────────────────────────────────── */
-.legend-peek-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
-  color: #9ca3af;
-  font-size: 13px;
-  font-weight: 500;
-  flex: 1;
-}
-
-.legend-peek-hint svg {
-  flex-shrink: 0;
-}
-
-.ug-root.dark .legend-peek-hint {
-  color: #6b7280;
-}
-
-.ug-root.dark .legend-peek-hint--insights {
-  color: #e5e7eb;
-}
-
-.legend-peek-hint--insights {
-  display: flex;
-  justify-content: space-between;
-  flex: none;
-  padding: 4px 16px 2px;
-  font-size: 20px;
-}
-
-.insights-mode-name {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-/* ── Empty route state "Be in the know" ──────────────────────────────────── */
+/* ── Empty state (no route) ──────────────────────────────────────────────── */
 .legend-empty-route {
   display: flex;
   flex-direction: column;
@@ -1367,188 +839,37 @@ body.dragging-legend .map-blur-overlay {
   margin-bottom: 16px;
 }
 
+.ug-root.dark .empty-route-icon {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .empty-route-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text, #111827);
   margin: 0 0 6px;
 }
 
 .empty-route-text {
   font-size: 13px;
-  color: var(--sub);
+  color: var(--sub, #6b7280);
   line-height: 1.5;
   max-width: 260px;
   margin: 0;
 }
 
-.ug-root.dark .empty-route-icon {
-  background: rgba(255, 255, 255, 0.05);
-}
-
 .ug-root.dark .empty-route-title { color: #f3f4f6; }
 .ug-root.dark .empty-route-text { color: #9ca3af; }
 
-/* ── Tab bar ────────────────────────────────────────────────────────────────── */
-.legend-tab-bar {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 0 4px;
-  flex-shrink: 0;
-}
-
-.legend-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 8px;
-  border-radius: 16px;
-  border: 1.5px solid transparent;
-  background: rgba(0, 0, 0, 0.03);
-  color: #9ca3af;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.legend-tab:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #6b7280;
-}
-
-.legend-tab:active {
-  transform: scale(0.96);
-  transition-duration: 0.05s;
-}
-
-.legend-tab--active {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.2);
-  color: #2563eb;
-}
-
-.legend-tab--active:hover {
-  background: rgba(37, 99, 235, 0.12);
-}
-
-.ug-root.dark .legend-tab {
-  background: rgba(255, 255, 255, 0.05);
-  color: #6b7280;
-}
-
-.ug-root.dark .legend-tab:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #9ca3af;
-}
-
-.ug-root.dark .legend-tab--active {
-  background: rgba(96, 165, 250, 0.12);
-  border-color: rgba(96, 165, 250, 0.3);
-  color: #60a5fa;
-}
-
-/* ── Tab content ────────────────────────────────────────────────────────────── */
-.legend-tab-content {
-  animation: body-fade 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* ── Stats row (calories, elevation, steps, surface) ────────────────────────── */
-.legend-stats-row {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 12px 0 0;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 0.5px solid rgba(255, 255, 255, 0.35);
-  overflow: hidden;
-}
-
-.legend-stat-mini {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 10px 4px;
-  position: relative;
-}
-
-.legend-stat-mini + .legend-stat-mini::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 20%;
-  height: 60%;
-  width: 0.5px;
-  background: rgba(128, 128, 128, 0.2);
-}
-
-.legend-stat-mini svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.stat-mini-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--sub);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.stat-mini-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.2;
-}
-
-.stat-mini-sub {
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--sub);
-  line-height: 1;
-}
-
-.ug-root.dark .legend-stats-row {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.07);
-}
-
-.ug-root.dark .legend-stat-mini + .legend-stat-mini::before {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-/* ── Voice row ──────────────────────────────────────────────────────────────── */
-.legend-voice-row {
-  margin-bottom: 12px;
-}
-
-.legend-voice-row .legend-voice-btn {
-  margin: 0;
-}
-
-/* ── Profile label ──────────────────────────────────────────────────────────── */
-.legend-profile-label {
-  font-size: 10px;
-  margin-top: 2px;
-}
-
-/* ── Empty state ────────────────────────────────────────────────────────────── */
+/* ── Empty state (no directions) ─────────────────────────────────────────── */
 .legend-empty-state {
   padding: 32px 16px;
   text-align: center;
   font-size: 13px;
-  color: var(--sub);
-  background: rgba(255, 255, 255, 0.3);
+  color: var(--sub, #6b7280);
+  background: rgba(0, 0, 0, 0.03);
   border-radius: 16px;
-  border: 0.5px solid rgba(255, 255, 255, 0.4);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .ug-root.dark .legend-empty-state {
@@ -1556,158 +877,154 @@ body.dragging-legend .map-blur-overlay {
   border-color: rgba(255, 255, 255, 0.07);
 }
 
-/* ── Mobile ──────────────────────────────────────────────────────────────── */
+/* ── Inline profile bar ──────────────────────────────────────────────────── */
+.legend-profiles-bar-inline {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom, 14px));
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(25px) saturate(210%);
+  -webkit-backdrop-filter: blur(25px) saturate(210%);
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+.ug-root.dark .legend-profiles-bar-inline {
+  background: rgba(15, 23, 42, 0.88);
+}
+
+.legend-profile-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  min-height: 44px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #111827);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease,
+              color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.legend-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.legend-profile-btn:active {
+  transform: scale(0.95);
+  transition-duration: 0.05s;
+}
+
+.legend-profile-btn--active {
+  background: var(--surface);
+  border-color: rgba(37, 99, 235, 0.2);
+  color: #2563eb;
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08), inset 0 0 10px rgba(37, 99, 235, 0.15);
+}
+
+.ug-root.dark .legend-profile-btn {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ug-root.dark .legend-profile-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ug-root.dark .legend-profile-btn--active {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #60a5fa;
+  transform: scale(0.97);
+  box-shadow: 0 2px 10px rgba(96, 165, 250, 0.15), inset 0 0 12px rgba(96, 165, 250, 0.1);
+}
+
+.legend-profile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend-profile-label {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* ── Shared stagger keyframe ─────────────────────────────────────────────── */
+@keyframes item-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Interactive elements ─────────────────────────────────────────────────── */
+.legend-sheet button,
+.legend-sheet a {
+  cursor: pointer;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .legend-sheet {
     border-radius: 20px 20px 0 0;
     max-height: 70vh;
   }
 
-  .legend-sheet--with-bar {
-    bottom: calc(58px + env(safe-area-inset-bottom, 14px));
-  }
+  .legend-body { padding: 8px 14px max(20px, env(safe-area-inset-bottom, 20px)); }
 
-  .legend-body { padding: 8px 14px 64px; }
+  .legend-mode-btn { padding: 6px 8px 8px; }
+  .legend-mode-btn svg { width: 22px; height: 22px; }
 
-  .legend-stats-grid { padding: 10px 6px; }
+  .legend-metrics-time { font-size: 18px; }
+  .legend-metrics-dist { font-size: 12px; }
+  .legend-traffic-text { font-size: 10px; padding: 1px 8px; }
 
-  .stat-card-icon svg { width: 14px; height: 14px; }
-  .stat-card-value    { font-size: 12px; }
-  .stat-card-label    { font-size: 9px; }
-
-  .legend-profiles { gap: 6px; }
-  .legend-profile-btn { padding: 8px 8px; font-size: 11px; }
-
-
+  .peek-time { font-size: 13px; }
+  .peek-dist { font-size: 11px; }
 
   .legend-direction-step { padding: 10px 12px; gap: 8px; }
   .direction-icon { width: 24px; height: 24px; }
-  .direction-icon svg { width: 12px; height: 12px; }
   .direction-instruction { font-size: 12px; }
 
-  .legend-traffic { padding: 8px 10px; }
-  .legend-traffic-icon { font-size: 16px; width: 28px; }
-  .legend-traffic-value { font-size: 12px; }
-
-  .legend-heatmap { padding: 10px 10px; }
-  .legend-heatmap-title { font-size: 12px; }
-  .legend-heatmap-pill { font-size: 10px; padding: 2px 7px; }
-
   .legend-share-btn { padding: 8px 12px; font-size: 12px; }
+  .legend-voice-btn { padding: 8px 14px; font-size: 11px; }
 
   .legend-warning { padding: 8px 10px; font-size: 11px; }
   .warning-icon svg { width: 12px; height: 12px; }
 
-  .legend-peek-hint--insights,
-  .insights-mode-name { font-size: 16px; }
-
-  /* Mode strip mobile — compact horizontal scroll */
-  .legend-sheet--with-bar .legend-mode-strip,
-  .legend-mode-strip { padding: 4px 8px; }
-  .legend-mode-btn { padding: 6px 6px 8px; gap: 4px; }
-  .legend-mode-btn svg { width: 22px; height: 22px; }
-  .mode-btn-time { font-size: 10px; }
-
-  /* Voice button mobile — compact height */
-  .legend-voice-btn { padding: 8px 14px; font-size: 11px; }
-  .legend-voice-btn svg { width: 14px; height: 14px; }
-
-  /* Tab bar mobile */
-  .legend-tab-bar { gap: 4px; }
-  .legend-tab { padding: 8px 6px; font-size: 11px; }
-  .legend-tab svg { width: 14px; height: 14px; }
-
-  /* Stats row mobile */
-  .legend-stats-row { margin: 10px 0 0; }
-  .legend-stat-mini { padding: 8px 2px; gap: 1px; }
-  .legend-stat-mini svg { width: 16px; height: 16px; }
-  .stat-mini-label { font-size: 8px; }
-  .stat-mini-value { font-size: 11px; }
-  .stat-mini-sub { font-size: 7px; }
+  .legend-profiles-bar-inline { padding: 6px 12px max(6px, env(safe-area-inset-bottom, 14px)); gap: 6px; }
+  .legend-profile-btn { padding: 8px 4px; font-size: 11px; }
+  .legend-profile-label { font-size: 10px; }
 }
 
 /* ── Desktop ─────────────────────────────────────────────────────────────── */
 @media (min-width: 1024px) {
   .legend-sheet {
-    left: 50%;
-    transform: translateX(-50%);
-    width: 480px;
-    right: auto;
     border-radius: 28px 28px 0 0;
   }
 
-  .legend-sheet.dragging {
-    transform: translateX(-50%) !important;
-  }
+  .legend-mode-btn { padding: 8px 14px 10px; }
+  .legend-mode-btn svg { width: 24px; height: 24px; }
 
-  .legend-sheet--snapping {
-    transform: translateX(-50%) translateY(var(--snap-y, 0));
-  }
+  .legend-body { padding: 12px 24px max(24px, env(safe-area-inset-bottom, 24px)); }
 
-  @keyframes sheet-rise {
-    from { transform: translateX(-50%) translateY(110%); opacity: 0; }
-    to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
-  }
-
-  .legend-sheet--with-bar .legend-mode-strip { padding: 16px; }
-  .legend-mode-btn { padding: 8px 12px 14px; gap: 6px; }
-  .legend-mode-btn svg { width: 22px; height: 22px; }
-  .mode-btn-time { font-size: 12px; }
-
-
-  .legend-profiles-bar {
-    left: 50%;
-    transform: translateX(-50%);
-    width: 480px;
-    right: auto;
+  .legend-profiles-bar-inline {
     border-radius: 0 0 28px 28px;
   }
+
   .legend-profile-btn { padding: 8px 4px; font-size: 11px; }
-
-  .stat-card-icon svg { width: 16px; height: 16px; }
-  .stat-card-value { font-size: 13px; }
-  .stat-card-label { font-size: 10px; }
-
-  .legend-stat-mini { padding: 10px 6px; }
-  .legend-stat-mini svg { width: 18px; height: 18px; }
-  .stat-mini-label { font-size: 9px; }
-  .stat-mini-value { font-size: 12px; }
-  .stat-mini-sub { font-size: 8px; }
-
-  .direction-icon { width: 26px; height: 26px; }
-  .direction-icon svg { width: 13px; height: 13px; }
-  .direction-instruction { font-size: 12px; }
-
-  .legend-voice-btn { padding: 10px 18px; font-size: 12px; }
-  .legend-voice-btn svg { width: 15px; height: 15px; }
-
-  .legend-body { padding-bottom: 64px; }
-  .legend-tab { padding: 8px 12px; font-size: 12px; }
-  .legend-tab svg { width: 14px; height: 14px; }
-
-  .legend-warning { padding: 9px 12px; font-size: 12px; }
-  .warning-icon svg { width: 13px; height: 13px; }
-
-  .legend-share-btn { padding: 9px 14px; font-size: 12px; }
 }
-
-/* ── PWA standalone mode ─────────────────────────────────────────────────── */
-/*
- * DO NOT override `bottom` here. The base rule
- *   bottom: env(safe-area-inset-bottom, 0px)
- * on .legend-sheet already anchors the sheet above the home indicator
- * in all modes including standalone. Overriding it with `bottom: 0`
- * would drop the anchor to the raw screen edge and cause the sheet to
- * sink behind the home bar.
- *
- * padding-bottom on .legend-sheet is also intentionally absent — it
- * inflates offsetHeight which breaks the JS peekTranslateY calculation.
- * Content clipping is handled by legend-body's padding below instead.
- */
-@media (display-mode: standalone) {
-  .legend-body {
-    /* Prevent the last scroll item from disappearing under the home bar */
-    padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
-  }
-}
-
