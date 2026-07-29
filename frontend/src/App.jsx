@@ -8,6 +8,7 @@ import { findNearestNode } from "./services/routing";
 import { buildGraph } from "./services/graphBuilder";
 import { loadPreferences, savePreferences, loadRouteState, saveRouteState, clearRouteState } from "./services/preferencesStore";
 import { logRouteCalculated, logSearch, logLogin } from "./services/analyticsLogger";
+import { useGpsPings } from "./hooks/useGpsPings";
 import NavPanel from "./components/Panel/NavPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import OfflineIndicator from "./components/OfflineIndicator";
@@ -73,6 +74,9 @@ export default function App() {
   const legendCollapseRef = useRef(null);
 
   const { location: currentLocation, accuracy, error: locationError, permissionState, requestLocation } = useGeolocation();
+
+  // ── GPS heatmap pings ───────────────────────────────────────────
+  useGpsPings(currentLocation);
 
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
   const [resetProgressTimestamp, setResetProgressTimestamp] = useState(0); // New state for resetting progress

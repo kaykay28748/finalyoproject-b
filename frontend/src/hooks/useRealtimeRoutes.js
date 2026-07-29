@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getAllRoutes, findNearestNode } from "../services/routing";
 import { getDistanceToRoute, distanceBetween, findClosestPointOnRoute } from "../function/utils/geometry";
-import { logRouteSegments, resetHeatmapSession } from "../services/heatmapAnalytics";
+import { resetHeatmapSession } from "../services/heatmapAnalytics";
 import { useVoiceGuidance } from "./useVoiceGuidance";
 
 const DEVIATION_THRESHOLD_METERS  = 45;
@@ -120,8 +120,6 @@ export function useRealtimeRoutes({
         speakRouteSummary(dist, time, isReroute);
       }
 
-      const routeToLog = allRoutes?.standard ?? allRoutes?.fastest;
-      if (routeToLog?.coordinates?.length) logRouteSegments(routeToLog.coordinates);
 
     } catch (err) {
       console.error("[Routes] Calculation failed:", err);

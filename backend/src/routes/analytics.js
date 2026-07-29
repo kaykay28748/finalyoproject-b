@@ -180,69 +180,66 @@ heatmapRouter.post('/', heatmapRateLimit, async (req, res) => {
 });
 
 /**
- * POST /analytics/heatmap/search
- * Log a search destination with coordinates.
- * No auth required — we want data from all users (including unauthenticated searchers).
- * Body: { query, destination_name, lat, lng }
+ * POST /analytics/ping
+ * Log anonymous GPS pings from live user location.
+ * Batched client-side — receives up to 50 pings per request.
+ * Upserts into route_segments so the existing heatmap query covers it.
+ * No auth required.
+ * Body: { pings: [{lat, lng}], hour: 0–23, dayOfWeek: 0–6 }
  */
-heatmapRouter.post('/search', heatmapRateLimit, async (req, res) => {
+heatmapRouter.post('/ping', heatmapRateLimit, async (req, res) => {
   try {
-    const { destination_name, lat, lng } = req.body;
+    const { pings, hour, dayOfWeek } = req.body;
 
-    if (lat === undefined || lng === undefined) {
-      return res.status(400).json({ error: 'lat and lng required' });
+    if (!Array.isArray(pings) || pings.length === 0) {
+      return res.status(400).json({ error: 'pings array required' });
     }
 
-    const latitude  = Number(lat);
-    const longitude = Number(lng);
-
-    if (isNaN(latitude) || isNaN(longitude)) {
-      return res.status(400).json({ error: 'Invalid coordinates' });
+    if (pings.length > 200) {
+      return res.status(400).json({ error: 'Too many pings (max 200 per request)' });
     }
 
-    // Sanity-check: must be within greater Accra area
-    if (latitude < 5.5 || latitude > 5.8 || longitude < -0.4 || longitude > 0.1) {
-      return res.status(400).json({ error: 'Coordinates outside service area' });
-    }
+    const h   = Number(hour);
+    const dow = Number(dayOfWeek);
 
-    // Bucket to same precision as route segments (5 decimal places)
-    const BUCKET_PRECISION = 5;
-    const lat_bucket = parseFloat(latitude.toFixed(BUCKET_PRECISION));
-    const lng_bucket = parseFloat(longitude.toFixed(BUCKET_PRECISION));
+    if (isNaN(h) || h < 0 || h > 23)     return res.status(400).json({ error: 'Invalid hour' });
+    if (isNaN(dow) || dow < 0 || dow > 6) return res.status(400).json({ error: 'Invalid dayOfWeek' });
 
-    const now       = new Date();
-    const hour      = now.getHours();
-    const dayOfWeek = now.getDay();
-
-    // Upsert into search_destinations table
     const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isProduction) {
-      // PostgreSQL upsert
-      await query(
-        `INSERT INTO search_destinations (destination_name, lat_bucket, lng_bucket, hour_of_day, day_of_week, count, updated_at)
-         VALUES (?, ?, ?, ?, ?, 1, NOW())
-         ON CONFLICT (lat_bucket, lng_bucket, hour_of_day, day_of_week)
-         DO UPDATE SET count = search_destinations.count + 1, updated_at = NOW()`,
-        [destination_name || null, lat_bucket, lng_bucket, hour, dayOfWeek]
-      );
-    } else {
-      // SQLite upsert
-      await query(
-        `INSERT INTO search_destinations (destination_name, lat_bucket, lng_bucket, hour_of_day, day_of_week, count, updated_at)
-         VALUES (?, ?, ?, ?, ?, 1, datetime('now'))
-         ON CONFLICT (lat_bucket, lng_bucket, hour_of_day, day_of_week)
-         DO UPDATE SET count = search_destinations.count + 1, updated_at = datetime('now')`,
-        [destination_name || null, lat_bucket, lng_bucket, hour, dayOfWeek]
-      );
+    for (const p of pings) {
+      const lat = Number(p.lat);
+      const lng = Number(p.lng);
+
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      if (isProduction) {
+        await query(
+          `INSERT INTO route_segments (lat_bucket, lng_bucket, hour_of_day, day_of_week, count, updated_at)
+           VALUES (?, ?, ?, ?, 1, NOW())
+           ON CONFLICT (lat_bucket, lng_bucket, hour_of_day, day_of_week)
+           DO UPDATE SET count = route_segments.count + 1, updated_at = NOW()`,
+          [lat, lng, h, dow]
+        );
+      } else {
+        await query(
+          `INSERT INTO route_segments (lat_bucket, lng_bucket, hour_of_day, day_of_week, count, updated_at)
+           VALUES (?, ?, ?, ?, 1, datetime('now'))
+           ON CONFLICT (lat_bucket, lng_bucket, hour_of_day, day_of_week)
+           DO UPDATE SET count = route_segments.count + 1, updated_at = datetime('now')`,
+          [lat, lng, h, dow]
+        );
+      }
     }
 
-    res.json({ success: true, logged: 1 });
+    res.json({ success: true, logged: pings.length });
   } catch (error) {
-    console.error('[Search Destination POST] Error:', error.message);
-    res.status(500).json({ error: 'Failed to log search destination' });
+    console.error('[Ping POST] Error:', error.message);
+    res.status(500).json({ error: 'Failed to log pings' });
   }
 });
+
+
 
 /**
  * GET /analytics/heatmap?south=&west=&north=&east=&hour=&dayOfWeek=
@@ -331,6 +328,27 @@ heatmapRouter.get('/', async (req, res) => {
   } catch (error) {
     console.error('[Heatmap GET] Error:', error.message);
     res.status(500).json({ error: 'Failed to fetch heatmap data' });
+  }
+});
+
+/**
+ * GET /analytics/reset
+ * Clears all heatmap data from route_segments and search_destinations.
+ * No auth — hit this endpoint to reset before switching to GPS pings.
+ */
+heatmapRouter.get('/reset', async (req, res) => {
+  try {
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && req.query.confirm !== 'yes') {
+      return res.status(400).json({ error: 'Production: add ?confirm=yes to reset' });
+    }
+    await query('DELETE FROM route_segments');
+    await query('DELETE FROM search_destinations');
+    console.log('[Heatmap Reset] All heatmap data cleared');
+    res.json({ success: true, message: 'Heatmap data reset successfully' });
+  } catch (error) {
+    console.error('[Heatmap Reset] Error:', error.message);
+    res.status(500).json({ error: 'Failed to reset heatmap data' });
   }
 });
 
