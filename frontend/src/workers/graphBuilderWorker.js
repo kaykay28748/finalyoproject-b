@@ -252,31 +252,6 @@ function isVehicleRestrictedNow() {
   return hour >= 0 && hour < 5;
 }
 
-// Simplified cost function for worker (reuses same logic as main)
-function calculateEdgeCostWorker(edge, profile, timePeriod, vehicleRestricted, currentHour, vehicleMode, incomingBearing, goalBearing, weatherMultipliers) {
-  // This is a simplified version - in production, you would import the full costFunction
-  // For now, just return distance as base cost
-  let cost = edge.distance;
-  
-  // Apply weather unpaved multiplier
-  if (weatherMultipliers && weatherMultipliers.unpavedMultiplier !== 1.0) {
-    const surfaceTag = edge.tags?.surface?.toLowerCase() || "";
-    const isUnpaved = ['grass', 'dirt', 'gravel', 'unpaved', 'ground', 'sand', 'mud'].includes(surfaceTag);
-    if (isUnpaved) {
-      cost *= weatherMultipliers.unpavedMultiplier;
-    }
-  }
-  
-  // Apply weather lighting multiplier at night
-  if (weatherMultipliers && weatherMultipliers.lightingMultiplier !== 1.0) {
-    if (timePeriod === "night" || timePeriod === "dusk") {
-      cost *= weatherMultipliers.lightingMultiplier;
-    }
-  }
-  
-  return cost;
-}
-
 export async function buildGraphWorker(apiUrl) {
   if (apiUrl) setOverpassProxy(`${apiUrl}/api/overpass`);
 
@@ -326,4 +301,4 @@ export async function buildGraphWorker(apiUrl) {
 }
 
 // Export for use in routing
-export { heuristicCost, getTimePeriod, isVehicleRestrictedNow, calculateEdgeCostWorker, DEFAULT_WEATHER_MULTIPLIERS };
+export { heuristicCost, getTimePeriod, isVehicleRestrictedNow, DEFAULT_WEATHER_MULTIPLIERS };
