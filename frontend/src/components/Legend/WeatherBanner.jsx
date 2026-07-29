@@ -82,7 +82,7 @@ function ForecastPopup({ onClose }) {
   return createPortal(
     // Semi-transparent overlay — click closes; Legend stays behind it and is
     // accessible the moment the popup dismisses.
-    <div className={`forecast-overlay${isDark ? ' forecast-dark' : ''}`} onClick={() => { trigger(10); onClose(); }} role="dialog"
+    <div className={`forecast-overlay${isDark ? ' forecast-dark' : ''}`} onClick={onClose} role="dialog"
       aria-modal="true" aria-label="5-day weather forecast">
 
       <div className="forecast-popup" ref={popupRef} onClick={stopProp}>
@@ -94,7 +94,7 @@ function ForecastPopup({ onClose }) {
             <span>5-Day Forecast</span>
             <span className="forecast-location">University of Ghana, Legon</span>
           </div>
-          <button className="forecast-close-btn" onClick={() => { trigger(10); onClose(); }}
+          <button className="forecast-close-btn" onClick={onClose}
             aria-label="Close forecast">
             <CloseIcon />
           </button>

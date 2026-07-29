@@ -41,7 +41,7 @@ export function useDragSheet({ expanded, onExpandedChange, disableDrag, onDragPr
 
   const handleDragStart = useCallback((e) => {
     if (disableDrag) return;
-    if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+    if (e.target.closest('button, a, input, select, textarea')) return;
 
     e.stopPropagation();
     if (e.type === "touchstart" && e.cancelable) e.preventDefault();
