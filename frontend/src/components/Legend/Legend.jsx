@@ -400,8 +400,10 @@ const Legend = forwardRef(function Legend(
   }, [updateIndicator]);
 
   const isDraggingRef = useRef(false);
+  const expandedRef = useRef(expanded);
 
   useEffect(() => { isDraggingRef.current = isDragging; }, [isDragging]);
+  useEffect(() => { expandedRef.current = expanded; }, [expanded]);
 
   const lastAnnouncedRouteIdRef = useRef(null);
   const pendingRouteSummaryRef = useRef(null);
@@ -510,7 +512,7 @@ const Legend = forwardRef(function Legend(
           const style = window.getComputedStyle(sheetRef.current);
           const matrix = new DOMMatrix(style.transform);
           const currentY = matrix.m42;
-          const targetY = expanded ? expandedTranslateY.current : peekTranslateY.current;
+          const targetY = expandedRef.current ? expandedTranslateY.current : peekTranslateY.current;
           if (Math.abs(currentY - targetY) > 1) {
             snapTo(targetY);
           }
