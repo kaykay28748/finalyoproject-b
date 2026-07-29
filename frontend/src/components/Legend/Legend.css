@@ -28,7 +28,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-bottom: max(40px, env(safe-area-inset-bottom, 40px));
+  padding-bottom: env(safe-area-inset-bottom, 14px);
   transition: background 0.3s ease;
   contain: layout paint;
 }
@@ -885,7 +885,7 @@
   display: flex;
   flex-direction: row;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 16px 34px;
   width: 100%;
   max-width: 480px;
   background: rgba(255, 255, 255, 0.88);
