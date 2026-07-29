@@ -178,31 +178,40 @@ async function fetchOverpassWithRetry(endpoint, body, retries = 3) {
       const response = await fetch(endpoint, {
         method: 'POST',
         body,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        signal: AbortSignal.timeout(45000),
+        headers: {
+          'Content-Type': 'text/plain',
+          'User-Agent': 'UG-Navigator/1.0 (https://ugnavigator.onrender.com)',
+        },
+        signal: AbortSignal.timeout(60000),
       });
 
       if (response.ok) return response;
 
-      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: HTTP ${response.status}`);
+      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: HTTP ${response.status} ${response.statusText}`);
       if (response.status === 429) {
-        const wait = Math.min(1000 * Math.pow(2, attempt), 16000);
+        const wait = Math.min(2000 * Math.pow(2, attempt), 16000);
         await new Promise(r => setTimeout(r, wait));
         continue;
       }
+
+      const text = await response.text().catch(() => '');
+      console.warn(`[Overpass Proxy] Response body (${text.length} chars): ${text.slice(0, 200)}`);
       return null;
     } catch (err) {
-      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: ${err.message}`);
+      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: ${err.name}: ${err.message}`);
       if (attempt < retries - 1) {
-        await new Promise(r => setTimeout(r, 2000 * Math.pow(2, attempt)));
+        await new Promise(r => setTimeout(r, 3000 * Math.pow(2, attempt)));
       }
     }
   }
   return null;
 }
 
-app.post('/api/overpass', express.text({ type: '*/*', limit: '5mb' }), async (req, res) => {
-  const body = typeof req.body === 'string' ? req.body : req.body?.toString();
+app.post('/api/overpass', async (req, res) => {
+  // Read raw body manually (avoids body-parser interference)
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const body = Buffer.concat(chunks).toString('utf-8').trim();
   if (!body) return res.status(400).json({ error: 'Missing Overpass QL query' });
 
   // Cache key based on the query (same query = same result)
