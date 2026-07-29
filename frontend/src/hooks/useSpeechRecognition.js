@@ -4,6 +4,7 @@ export default function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const recognitionRef = useRef(null);
+  const listeningRef = useRef(false);
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -18,25 +19,32 @@ export default function useSpeechRecognition() {
       const text = event.results[0][0].transcript;
       setTranscript(text);
       setIsListening(false);
+      listeningRef.current = false;
     };
 
     recognition.onerror = () => {
       setIsListening(false);
+      listeningRef.current = false;
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      if (listeningRef.current) {
+        setIsListening(false);
+        listeningRef.current = false;
+      }
     };
 
     recognitionRef.current = recognition;
+    listeningRef.current = true;
     recognition.start();
     setIsListening(true);
     setTranscript("");
   }, []);
 
   const stopListening = useCallback(() => {
+    listeningRef.current = false;
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try { recognitionRef.current.abort(); } catch (_) {}
       recognitionRef.current = null;
     }
     setIsListening(false);
