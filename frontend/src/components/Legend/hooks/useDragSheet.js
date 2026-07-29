@@ -96,8 +96,14 @@ export function useDragSheet({ expanded, onExpandedChange, disableDrag, onDragPr
     if (!pos) return;
 
     const currentY = parseFloat(el?.style.transform?.match(/translateY\(([-\d.]+)px\)/)?.[1] ?? "0");
-    const midpoint = pos.peekY / 2;
-    const shouldExpand = currentY < midpoint;
+    let shouldExpand;
+    if (pos.peekY > 5) {
+      const midpoint = pos.peekY / 2;
+      shouldExpand = currentY < midpoint;
+    } else {
+      const totalDelta = dragCurrentY.current - dragStartY.current;
+      shouldExpand = totalDelta < -10;
+    }
 
     if (shouldExpand !== expandedRef.current) {
       onExpandedChange?.(shouldExpand);
