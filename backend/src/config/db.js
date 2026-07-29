@@ -53,42 +53,6 @@ if (isProduction) {
 
   runDevMigrations = async () => {
     try {
-      // Ensure search_destinations table exists (added after initial deployment)
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS search_destinations (
-          id               SERIAL PRIMARY KEY,
-          destination_name TEXT,
-          lat_bucket       DOUBLE PRECISION NOT NULL,
-          lng_bucket       DOUBLE PRECISION NOT NULL,
-          hour_of_day      INTEGER NOT NULL,
-          day_of_week      INTEGER NOT NULL,
-          count            INTEGER NOT NULL DEFAULT 1,
-          updated_at       TIMESTAMP NOT NULL DEFAULT NOW()
-        )
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_search_destinations_cell
-        ON search_destinations (lat_bucket, lng_bucket, hour_of_day, day_of_week)
-      `);
-
-      await pool.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_search_destinations_unique
-        ON search_destinations (lat_bucket, lng_bucket, hour_of_day, day_of_week)
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_search_destinations_lat
-        ON search_destinations (lat_bucket)
-      `);
-
-      await pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_search_destinations_lng
-        ON search_destinations (lng_bucket)
-      `);
-
-      console.log('[Migration] ✅ search_destinations table ready');
-
       // Ensure report_confirmations table exists
       await pool.query(`
         CREATE TABLE IF NOT EXISTS report_confirmations (

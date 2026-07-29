@@ -99,18 +99,6 @@ CREATE TABLE IF NOT EXISTS route_segments (
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Search destinations (heatmap)
-CREATE TABLE IF NOT EXISTS search_destinations (
-  id               INTEGER PRIMARY KEY AUTOINCREMENT,
-  destination_name TEXT,
-  lat_bucket       REAL NOT NULL,
-  lng_bucket       REAL NOT NULL,
-  hour_of_day      INTEGER NOT NULL,
-  day_of_week      INTEGER NOT NULL,
-  count            INTEGER NOT NULL DEFAULT 1,
-  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Accessibility reports
 CREATE TABLE IF NOT EXISTS accessibility_reports (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,10 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_route_segments_cell ON route_segments (lat_bucket
 CREATE INDEX IF NOT EXISTS idx_route_segments_lat ON route_segments (lat_bucket);
 CREATE INDEX IF NOT EXISTS idx_route_segments_lng ON route_segments (lng_bucket);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_route_segments_unique ON route_segments (lat_bucket, lng_bucket, hour_of_day, day_of_week);
-CREATE INDEX IF NOT EXISTS idx_search_destinations_cell ON search_destinations (lat_bucket, lng_bucket, hour_of_day, day_of_week);
-CREATE INDEX IF NOT EXISTS idx_search_destinations_lat ON search_destinations (lat_bucket);
-CREATE INDEX IF NOT EXISTS idx_search_destinations_lng ON search_destinations (lng_bucket);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_search_destinations_unique ON search_destinations (lat_bucket, lng_bucket, hour_of_day, day_of_week);
+
 CREATE INDEX IF NOT EXISTS idx_accessibility_reports_status ON accessibility_reports(status);
 CREATE INDEX IF NOT EXISTS idx_accessibility_reports_submitted_by ON accessibility_reports(submitted_by);
 CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id ON report_confirmations(report_id);

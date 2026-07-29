@@ -239,8 +239,6 @@ heatmapRouter.post('/ping', heatmapRateLimit, async (req, res) => {
   }
 });
 
-
-
 /**
  * GET /analytics/heatmap?south=&west=&north=&east=&hour=&dayOfWeek=
  * Returns aggregated heatmap cells within the given bounding box.
@@ -266,7 +264,6 @@ heatmapRouter.get('/', async (req, res) => {
     }
 
     // Build dynamic WHERE clause for optional time filters
-    // We need to build this carefully for the UNION query
     let timeFilter   = '';
     let timeParams   = [];
 
@@ -282,29 +279,14 @@ heatmapRouter.get('/', async (req, res) => {
       timeParams.push(d);
     }
 
-    // UNION both route_segments and search_destinations for combined heatmap data
-    // Parameters: [s, n, w, e] for route_segments bbox + timeParams + [s, n, w, e] for search_destinations bbox + timeParams
-    const allParams = [s, n, w, e, ...timeParams, s, n, w, e, ...timeParams];
+    const allParams = [s, n, w, e, ...timeParams];
 
     const result = await query(
-      `SELECT lat_bucket AS lat, lng_bucket AS lng, SUM(total_count) AS total
-       FROM (
-         SELECT lat_bucket, lng_bucket, SUM(count) AS total_count
-         FROM route_segments
-         WHERE lat_bucket BETWEEN ? AND ?
-           AND lng_bucket BETWEEN ? AND ?
-           ${timeFilter}
-         GROUP BY lat_bucket, lng_bucket
-         
-         UNION ALL
-         
-         SELECT lat_bucket, lng_bucket, SUM(count) AS total_count
-         FROM search_destinations
-         WHERE lat_bucket BETWEEN ? AND ?
-           AND lng_bucket BETWEEN ? AND ?
-           ${timeFilter}
-         GROUP BY lat_bucket, lng_bucket
-       )
+      `SELECT lat_bucket AS lat, lng_bucket AS lng, SUM(count) AS total
+       FROM route_segments
+       WHERE lat_bucket BETWEEN ? AND ?
+         AND lng_bucket BETWEEN ? AND ?
+         ${timeFilter}
        GROUP BY lat_bucket, lng_bucket
        ORDER BY total DESC
        LIMIT 2000`,
@@ -333,7 +315,7 @@ heatmapRouter.get('/', async (req, res) => {
 
 /**
  * GET /analytics/reset
- * Clears all heatmap data from route_segments and search_destinations.
+ * Clears all heatmap data from route_segments.
  * No auth — hit this endpoint to reset before switching to GPS pings.
  */
 heatmapRouter.get('/reset', async (req, res) => {
@@ -343,7 +325,6 @@ heatmapRouter.get('/reset', async (req, res) => {
       return res.status(400).json({ error: 'Production: add ?confirm=yes to reset' });
     }
     await query('DELETE FROM route_segments');
-    await query('DELETE FROM search_destinations');
     console.log('[Heatmap Reset] All heatmap data cleared');
     res.json({ success: true, message: 'Heatmap data reset successfully' });
   } catch (error) {
