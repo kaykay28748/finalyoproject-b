@@ -3,15 +3,27 @@ import { IconSpeakerWave, IconShare } from "../ui/icon";
 import { useHaptics } from "../../hooks/useHaptics";
 import { formatDistance } from "./hooks/useRouteMetrics";
 
-const ArrowMap = {
-  straight: "\u2191", "slight-right": "\u2197", "turn-right": "\u2192",
-  "sharp-right": "\u2198", "slight-left": "\u2196", "turn-left": "\u2190",
-  "sharp-left": "\u2199", destination: "\uD83D\uDCCD", start: "\uD83D\uDE97",
+const ArrowSvg = ({ d, color = "currentColor" }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+
+const DirectionIcon = ({ maneuver }) => {
+  switch (maneuver) {
+    case "straight": return <ArrowSvg d="M12 5v14M8 9l4-4 4 4" />;
+    case "slight-right": return <ArrowSvg d="M7 17l7-7M14 10v5M14 10H9" />;
+    case "turn-right": return <ArrowSvg d="M5 12h10M17 14l4-4-4-4" />;
+    case "sharp-right": return <ArrowSvg d="M6 18l9-9M6 9h9v9" />;
+    case "slight-left": return <ArrowSvg d="M17 17l-7-7M10 10v5M10 10h5" />;
+    case "turn-left": return <ArrowSvg d="M19 12H9M7 14l-4-4 4-4" />;
+    case "sharp-left": return <ArrowSvg d="M18 18l-9-9M18 9H9v9" />;
+    case "destination": return <ArrowSvg d="M12 21s-6-5.464-6-9a6 6 0 0 1 12 0c0 3.536-6 9-6 9zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />;
+    default: return <ArrowSvg d="M12 5v14M8 9l4-4 4 4" />;
+  }
 };
 
 function DirectionStep({ step, idx, isActive, isLast }) {
-  const arrow = ArrowMap[step.maneuver] || "\u2022";
-
   return (
     <div
       data-step-index={idx}
@@ -19,7 +31,7 @@ function DirectionStep({ step, idx, isActive, isLast }) {
       aria-current={isActive ? "step" : undefined}
     >
       <div className="direction-icon">
-        <span style={{ fontSize: "15px", fontWeight: 500 }}>{arrow}</span>
+        <DirectionIcon maneuver={step.maneuver} />
       </div>
       <div className="direction-content">
         <div className="direction-instruction">
@@ -83,7 +95,7 @@ export default function LegendDirectionsTab({
           title={isVoiceEnabled ? "Disable voice guidance" : "Enable voice guidance"}
           aria-pressed={isVoiceEnabled}
         >
-          <IconSpeakerWave className="w-3 h-3" color={isVoiceEnabled ? "#3b82f6" : "#9ca3af"} />
+          <IconSpeakerWave className="w-2.5 h-2.5" color={isVoiceEnabled ? "#3b82f6" : "#9ca3af"} />
           <span>{isVoiceEnabled ? "Voice guidance ON" : "Voice guidance OFF"}</span>
         </button>
       </div>
@@ -139,7 +151,7 @@ export default function LegendDirectionsTab({
       )}
 
       <button className="legend-share-btn" onClick={handleShare}>
-        <IconShare className="w-3 h-3" color="#3b82f6" />
+        <IconShare className="w-2.5 h-2.5" color="#3b82f6" />
         <span>Share my location</span>
       </button>
 
