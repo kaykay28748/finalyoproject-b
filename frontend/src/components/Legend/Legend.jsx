@@ -1439,7 +1439,6 @@ const Legend = forwardRef(function Legend(
               <span className="heatmap-legend-label">High</span>
             </div>
           </div>
-        </>
       )}
     </div>
 
