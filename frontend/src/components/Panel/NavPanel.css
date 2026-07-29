@@ -11,7 +11,7 @@
     0 8px 24px rgba(0, 0, 0, 0.06),
     0 2px 4px rgba(0, 0, 0, 0.02),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  z-index: 1000;
+  z-index: 1002;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -948,7 +948,7 @@
 .nav-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 99; /* Just below the nav panel */
+  z-index: 1001;
   background: rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
