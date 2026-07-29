@@ -64,11 +64,11 @@ function getOverpassEndpoints() {
   return [DIRECT_OVERPASS, FALLBACK_OVERPASS];
 }
 
-async function fetchWithRetry(url, query, retries = 2) {
+async function fetchWithRetry(url, query, retries = 5) {
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
       
       const response = await fetch(url, {
         method: "POST",
@@ -82,6 +82,13 @@ async function fetchWithRetry(url, query, retries = 2) {
       if (response.ok) {
         return response;
       }
+
+      if (response.status === 429) {
+        const wait = Math.min(5000 * Math.pow(2, i), 30000);
+        console.warn(`[GraphWorker] Rate limited (429), waiting ${wait}ms...`);
+        await new Promise(resolve => setTimeout(resolve, wait));
+        continue;
+      }
       
       console.warn(`[GraphWorker] Attempt ${i + 1} failed: HTTP ${response.status}`);
       
@@ -90,7 +97,7 @@ async function fetchWithRetry(url, query, retries = 2) {
     }
     
     if (i < retries) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
   }
   

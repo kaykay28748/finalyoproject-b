@@ -34,11 +34,11 @@ const getOSMQuery = (bounds) => {
   `;
 };
 
-async function fetchWithRetry(url, query, retries = 3) {
+async function fetchWithRetry(url, query, retries = 5) {
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId  = setTimeout(() => controller.abort(), 45000);
+      const timeoutId  = setTimeout(() => controller.abort(), 60000);
 
       const response = await fetch(url, {
         method:  "POST",
@@ -48,12 +48,21 @@ async function fetchWithRetry(url, query, retries = 3) {
       });
 
       clearTimeout(timeoutId);
+
       if (response.ok) return response;
+
+      if (response.status === 429) {
+        const wait = Math.min(5000 * Math.pow(2, i), 30000);
+        console.warn(`[GraphBuilder] Rate limited (429), waiting ${wait}ms...`);
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+
       console.warn(`[GraphBuilder] Attempt ${i + 1} failed: HTTP ${response.status}`);
     } catch (error) {
       console.warn(`[GraphBuilder] Attempt ${i + 1} failed:`, error.message);
     }
-    if (i < retries) await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    if (i < retries) await new Promise(r => setTimeout(r, 3000));
   }
   throw new Error('All fetch attempts failed');
 }
@@ -73,8 +82,8 @@ export async function buildGraph() {
     try {
       response = await fetchWithRetry(OVERPASS_PROXY, query);
     } catch {
-      console.log("[GraphBuilder] Proxy failed, trying direct Overpass API...");
-      response = await fetchWithRetry("https://overpass-api.de/api/interpreter", query);
+      console.log("[GraphBuilder] All proxy retries exhausted");
+      response = null;
     }
 
     if (!response) throw new Error('No response from Overpass API');
