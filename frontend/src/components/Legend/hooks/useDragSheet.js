@@ -16,7 +16,7 @@ export function useDragSheet({ expanded, onExpandedChange, disableDrag, onDragPr
     const el = sheetRef.current;
     if (!el) return;
     const h = el.offsetHeight;
-    return { peekY: h - PEEK_HEIGHT, expandedY: 0 };
+    return { peekY: Math.max(0, h - PEEK_HEIGHT), expandedY: 0 };
   }, []);
 
   const snapTo = useCallback((targetY) => {
