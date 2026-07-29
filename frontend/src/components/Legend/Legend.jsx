@@ -362,6 +362,7 @@ const Legend = forwardRef(function Legend(
 
   const [indicatorLeft, setIndicatorLeft] = useState(4);
   const [indicatorWidth, setIndicatorWidth] = useState(56);
+  const [indicatorReady, setIndicatorReady] = useState(false);
 
   const peekHeight = window.innerWidth >= 1024 ? 140 : 120;
 
@@ -376,6 +377,7 @@ const Legend = forwardRef(function Legend(
     const btnRect = btn.getBoundingClientRect();
     setIndicatorLeft(btnRect.left - stripRect.left);
     setIndicatorWidth(btnRect.width);
+    setIndicatorReady(true);
   }, [vehicleMode]);
 
   useLayoutEffect(() => {
@@ -1109,10 +1111,12 @@ const Legend = forwardRef(function Legend(
             );
           })}
           <div className="mode-track">
+            {indicatorReady && (
             <div
               className="mode-indicator"
               style={{ left: `${indicatorLeft}px`, width: `${indicatorWidth}px`, '--mode-color': vehicleConfig.color }}
             />
+            )}
           </div>
         </div>
         )}
