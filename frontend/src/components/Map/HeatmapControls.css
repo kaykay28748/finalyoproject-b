@@ -3,7 +3,7 @@
 .heatmap-switcher {
   position: absolute;
   right: 20px;
-  top: calc(50% - 56px);
+  bottom: 100px;
   z-index: 999;
 }
 
