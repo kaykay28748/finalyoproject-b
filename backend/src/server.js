@@ -84,6 +84,105 @@ const generalLimiter = rateLimit({
   }
 });
 
+// ============================================
+// OVERPASS API PROXY (bypasses CORS, cached)
+// Placed BEFORE body parsers so we can read raw body
+// ============================================
+
+const overpassCache = new Map();
+const OVERPASS_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function getCachedOverpass(key) {
+  const cached = overpassCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > OVERPASS_CACHE_TTL) {
+    overpassCache.delete(key);
+    return null;
+  }
+  return cached.data;
+}
+
+function setCachedOverpass(key, data) {
+  overpassCache.set(key, { data, timestamp: Date.now() });
+}
+
+async function fetchOverpassWithRetry(endpoint, body, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body,
+        headers: {
+          'Content-Type': 'text/plain',
+          'User-Agent': 'UG-Navigator/1.0 (https://ugnavigator.onrender.com)',
+        },
+        signal: AbortSignal.timeout(60000),
+      });
+
+      if (response.ok) return response;
+
+      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: HTTP ${response.status}`);
+      if (response.status === 429) {
+        const wait = Math.min(2000 * Math.pow(2, attempt), 16000);
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+      const text = await response.text().catch(() => '');
+      console.warn(`[Overpass Proxy] body: ${text.slice(0, 200)}`);
+      return null;
+    } catch (err) {
+      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: ${err.name}: ${err.message}`);
+      if (attempt < retries - 1) {
+        await new Promise(r => setTimeout(r, 3000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  return null;
+}
+
+app.post('/api/overpass', async (req, res) => {
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  await new Promise(resolve => req.on('end', resolve));
+  body = body.trim();
+
+  if (!body) return res.status(400).json({ error: 'Missing Overpass QL query' });
+
+  const cacheKey = body.slice(0, 200);
+  const cached = getCachedOverpass(cacheKey);
+  if (cached) {
+    res.set('Content-Type', 'application/json');
+    res.set('X-Cache', 'hit');
+    return res.send(cached);
+  }
+
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+  ];
+
+  for (const endpoint of endpoints) {
+    const response = await fetchOverpassWithRetry(endpoint, body);
+    if (!response) continue;
+
+    const text = await response.text();
+    setCachedOverpass(cacheKey, text);
+    res.set('Content-Type', 'application/json');
+    res.set('X-Cache', 'miss');
+    return res.send(text);
+  }
+
+  const stale = overpassCache.get(cacheKey);
+  if (stale) {
+    console.log('[Overpass Proxy] Serving stale cache');
+    res.set('Content-Type', 'application/json');
+    res.set('X-Cache', 'stale');
+    return res.send(stale.data);
+  }
+
+  res.status(502).json({ error: 'Overpass API unavailable — try again later' });
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(sanitizeParams);
@@ -149,106 +248,6 @@ app.get('/api/locationiq/reverse', async (req, res) => {
     console.error('[LocationIQ Reverse] Error:', err.message);
     res.status(500).json({ error: 'Reverse geocoding failed' });
   }
-});
-
-// ============================================
-// OVERPASS API PROXY (bypasses CORS, cached)
-// ============================================
-
-const overpassCache = new Map();
-const OVERPASS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours (OSM graph rarely changes)
-
-function getCachedOverpass(key) {
-  const cached = overpassCache.get(key);
-  if (!cached) return null;
-  if (Date.now() - cached.timestamp > OVERPASS_CACHE_TTL) {
-    overpassCache.delete(key);
-    return null;
-  }
-  return cached.data;
-}
-
-function setCachedOverpass(key, data) {
-  overpassCache.set(key, { data, timestamp: Date.now() });
-}
-
-async function fetchOverpassWithRetry(endpoint, body, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body,
-        headers: {
-          'Content-Type': 'text/plain',
-          'User-Agent': 'UG-Navigator/1.0 (https://ugnavigator.onrender.com)',
-        },
-        signal: AbortSignal.timeout(60000),
-      });
-
-      if (response.ok) return response;
-
-      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: HTTP ${response.status} ${response.statusText}`);
-      if (response.status === 429) {
-        const wait = Math.min(2000 * Math.pow(2, attempt), 16000);
-        await new Promise(r => setTimeout(r, wait));
-        continue;
-      }
-
-      const text = await response.text().catch(() => '');
-      console.warn(`[Overpass Proxy] Response body (${text.length} chars): ${text.slice(0, 200)}`);
-      return null;
-    } catch (err) {
-      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: ${err.name}: ${err.message}`);
-      if (attempt < retries - 1) {
-        await new Promise(r => setTimeout(r, 3000 * Math.pow(2, attempt)));
-      }
-    }
-  }
-  return null;
-}
-
-app.post('/api/overpass', async (req, res) => {
-  // Read raw body manually (avoids body-parser interference)
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  const body = Buffer.concat(chunks).toString('utf-8').trim();
-  if (!body) return res.status(400).json({ error: 'Missing Overpass QL query' });
-
-  // Cache key based on the query (same query = same result)
-  const cacheKey = body.trim().slice(0, 200);
-  const cached = getCachedOverpass(cacheKey);
-  if (cached) {
-    res.set('Content-Type', 'application/json');
-    res.set('X-Cache', 'hit');
-    return res.send(cached);
-  }
-
-  const endpoints = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-  ];
-
-  for (const endpoint of endpoints) {
-    const response = await fetchOverpassWithRetry(endpoint, body);
-    if (!response) continue;
-
-    const text = await response.text();
-    setCachedOverpass(cacheKey, text);
-    res.set('Content-Type', 'application/json');
-    res.set('X-Cache', 'miss');
-    return res.send(text);
-  }
-
-  // All endpoints exhausted — serve stale cache if available
-  const stale = overpassCache.get(cacheKey);
-  if (stale) {
-    console.log('[Overpass Proxy] Serving stale cache');
-    res.set('Content-Type', 'application/json');
-    res.set('X-Cache', 'stale');
-    return res.send(stale.data);
-  }
-
-  res.status(502).json({ error: 'Overpass API unavailable — try again later' });
 });
 
 // ============================================
