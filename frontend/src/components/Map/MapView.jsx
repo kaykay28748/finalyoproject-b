@@ -696,7 +696,7 @@ export default function MapView({
         ref={legendRef}
         startText={displayStartPoint?.name || startText || "Start"}
         destText={destText}
-        visible={markersVisible || showHeatmap}
+        visible={markersVisible}
         route={markersVisible ? primaryRoute : null}
         routeActive={markersVisible}
         allRoutes={allRoutes}
