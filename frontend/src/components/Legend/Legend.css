@@ -694,6 +694,64 @@
   white-space: nowrap;
 }
 
+/* ── Heatmap bottom bar (replaces profile bar when no route) ── */
+.legend-heatmap-bar {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.legend-heatmap-bar .heatmap-bar-pills {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.legend-heatmap-bar .heatmap-bar-pills::-webkit-scrollbar { display: none; }
+
+.legend-heatmap-bar .heatmap-bar-pills .legend-heatmap-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+.legend-heatmap-bar .heatmap-bar-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.legend-heatmap-bar .heatmap-bar-legend .heatmap-legend-label {
+  font-size: 9px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.ug-root.dark .legend-heatmap-bar .heatmap-bar-legend .heatmap-legend-label {
+  color: #6b7280;
+}
+
+.legend-heatmap-bar .heatmap-bar-legend .heatmap-legend-bar {
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right,
+    #313695,
+    #4575b4,
+    #74add1,
+    #fee090,
+    #f46d43,
+    #d73027,
+    #a50026
+  );
+}
+
 .legend-heatmap-legend .heatmap-legend-bar {
   flex: 1;
   height: 6px;
