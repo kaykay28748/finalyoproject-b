@@ -1,7 +1,4 @@
-// frontend/src/components/Map/HeatmapLayer.jsx
-// Only the heat overlay, no UI controls
-
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useMap } from "react-leaflet";
 import L from 'leaflet';
 import 'leaflet.heat';
@@ -15,25 +12,24 @@ export default function HeatmapLayer({ visible, selectedHour }) {
   const heatLayerRef = useRef(null);
   const debounceRef = useRef(null);
   const refreshTimerRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const refreshData = useCallback(async () => {
     if (!visible || !heatLayerRef.current) return;
 
-    setIsLoading(true);
     try {
       const bounds = map.getBounds();
       const points = await fetchHeatmapData(bounds, { hour: selectedHour });
 
-      if (heatLayerRef.current) {
+      if (heatLayerRef.current && points.length > 0) {
         heatLayerRef.current.setLatLngs(points.map(p => [p.lat, p.lng, p.weight]));
       }
     } catch (err) {
       console.error("[HeatmapLayer] Fetch failed:", err);
-    } finally {
-      setIsLoading(false);
     }
   }, [visible, map, selectedHour]);
+
+  const refreshDataRef = useRef(refreshData);
+  refreshDataRef.current = refreshData;
 
   // Create/destroy heat layer
   useEffect(() => {
@@ -45,7 +41,6 @@ export default function HeatmapLayer({ visible, selectedHour }) {
       return;
     }
 
-    // Check if L.heatLayer exists after import
     if (!L.heatLayer) {
       console.warn("[HeatmapLayer] leaflet.heat not loaded - check import");
       return;
@@ -81,31 +76,31 @@ export default function HeatmapLayer({ visible, selectedHour }) {
 
     const onMoveEnd = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(refreshData, FETCH_DEBOUNCE_MS);
+      debounceRef.current = setTimeout(() => refreshDataRef.current(), FETCH_DEBOUNCE_MS);
     };
 
     map.on('moveend', onMoveEnd);
     map.on('zoomend', onMoveEnd);
-    refreshData();
+    refreshDataRef.current();
 
     return () => {
       map.off('moveend', onMoveEnd);
       map.off('zoomend', onMoveEnd);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [visible, map, refreshData]);
+  }, [visible, map]);
 
   // Auto-refresh
   useEffect(() => {
     if (!visible) return;
-    refreshTimerRef.current = setInterval(refreshData, AUTO_REFRESH_MS);
+    refreshTimerRef.current = setInterval(() => refreshDataRef.current(), AUTO_REFRESH_MS);
     return () => clearInterval(refreshTimerRef.current);
-  }, [visible, refreshData]);
+  }, [visible]);
 
   // Refetch when time filter changes
   useEffect(() => {
-    if (visible) refreshData();
-  }, [selectedHour, visible, refreshData]);
+    if (visible) refreshDataRef.current();
+  }, [selectedHour, visible]);
 
   return null;
 }

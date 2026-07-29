@@ -13,6 +13,7 @@ import { GpsLocationMarker, CustomLocationMarker } from "./LocationMarker";
 import RouteMarkers from "./RouteMarkers";
 import RouteLayer from "./RouteLayer";
 import HeatmapLayer from "./HeatmapLayer";
+import HeatmapControls from "./HeatmapControls";
 import Legend from "../Legend/Legend";
 import WeatherOverlay from "./WeatherOverlay";
 import FloatingButtonGroup from "./FloatingButtonGroup";
@@ -657,6 +658,15 @@ export default function MapView({
             active: false,
           },
         ]}
+      />
+
+      {/* ── Heatmap Controls ────────────────────────────────────── */}
+      <HeatmapControls
+        visible={showHeatmap}
+        onToggle={onToggleHeatmap}
+        mapBounds={mapBounds}
+        selectedHour={selectedHour}
+        onSelectedHourChange={onSelectedHourChange}
       />
 
       {/* ── Layer Switcher (right side) ──────────────────────────── */}

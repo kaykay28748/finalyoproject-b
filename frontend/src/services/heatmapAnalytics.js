@@ -109,8 +109,12 @@ export async function fetchHeatmapData(bounds, options = {}) {
   try {
     let south, west, north, east;
 
-    // Accept both Leaflet bounds objects and plain objects
-    if (bounds._southWest) {
+    if (typeof bounds.getSouth === 'function') {
+      south = bounds.getSouth();
+      west  = bounds.getWest();
+      north = bounds.getNorth();
+      east  = bounds.getEast();
+    } else if (bounds._southWest) {
       south = bounds._southWest.lat;
       west  = bounds._southWest.lng;
       north = bounds._northEast.lat;
@@ -119,12 +123,20 @@ export async function fetchHeatmapData(bounds, options = {}) {
       ({ south, west, north, east } = bounds);
     }
 
+    if (south == null || west == null || north == null || east == null) {
+      console.warn('[HeatmapAnalytics] Invalid bounds:', bounds);
+      return [];
+    }
+
     const params = new URLSearchParams({ south, west, north, east });
     if (options.hour      !== undefined) params.set('hour',      options.hour);
     if (options.dayOfWeek !== undefined) params.set('dayOfWeek', options.dayOfWeek);
 
     const response = await fetch(`${API_URL}/analytics/heatmap?${params}`);
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.warn('[HeatmapAnalytics] API returned', response.status);
+      return [];
+    }
 
     const data = await response.json();
     return data.points || [];
