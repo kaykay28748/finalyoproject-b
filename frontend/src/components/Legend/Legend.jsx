@@ -518,7 +518,7 @@ const Legend = forwardRef(function Legend(
     };
   }, []);
 
-  // ── Recalc when sheet becomes visible ────────────────────────────────────
+  // ── Recalc when sheet becomes visible or route data changes ────────────
   useEffect(() => {
     if (!visible) return;
     const el = sheetRef.current;
@@ -532,7 +532,7 @@ const Legend = forwardRef(function Legend(
     ro.observe(el);
 
     return () => ro.disconnect();
-  }, [visible]);
+  }, [visible, hasRoute]);
 
   // ── Recalc peek position whenever expanded changes ───────────────────────
   useEffect(() => {
@@ -631,6 +631,15 @@ const Legend = forwardRef(function Legend(
 
     return () => ro.disconnect();
   }, [route]);
+
+  // ── Auto-expand when route becomes available while Legend is visible ──────
+  const prevHasRouteRef = useRef(hasRoute);
+  useEffect(() => {
+    if (hasRoute && !prevHasRouteRef.current && visible) {
+      setExpanded(true);
+    }
+    prevHasRouteRef.current = hasRoute;
+  }, [hasRoute, visible]);
 
   const TIME_SLOTS = [
     { label: "All day", hour: undefined },
