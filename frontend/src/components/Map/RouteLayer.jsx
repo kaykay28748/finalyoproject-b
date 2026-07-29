@@ -5,6 +5,7 @@ import { Polyline, Marker } from "react-leaflet";
 import L from "leaflet";
 import { ROUTE_COLORS } from "../../function/utils/colors";
 import { useVoiceGuidance } from "../../hooks/useVoiceGuidance";
+import { useHaptics } from "../../hooks/useHaptics";
 import { useFocus } from "../../context/FocusContext";
 import { useSmoothRoutePosition } from "../../hooks/useSmoothRoutePosition";
 import { generateDirections } from "../../services/directions";
@@ -79,6 +80,7 @@ export default function RouteLayer({
   const remainingColor = mainColor;
 
   const { isVoiceEnabled, speakTurn, speakArrival } = useVoiceGuidance();
+  const { trigger } = useHaptics();
   const focus = useFocus();
 
   // Use smooth position hook
@@ -210,6 +212,7 @@ export default function RouteLayer({
       // Trigger arrival when distance is low AND halo is pulsing at max speed (0.5s)
       if (remaining <= 20 && !hasAnnouncedArrival && parseFloat(haloDuration) <= 0.6) {
         setHasAnnouncedArrival(true);
+        trigger([100, 100, 100]);
         speakArrival();
         if (onArrivalSummary) {
           onArrivalSummary({
@@ -237,6 +240,7 @@ export default function RouteLayer({
               announced.add(threshold);
               announcedTurnsRef.current.set(i, announced);
               const instruction = turn.instruction || 'Continue';
+              if (threshold <= 50) trigger([30, 50, 30]);
               speakTurn(instruction, distanceToTurn, threshold <= 50 ? 'immediate' : 'normal');
               break;
             }

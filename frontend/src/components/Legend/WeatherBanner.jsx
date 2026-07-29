@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useWeather } from '../../hooks/useWeather';
 import { useVoiceGuidance } from '../../hooks/useVoiceGuidance';
+import { useHaptics } from '../../hooks/useHaptics';
 import { fetchForecast } from '../../services/weatherService';
 import './WeatherBanner.css';
 
@@ -81,7 +82,7 @@ function ForecastPopup({ onClose }) {
   return createPortal(
     // Semi-transparent overlay — click closes; Legend stays behind it and is
     // accessible the moment the popup dismisses.
-    <div className={`forecast-overlay${isDark ? ' forecast-dark' : ''}`} onClick={onClose} role="dialog"
+    <div className={`forecast-overlay${isDark ? ' forecast-dark' : ''}`} onClick={() => { trigger(10); onClose(); }} role="dialog"
       aria-modal="true" aria-label="5-day weather forecast">
 
       <div className="forecast-popup" ref={popupRef} onClick={stopProp}>
@@ -93,7 +94,7 @@ function ForecastPopup({ onClose }) {
             <span>5-Day Forecast</span>
             <span className="forecast-location">University of Ghana, Legon</span>
           </div>
-          <button className="forecast-close-btn" onClick={onClose}
+          <button className="forecast-close-btn" onClick={() => { trigger(10); onClose(); }}
             aria-label="Close forecast">
             <CloseIcon />
           </button>
@@ -158,6 +159,7 @@ export default function WeatherBanner() {
   } = useWeather();
 
   const { speak, isVoiceEnabled } = useVoiceGuidance();
+  const { trigger } = useHaptics();
 
   const [forecastOpen, setForecastOpen] = useState(false);
 
@@ -219,7 +221,7 @@ export default function WeatherBanner() {
             {/* Forecast toggle */}
             <button
               className={`weather-forecast-btn${forecastOpen ? ' weather-forecast-btn--active' : ''}`}
-              onClick={toggleForecast}
+              onClick={() => { trigger(10); toggleForecast(); }}
               title={forecastOpen ? 'Close forecast' : 'View 5-day forecast'}
               aria-label={forecastOpen ? 'Close forecast' : 'View 5-day forecast'}
               aria-expanded={forecastOpen}
@@ -230,7 +232,7 @@ export default function WeatherBanner() {
             {/* Refresh */}
             <button
               className="weather-refresh"
-              onClick={handleRefresh}
+              onClick={() => { trigger(10); handleRefresh(); }}
               disabled={isLoading}
               title="Refresh weather"
               aria-label="Refresh weather"

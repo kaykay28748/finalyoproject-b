@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useHaptics } from '../../hooks/useHaptics';
 import './HelpGuideModal.css';
 
 const IconClose = () => (
@@ -280,6 +281,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
   const [visible, setVisible] = useState(false);
   const firstFocusRef = useRef(null);
   const overlayRef = useRef(null);
+  const { trigger } = useHaptics();
 
   useEffect(() => {
     if (isOpen) {
@@ -325,7 +327,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
     <div
       ref={overlayRef}
       className={`helpguide-overlay ${visible ? 'helpguide-overlay--visible' : ''}`}
-      onClick={onClose}
+      onClick={() => { trigger(10); onClose(); }}
       role="dialog"
       aria-modal="true"
       aria-label="User guide"
@@ -336,7 +338,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
       >
         <div className="helpguide-header">
           <h2>UG Navigator Guide</h2>
-          <button className="helpguide-close" onClick={onClose} ref={firstFocusRef} aria-label="Close guide">
+          <button className="helpguide-close" onClick={() => { trigger(10); onClose(); }} ref={firstFocusRef} aria-label="Close guide">
             <IconClose />
           </button>
         </div>

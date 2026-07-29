@@ -2,6 +2,7 @@
 // Accessibility report dialog — smooth animations, dark-mode polished
 
 import { useState, useEffect, useRef } from 'react';
+import { useHaptics } from '../../hooks/useHaptics';
 import { submitReport } from '../../services/reportService';
 import './ReportModal.css';
 
@@ -62,6 +63,7 @@ const SEVERITY_OPTIONS = [
 ];
 
 export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation }) {
+  const { trigger } = useHaptics();
   const [selectedIssue, setSelectedIssue]     = useState('blocked_ramp');
   const [customDescription, setCustomDescription] = useState('');
   const [severity, setSeverity]               = useState(2);
@@ -208,7 +210,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
     <div
       ref={overlayRef}
       className={`report-modal-overlay ${visible ? 'report-modal-overlay--visible' : ''}`}
-      onClick={handleClose}
+      onClick={() => { trigger(10); handleClose(); }}
       role="dialog"
       aria-modal="true"
       aria-label="Report accessibility issue"
@@ -223,7 +225,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
           {!success && (
             <button
               className="report-modal-close"
-              onClick={handleClose}
+              onClick={() => { trigger(10); handleClose(); }}
               aria-label="Close dialog"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -246,7 +248,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
             <h3>Report submitted</h3>
             <p>Thanks for helping improve campus accessibility.</p>
             <p className="success-note">Admins will review this before it affects routes.</p>
-            <button className="success-close-btn" onClick={handleClose} autoFocus>
+            <button className="success-close-btn" onClick={() => { trigger(10); handleClose(); }} autoFocus>
               Done
             </button>
           </div>
@@ -284,7 +286,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
                     key={issue.value}
                     type="button"
                     className={`report-issue-btn ${selectedIssue === issue.value ? 'active' : ''}`}
-                    onClick={() => setSelectedIssue(issue.value)}
+                    onClick={() => { trigger(8); setSelectedIssue(issue.value); }}
                     aria-pressed={selectedIssue === issue.value}
                     ref={i === 0 ? firstFocusRef : undefined}
                   >
@@ -321,7 +323,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
                     key={opt.value}
                     type="button"
                     className={`report-severity-btn ${severity === opt.value ? 'active' : ''}`}
-                    onClick={() => setSeverity(opt.value)}
+                    onClick={() => { trigger(8); setSeverity(opt.value); }}
                     aria-pressed={severity === opt.value}
                   >
                     <span
@@ -354,7 +356,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
               <button
                 type="button"
                 className="report-btn report-btn-secondary"
-                onClick={handleClose}
+                onClick={() => { trigger(10); handleClose(); }}
               >
                 Cancel
               </button>
@@ -362,6 +364,7 @@ export default function ReportModal({ isOpen, onClose, onSubmit, defaultLocation
                 type="submit"
                 className={`report-btn report-btn-primary ${isSubmitting ? 'report-btn--loading' : ''}`}
                 disabled={isSubmitting}
+                onClick={() => trigger([20, 30, 20])}
               >
                 {isSubmitting ? (
                   <>

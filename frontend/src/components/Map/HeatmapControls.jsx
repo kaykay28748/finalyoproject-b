@@ -1,5 +1,6 @@
 // frontend/src/components/Map/HeatmapControls.jsx
 import { useState, useEffect } from "react";
+import { useHaptics } from "../../hooks/useHaptics";
 import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 import "./HeatmapControls.css";
 
@@ -13,6 +14,7 @@ const TIME_SLOTS = [
 ];
 
 export default function HeatmapControls({ visible, onToggle, mapBounds, selectedHour, onSelectedHourChange }) {
+  const { trigger } = useHaptics();
   const [isLoading, setIsLoading] = useState(false);
   const [pointCount, setPointCount] = useState(0);
   const [lastRefresh, setLastRefresh] = useState(null);
@@ -60,6 +62,7 @@ export default function HeatmapControls({ visible, onToggle, mapBounds, selected
           className="heatmap-close" 
           onClick={(e) => {
             e.stopPropagation();
+            trigger(10);
             onToggle();
           }}
           onMouseDown={stopPropagation}
@@ -77,6 +80,7 @@ export default function HeatmapControls({ visible, onToggle, mapBounds, selected
             className={`heatmap-pill ${selectedHour === slot.hour ? "heatmap-pill--active" : ""}`}
             onClick={(e) => {
               e.stopPropagation();
+              trigger(8);
               onSelectedHourChange(slot.hour);
             }}
             onMouseDown={stopPropagation}

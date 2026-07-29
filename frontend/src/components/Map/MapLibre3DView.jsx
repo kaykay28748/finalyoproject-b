@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useHaptics } from "../../hooks/useHaptics";
 import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
@@ -162,6 +163,7 @@ export default function MapLibre3DView({
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
+  const { trigger } = useHaptics();
   const rainCanvasRef = useRef(null);
   const rainSystemRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -331,6 +333,7 @@ export default function MapLibre3DView({
         });
 
         map.on("click", (e) => {
+          trigger(12);
           if (onMapClick) onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
         });
 

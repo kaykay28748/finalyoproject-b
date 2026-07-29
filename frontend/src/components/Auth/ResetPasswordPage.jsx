@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useHaptics } from "../../hooks/useHaptics";
 import { supabase } from "../../lib/supabase";
 import "./AuthPage.css";
 
@@ -18,6 +19,7 @@ export default function ResetPasswordPage() {
   const [checking, setChecking] = useState(true);
   
   const navigate = useNavigate();
+  const { trigger } = useHaptics();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -155,14 +157,14 @@ export default function ResetPasswordPage() {
           <button 
             type="button"
             className="auth-button-split"
-            onClick={() => navigate('/forgot-password')}
+            onClick={() => { trigger(10); navigate('/forgot-password'); }}
           >
             Request New Link
           </button>
           <button 
             type="button"
             className="auth-secondary-split"
-            onClick={() => navigate('/login')}
+            onClick={() => { trigger(10); navigate('/login'); }}
             style={{ marginTop: '12px' }}
           >
             Back to Login
@@ -227,7 +229,7 @@ export default function ResetPasswordPage() {
             <button
               type="button"
               className="password-toggle-split"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => { trigger(10); setShowPassword(!showPassword); }}
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -272,6 +274,7 @@ export default function ResetPasswordPage() {
             type="submit"
             className="auth-button-split"
             disabled={isLoading || passwordStrength < 3}
+            onClick={() => trigger([15, 20, 15])}
           >
             {isLoading ? (
               <>
@@ -287,7 +290,7 @@ export default function ResetPasswordPage() {
         <button
           type="button"
           className="auth-secondary-split"
-          onClick={() => navigate('/login')}
+          onClick={() => { trigger(10); navigate('/login'); }}
           disabled={isLoading}
         >
           ← Back to login

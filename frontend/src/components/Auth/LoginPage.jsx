@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
+import { useHaptics } from "../../hooks/useHaptics";
 import "./AuthPage.css";
 
 export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
@@ -13,6 +14,7 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
 
   const { login } = useAuthContext();
   const navigate = useNavigate();
+  const { trigger } = useHaptics();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,7 +101,7 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
             <button
               type="button"
               className="password-toggle-split"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => { trigger(10); setShowPassword(!showPassword); }}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? "Hide" : "Show"}
@@ -109,7 +111,7 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
           <div className="forgot-password-link">
             <button
               type="button"
-              onClick={onForgotPassword}
+              onClick={() => { trigger(10); onForgotPassword(); }}
               className="forgot-password-btn"
             >
               Forgot password?
@@ -120,6 +122,7 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
             type="submit"
             className={`auth-button-split ${isLoading ? "loading" : ""}`}
             disabled={isLoading}
+            onClick={() => trigger([15, 20, 15])}
           >
             {isLoading ? (
               <>
@@ -135,7 +138,7 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
         <button
           type="button"
           className="auth-secondary-split"
-          onClick={onSwitchToRegister}
+          onClick={() => { trigger(10); onSwitchToRegister(); }}
           disabled={isLoading}
         >
           Create an account

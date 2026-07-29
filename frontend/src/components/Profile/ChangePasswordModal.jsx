@@ -1,6 +1,7 @@
 // frontend/src/components/Profile/ChangePasswordModal.jsx
 import { useState } from "react";
 import { useAuthContext } from "../../context/AuthContext";
+import { useHaptics } from "../../hooks/useHaptics";
 import { supabase } from "../../lib/supabase";
 import { API_URL } from "../../config";
 import "./EditProfileModal.css"; // Reuse same styles
@@ -12,6 +13,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { getAuthHeader } = useAuthContext();
+  const { trigger } = useHaptics();
 
   const checkPasswordStrength = (pwd) => {
     let strength = 0;
@@ -85,7 +87,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => { trigger(10); onClose(); }}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-icon" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb' }}>
@@ -146,10 +148,10 @@ export default function ChangePasswordModal({ isOpen, onClose, onSuccess }) {
           )}
 
           <div className="modal-actions">
-            <button type="button" className="modal-btn-cancel" onClick={onClose}>
+            <button type="button" className="modal-btn-cancel" onClick={() => { trigger(10); onClose(); }}>
               Cancel
             </button>
-            <button type="submit" className="modal-btn-save" disabled={isLoading}>
+            <button type="submit" className="modal-btn-save" disabled={isLoading} onClick={() => trigger([15, 20, 15])}>
               {isLoading ? "Updating..." : "Update Password"}
             </button>
           </div>

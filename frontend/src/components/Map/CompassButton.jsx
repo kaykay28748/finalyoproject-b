@@ -1,5 +1,6 @@
 // components/Map/CompassButton.jsx
 import { useState, useEffect, useRef } from "react";
+import { useHaptics } from "../../hooks/useHaptics";
 import "./CompassButton.css";
 
 export default function CompassButton({
@@ -12,6 +13,7 @@ export default function CompassButton({
 }) {
   const [showPrompt, setShowPrompt] = useState(false);
   const timeoutRef = useRef(null);
+  const { trigger } = useHaptics();
 
   // Show permission prompt once when heading is unsupported and user hasn't denied
   useEffect(() => {
@@ -25,13 +27,15 @@ export default function CompassButton({
     if (permissionState === "unsupported" || permissionState === "denied") {
       const granted = await onRequestPermission();
       if (granted) {
+        trigger(15);
         onToggle();
         setShowPrompt(false);
       } else {
-        // Even without device heading, allow manual toggle for route bearing
+        trigger(10);
         onToggle();
       }
     } else {
+      trigger(10);
       onToggle();
     }
   };
@@ -47,22 +51,23 @@ export default function CompassButton({
         <div className="compass-prompt">
           <span>Enable compass for heading-up mode?</span>
           <div className="compass-prompt-actions">
-            <button
-              className="compass-prompt-btn compass-prompt-btn--yes"
-              onClick={async () => {
-                const granted = await onRequestPermission();
-                setShowPrompt(false);
-                if (granted) onToggle();
-              }}
-            >
-              Enable
-            </button>
-            <button
-              className="compass-prompt-btn"
-              onClick={() => setShowPrompt(false)}
-            >
-              Later
-            </button>
+              <button
+                className="compass-prompt-btn compass-prompt-btn--yes"
+                onClick={async () => {
+                  const granted = await onRequestPermission();
+                  trigger(15);
+                  setShowPrompt(false);
+                  if (granted) onToggle();
+                }}
+              >
+                Enable
+              </button>
+              <button
+                className="compass-prompt-btn"
+                onClick={() => { trigger(10); setShowPrompt(false); }}
+              >
+                Later
+              </button>
           </div>
         </div>
       )}

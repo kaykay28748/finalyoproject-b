@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
+import { useHaptics } from '../../hooks/useHaptics';
 import { API_URL } from '../../config';
 
 export default function EditProfileModal({ isOpen, onClose, currentUsername, onUpdate }) {
@@ -7,6 +8,7 @@ export default function EditProfileModal({ isOpen, onClose, currentUsername, onU
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const { getAuthHeader } = useAuthContext();
+  const { trigger } = useHaptics();
 
   useEffect(() => {
     if (isOpen) {
@@ -53,7 +55,7 @@ export default function EditProfileModal({ isOpen, onClose, currentUsername, onU
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => { trigger(10); onClose(); }}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-icon" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb' }}>
@@ -75,8 +77,8 @@ export default function EditProfileModal({ isOpen, onClose, currentUsername, onU
           {error && <p className="modal-hint" style={{ color: '#ef4444', marginTop: 8 }}>{error}</p>}
         </div>
         <div className="modal-actions">
-          <button className="modal-btn modal-btn-secondary" onClick={onClose} disabled={isLoading}>Cancel</button>
-          <button className="modal-btn modal-btn-primary" onClick={handleSave} disabled={isLoading}>
+          <button className="modal-btn modal-btn-secondary" onClick={() => { trigger(10); onClose(); }} disabled={isLoading}>Cancel</button>
+          <button className="modal-btn modal-btn-primary" onClick={() => { trigger([15, 20, 15]); handleSave(); }} disabled={isLoading}>
             {isLoading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>

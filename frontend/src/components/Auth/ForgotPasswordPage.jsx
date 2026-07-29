@@ -1,9 +1,11 @@
 // frontend/src/components/Auth/ForgotPasswordPage.jsx
 import { useState } from "react";
+import { useHaptics } from "../../hooks/useHaptics";
 import { API_URL } from "../../config";
 import "./AuthPage.css";
 
 export default function ForgotPasswordPage({ onBackToLogin }) {
+  const { trigger } = useHaptics();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -126,6 +128,7 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
               type="submit"
               className="auth-button-split"
               disabled={isLoading || isResending || success}
+              onClick={() => trigger([15, 20, 15])}
             >
               {isLoading ? (
                 <>
@@ -142,7 +145,7 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
                 <button
                   type="button"
                   className="auth-secondary-split"
-                  onClick={handleEditEmail}
+                  onClick={() => { trigger(10); handleEditEmail(); }}
                   style={{ marginBottom: '12px' }}
                 >
                   Edit Email
@@ -151,7 +154,7 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
               <button
                 type="button"
                 className="auth-button-split"
-                onClick={handleResend}
+                onClick={() => { trigger(10); handleResend(); }}
                 disabled={isResending}
               >
                 {isResending ? (
@@ -170,7 +173,7 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
         <button
           type="button"
           className="auth-secondary-split"
-          onClick={onBackToLogin}
+          onClick={() => { trigger(10); onBackToLogin(); }}
           disabled={isLoading || isResending}
         >
           ← Back to login

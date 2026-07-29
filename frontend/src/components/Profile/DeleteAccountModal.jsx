@@ -1,6 +1,7 @@
 // frontend/src/components/Profile/DeleteAccountModal.jsx
 import { useState } from "react";
 import { useAuthContext } from "../../context/AuthContext";
+import { useHaptics } from "../../hooks/useHaptics";
 import { API_URL } from "../../config";
 import "./EditProfileModal.css"; // Reuse same styles
 
@@ -9,6 +10,7 @@ export default function DeleteAccountModal({ isOpen, onClose, onConfirm }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { getAuthHeader, logout } = useAuthContext();
+  const { trigger } = useHaptics();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +52,7 @@ export default function DeleteAccountModal({ isOpen, onClose, onConfirm }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => { trigger(10); onClose(); }}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
@@ -84,7 +86,7 @@ export default function DeleteAccountModal({ isOpen, onClose, onConfirm }) {
           )}
 
           <div className="modal-actions">
-            <button type="button" className="modal-btn-cancel" onClick={onClose}>
+            <button type="button" className="modal-btn-cancel" onClick={() => { trigger(10); onClose(); }}>
               Cancel
             </button>
             <button 
@@ -92,6 +94,7 @@ export default function DeleteAccountModal({ isOpen, onClose, onConfirm }) {
               className="modal-btn-save" 
               style={{ background: "#ef4444" }}
               disabled={isLoading || confirmText !== "DELETE"}
+              onClick={() => trigger([30, 50, 30])}
             >
               {isLoading ? "Deleting..." : "Permanently Delete"}
             </button>

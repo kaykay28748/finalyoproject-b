@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useHaptics } from "../../hooks/useHaptics";
 import { geocode, searchLocal } from "../../services/geocoding";
 import { saveRecentSearch, getRecentSearches, clearRecentSearches } from "../../services/recentSearches";
 import "./SearchBox.css";
@@ -52,6 +53,7 @@ export default function PortalSearchBox({
   const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
   const abortRef = useRef(null);
+  const { trigger } = useHaptics();
 
   // ── Recent searches ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -144,6 +146,7 @@ export default function PortalSearchBox({
 
   // ── Select ───────────────────────────────────────────────────────────────────
   const handleSelect = (loc) => {
+    trigger(10);
     onChange(loc.name);
     onSelect(loc);
     saveRecentSearch(loc);
@@ -232,7 +235,7 @@ export default function PortalSearchBox({
           {showCurrentLocationOption && (
             <div
               className="search-dropdown-cl"
-              onMouseDown={(e) => { e.preventDefault(); onUseCurrentLocation(); setShowDropdown(false); }}
+              onMouseDown={(e) => { e.preventDefault(); trigger(12); onUseCurrentLocation(); setShowDropdown(false); }}
             >
               <div className="search-dropdown-cl-dot" />
               Use my current location
@@ -244,7 +247,7 @@ export default function PortalSearchBox({
             <>
               <div className="search-section-header">
                 <span>Recent</span>
-                <button className="search-clear-btn" onClick={handleClearAll}>Clear all</button>
+                <button className="search-clear-btn" onClick={() => { trigger(10); handleClearAll(); }}>Clear all</button>
               </div>
               {visibleRecent.map((item, i) => (
                   <div

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useHaptics } from '../../hooks/useHaptics';
 import { getMyReports, updateReportStatus, getReportMessages } from '../../services/reportService';
 import './MyReportsModal.css';
 
@@ -45,6 +46,7 @@ export default function MyReportsModal({ isOpen, onClose }) {
   const [visible, setVisible] = useState(false);
   const firstFocusRef = useRef(null);
   const overlayRef = useRef(null);
+  const { trigger } = useHaptics();
 
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -143,7 +145,7 @@ export default function MyReportsModal({ isOpen, onClose }) {
     <div
       ref={overlayRef}
       className={`myreports-overlay ${visible ? 'myreports-overlay--visible' : ''}`}
-      onClick={onClose}
+      onClick={() => { trigger(10); onClose(); }}
       role="dialog"
       aria-modal="true"
       aria-label="My Reports"
@@ -154,7 +156,7 @@ export default function MyReportsModal({ isOpen, onClose }) {
       >
         <div className="myreports-header">
           <h2>My Reports</h2>
-          <button className="myreports-close" onClick={onClose} ref={firstFocusRef} aria-label="Close reports">
+          <button className="myreports-close" onClick={() => { trigger(10); onClose(); }} ref={firstFocusRef} aria-label="Close reports">
             <IconClose />
           </button>
         </div>
@@ -173,7 +175,7 @@ export default function MyReportsModal({ isOpen, onClose }) {
                 <div className="myreports-card" key={report.id}>
                   <button
                     className="myreports-card-header"
-                    onClick={() => setExpandedReport(isExpanded ? null : report.id)}
+                    onClick={() => { trigger(8); setExpandedReport(isExpanded ? null : report.id); }}
                   >
                     <div className={`myreports-severity sev-${report.severity}`}>
                       {report.severity === 3 ? <IconSevSevere /> : report.severity === 2 ? <IconSevModerate /> : <IconSevMild />}
@@ -215,7 +217,7 @@ export default function MyReportsModal({ isOpen, onClose }) {
                         <div className="myreports-actions">
                           <button
                             className="myreports-btn-resolve"
-                            onClick={() => handleResolve(report.id)}
+                            onClick={() => { trigger([15, 20, 15]); handleResolve(report.id); }}
                             disabled={resolvingId === report.id}
                           >
                             {resolvingId === report.id ? 'Resolving...' : 'Mark as Resolved'}
@@ -226,7 +228,7 @@ export default function MyReportsModal({ isOpen, onClose }) {
                       <div className="myreports-messages-section">
                         <button
                           className="myreports-messages-toggle"
-                          onClick={() => loadMessages(report.id)}
+                          onClick={() => { trigger(10); loadMessages(report.id); }}
                         >
                           {isMessagesOpen ? 'Hide Messages' : 'Messages from Admin'}
                         </button>

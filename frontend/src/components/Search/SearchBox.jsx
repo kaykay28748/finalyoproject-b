@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useHaptics } from "../../hooks/useHaptics";
 import { geocode, searchLocal } from "../../services/geocoding";
 import { saveRecentSearch, getRecentSearches, clearRecentSearches } from "../../services/recentSearches";
 import "./SearchBox.css";
@@ -60,6 +61,7 @@ export default function SearchBox({
   const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
   const abortRef = useRef(null);
+  const { trigger } = useHaptics();
 
   // ── Recent searches ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -133,6 +135,7 @@ export default function SearchBox({
 
   // ── Select a suggestion ──────────────────────────────────────────────────────
   const handleSelect = (loc) => {
+    trigger(10);
     onChange(loc.name);
     onSelect(loc);
     saveRecentSearch(loc);
@@ -218,6 +221,7 @@ export default function SearchBox({
               className="searchbox-curr-loc"
               onMouseDown={(e) => {
                 e.preventDefault();
+                trigger(12);
                 onUseCurrentLocation();
                 setShowDropdown(false);
               }}
@@ -232,7 +236,7 @@ export default function SearchBox({
             <div className="searchbox-section">
               <div className="searchbox-section-header">
                 <span>Recent</span>
-                <button className="searchbox-clear-btn" onClick={handleClearAll}>
+                <button className="searchbox-clear-btn" onClick={() => { trigger(10); handleClearAll(); }}>
                   Clear all
                 </button>
               </div>

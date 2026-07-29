@@ -27,6 +27,7 @@ class ErrorBoundary extends React.Component {
 
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
+    window.navigator.vibrate?.(10);
   };
 
   render() {
@@ -60,7 +61,7 @@ class ErrorBoundary extends React.Component {
               <button className="error-btn error-btn--reset" onClick={this.handleReset}>
                 Try again
               </button>
-              <button className="error-btn error-btn--refresh" onClick={() => window.location.reload()}>
+              <button className="error-btn error-btn--refresh" onClick={() => { window.navigator.vibrate?.(10); window.location.reload(); }}>
                 Refresh page
               </button>
             </div>

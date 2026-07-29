@@ -4,6 +4,7 @@ import { useAuthContext } from '../../context/AuthContext';
 import { API_URL } from '../../config';
 import { getReports, updateReportStatus, getReportClusters, resolveCluster, getReportMessages, sendReportMessage, getReportAdminInbox } from '../../services/reportService';
 import { isTokenValid } from '../Profile/auth';
+import { useHaptics } from '../../hooks/useHaptics';
 import './AdminDashboard.css';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -220,6 +221,7 @@ function SkeletonLoader() {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { logout, user } = useAuthContext();
+  const { trigger } = useHaptics();
 
   const [stats,            setStats]            = useState(null);
   const [users,            setUsers]            = useState([]);
@@ -495,7 +497,7 @@ export default function AdminDashboard() {
     <div className="admin-dashboard">
       <button
         className="admin-mobile-menu-btn"
-        onClick={() => setMobileMenuOpen(o => !o)}
+        onClick={() => { trigger(10); setMobileMenuOpen(o => !o); }}
         aria-label="Toggle menu"
       >
         {mobileMenuOpen ? <Icons.Close /> : <Icons.Menu />}
@@ -524,7 +526,7 @@ export default function AdminDashboard() {
             <button
               key={key}
               className={`admin-nav-item ${activeTab === key ? 'active' : ''}`}
-              onClick={() => switchTab(key)}
+              onClick={() => { trigger(10); switchTab(key); }}
             >
               <Icon />
               <span>{label}</span>
@@ -543,7 +545,7 @@ export default function AdminDashboard() {
               <span className="admin-user-role">Administrator</span>
             </div>
           </div>
-          <button onClick={logout} className="admin-logout-btn">
+          <button onClick={() => { trigger(10); logout(); }} className="admin-logout-btn">
             <Icons.Logout />
             <span>Logout</span>
           </button>
@@ -561,7 +563,7 @@ export default function AdminDashboard() {
             <span className="admin-last-updated">
               Updated: {lastUpdated?.toLocaleTimeString() || '--:--:--'}
             </span>
-            <button onClick={fetchData} className="admin-refresh-btn">
+            <button onClick={() => { trigger(10); fetchData(); }} className="admin-refresh-btn">
               <Icons.Refresh />
               Refresh
             </button>
@@ -572,7 +574,7 @@ export default function AdminDashboard() {
           <div className="admin-error">
             <Icons.AlertIcon />
             <span>{error}</span>
-            <button className="admin-error-dismiss" onClick={() => setError('')} aria-label="Dismiss error">
+            <button className="admin-error-dismiss" onClick={() => { trigger(10); setError(''); }} aria-label="Dismiss error">
               <Icons.X />
             </button>
           </div>
@@ -777,6 +779,7 @@ export default function AdminDashboard() {
                             <button
                               className="btn btn-outline"
                               onClick={() => {
+                                trigger(10);
                                 setExpandedCluster(isExpanded ? null : cluster.id);
                                 if (!isExpanded) cluster.reports.forEach(r => loadMessages(r.id));
                               }}
@@ -787,14 +790,14 @@ export default function AdminDashboard() {
                               <>
                                 <button
                                   className="btn btn-reject"
-                                  onClick={() => handleClusterResolve(cluster, 'rejected')}
+                                  onClick={() => { trigger([30,50,30]); handleClusterResolve(cluster, 'rejected'); }}
                                   disabled={isProcessing}
                                 >
                                   {isProcessing ? '...' : 'Reject All'}
                                 </button>
                                 <button
                                   className="btn btn-approve"
-                                  onClick={() => handleClusterResolve(cluster, 'approved')}
+                                  onClick={() => { trigger([15,20,15]); handleClusterResolve(cluster, 'approved'); }}
                                   disabled={isProcessing}
                                 >
                                   {isProcessing ? '...' : 'Approve All'}
@@ -804,7 +807,7 @@ export default function AdminDashboard() {
                             {hasApproved && !hasPending && (
                               <button
                                 className="btn btn-resolve"
-                                onClick={() => handleClusterResolve(cluster, 'resolved')}
+                                onClick={() => { trigger([15,20,15]); handleClusterResolve(cluster, 'resolved'); }}
                                 disabled={isProcessing}
                               >
                                 {isProcessing ? '...' : 'Resolve All'}
@@ -826,7 +829,7 @@ export default function AdminDashboard() {
                             <div className="cluster-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                               <button
                                 className="btn btn-primary"
-                                onClick={() => handleSendClusterMessage(cluster.id)}
+                                onClick={() => { trigger(10); handleSendClusterMessage(cluster.id); }}
                                 disabled={isProcessing || !(clusterNotes[cluster.id] || '').trim()}
                               >
                                 Send Message
@@ -875,14 +878,14 @@ export default function AdminDashboard() {
                                         <div className="report-action-row">
                                           <button
                                             className="btn btn-reject"
-                                            onClick={() => handleRejectReport(report.id)}
+                                            onClick={() => { trigger([30,50,30]); handleRejectReport(report.id); }}
                                             disabled={isReportProcessing}
                                           >
                                             {isReportProcessing ? '...' : 'Reject'}
                                           </button>
                                           <button
                                             className="btn btn-approve"
-                                            onClick={() => handleApproveReport(report.id)}
+                                            onClick={() => { trigger([15,20,15]); handleApproveReport(report.id); }}
                                             disabled={isReportProcessing}
                                           >
                                             {isReportProcessing ? '...' : 'Approve'}
@@ -917,7 +920,7 @@ export default function AdminDashboard() {
                                         />
                                         <button
                                           className="btn btn-primary"
-                                          onClick={() => handleSendMessage(report.id)}
+                                          onClick={() => { trigger(10); handleSendMessage(report.id); }}
                                           disabled={sendingMessage === report.id || !(newMessage[report.id] || '').trim()}
                                         >
                                           {sendingMessage === report.id ? '...' : 'Send'}
@@ -980,6 +983,7 @@ export default function AdminDashboard() {
                           <button
                             className={`btn ${isThreadOpen ? 'btn-outline' : 'btn-primary'}`}
                             onClick={() => {
+                              trigger(10);
                               setMessageThreadReport(isThreadOpen ? null : item.id);
                               if (!isThreadOpen) loadMessages(item.id);
                             }}
@@ -1017,7 +1021,7 @@ export default function AdminDashboard() {
                               />
                               <button
                                 className="btn btn-primary"
-                                onClick={() => handleSendMessage(item.id)}
+                                onClick={() => { trigger(10); handleSendMessage(item.id); }}
                                 disabled={sendingMessage === item.id || !(newMessage[item.id] || '').trim()}
                               >
                                 {sendingMessage === item.id ? '...' : 'Send'}
@@ -1118,7 +1122,7 @@ export default function AdminDashboard() {
             <div key={t.id} className={`toast toast-${t.type}`}>
               {t.type === 'success' ? <Icons.Check /> : <Icons.AlertIcon />}
               <span>{t.text}</span>
-              <button className="toast-dismiss" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
+              <button className="toast-dismiss" onClick={() => { trigger(10); dismissToast(t.id); }} aria-label="Dismiss">
                 <Icons.X />
               </button>
             </div>

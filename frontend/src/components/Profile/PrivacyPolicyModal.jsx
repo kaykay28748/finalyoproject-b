@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useHaptics } from '../../hooks/useHaptics';
 import './PrivacyPolicyModal.css';
 
 const IconClose = () => (
@@ -250,6 +251,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
   const [visible, setVisible] = useState(false);
   const firstFocusRef = useRef(null);
   const overlayRef = useRef(null);
+  const { trigger } = useHaptics();
 
   useEffect(() => {
     if (isOpen) {
@@ -295,7 +297,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
     <div
       ref={overlayRef}
       className={`ppolicy-overlay ${visible ? 'ppolicy-overlay--visible' : ''}`}
-      onClick={onClose}
+      onClick={() => { trigger(10); onClose(); }}
       role="dialog"
       aria-modal="true"
       aria-label="Privacy policy"
@@ -306,7 +308,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
       >
         <div className="ppolicy-header">
           <h2>Privacy &amp; Cookies</h2>
-          <button className="ppolicy-close" onClick={onClose} ref={firstFocusRef} aria-label="Close privacy policy">
+          <button className="ppolicy-close" onClick={() => { trigger(10); onClose(); }} ref={firstFocusRef} aria-label="Close privacy policy">
             <IconClose />
           </button>
         </div>

@@ -1,6 +1,7 @@
 // frontend/src/components/Auth/RegisterPage.jsx
 import { useState } from "react";
 import { useAuthContext } from "../../context/AuthContext";
+import { useHaptics } from "../../hooks/useHaptics";
 import { supabase } from "../../lib/supabase";
 import "./AuthPage.css";
 
@@ -20,6 +21,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
   const [registeredEmail, setRegisteredEmail] = useState("");
 
   const { register } = useAuthContext();
+  const { trigger } = useHaptics();
 
   const checkPasswordStrength = (pwd) => {
     let strength = 0;
@@ -142,7 +144,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
             <button
               type="button"
               className="auth-secondary-split"
-              onClick={onSwitchToLogin}
+              onClick={() => { trigger(10); onSwitchToLogin(); }}
               style={{ flex: 1 }}
             >
               Back to Sign in
@@ -150,7 +152,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
             <button
               type="button"
               className="auth-resend-btn"
-              onClick={handleResendEmail}
+              onClick={() => { trigger(10); handleResendEmail(); }}
               disabled={isResending}
               style={{ flex: 1 }}
             >
@@ -253,7 +255,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
             <button
               type="button"
               className="password-toggle-split"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => { trigger(10); setShowPassword(!showPassword); }}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? "Hide" : "Show"}
@@ -310,6 +312,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
             type="submit"
             className={`auth-button-split ${isLoading ? "loading" : ""}`}
             disabled={isLoading || success || !isPasswordValid}
+            onClick={() => trigger([15, 20, 15])}
           >
             {isLoading ? (
               <>
@@ -325,7 +328,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
         <button
           type="button"
           className="auth-secondary-split"
-          onClick={onSwitchToLogin}
+          onClick={() => { trigger(10); onSwitchToLogin(); }}
           disabled={isLoading || success}
         >
           Already have an account? Sign in

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "../../context/AuthContext";
 import { useFocus } from "../../context/FocusContext";
+import { useHaptics } from "../../hooks/useHaptics";
 import SearchBox from "../Search/SearchBox";
 import PortalSearchBox from "../Search/PortalSearchBox";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +32,7 @@ function Avatar({ username, size = 36, onClick, accuracy }) {
         e.stopPropagation();
         onClick();
       }}
+      onTouchStart={() => trigger(10)}
       aria-label="Profile settings"
       title={`Account: ${username || "User"}${accuracy ? ` (GPS ±${accuracy}m)` : ""}`}
       style={{ 
@@ -149,6 +151,7 @@ export default function NavPanel({
   const { user } = useAuthContext();
   const focus = useFocus();
   const navigate = useNavigate();
+  const { trigger } = useHaptics();
 
   const setIsExpanded = (value) => {
     if (onExpandRequest) {
@@ -159,28 +162,32 @@ export default function NavPanel({
   };
 
   const handleSwapClick = useCallback(() => {
-    // Increment rotation by 180 degrees each click for a continuous spinning effect
+    trigger(10);
     setSwapRotation(prev => prev + 180);
     onSwap();
-  }, [onSwap]);
+  }, [onSwap, trigger]);
 
   const handleDirectionsClick = () => {
     if (canShow && !isResolving) {
+      trigger([15, 20, 15]);
       onShowOnMap();
       setIsExpanded(false);
     }
   };
 
   const handleSearchFocus = () => {
+    trigger(10);
     setIsExpanded(true);
   };
 
   const handleResetClick = () => {
+    trigger([30, 50, 30]);
     onReset();
     setIsExpanded(false);
   };
 
   const handleClose = () => {
+    trigger(10);
     setIsExpanded(false);
     if (onClose) onClose();
   };

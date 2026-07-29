@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
+import { useHaptics } from "../../hooks/useHaptics";
 import { API_URL } from "../../config";
 import { loadPreferences, savePreferences } from "../../services/preferencesStore";
 import { isTokenValid } from "./auth";
@@ -107,6 +108,7 @@ const ProfileSkeleton = () => (
 export default function ProfilePage() {
   const { user, getAuthHeader, logout } = useAuthContext();
   const navigate = useNavigate();
+  const { trigger } = useHaptics();
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -249,7 +251,7 @@ export default function ProfilePage() {
         <div className="profile-error">
           <span>⚠️</span>
           <p>{error}</p>
-          <button onClick={() => window.location.reload()}>Try Again</button>
+          <button onClick={() => { trigger(10); window.location.reload(); }}>Try Again</button>
         </div>
       </div>
     );
@@ -260,7 +262,7 @@ export default function ProfilePage() {
       <div className={`ug-root profile-page-layout ${darkMode ? "dark" : ""}`}>
         <div className="profile-error">
           <p>No profile data found</p>
-          <button onClick={() => navigate("/")}>Go Home</button>
+          <button onClick={() => { trigger(10); navigate("/"); }}>Go Home</button>
         </div>
       </div>
     );
@@ -272,7 +274,7 @@ export default function ProfilePage() {
       <div className="profile-header">
         <button
           className="profile-back-btn"
-          onClick={() => navigate("/")}
+          onClick={() => { trigger(10); navigate("/"); }}
           aria-label="Go back"
         >
           <IconBack />
@@ -302,7 +304,7 @@ export default function ProfilePage() {
           <div className="profile-settings-list">
             <button 
               className="profile-setting-btn"
-              onClick={handleToggleDarkMode}
+              onClick={() => { trigger(10); handleToggleDarkMode(); }}
             >
               <span className="profile-setting-icon">{darkMode ? <IconMoon /> : <IconSun />}</span>
               <div className="profile-setting-info">
@@ -320,7 +322,7 @@ export default function ProfilePage() {
         <div className="profile-settings-list">
           <button 
             className="profile-setting-btn"
-            onClick={() => setIsEditModalOpen(true)}
+            onClick={() => { trigger(10); setIsEditModalOpen(true); }}
           >
             <span className="profile-setting-icon"><IconEdit /></span>
             <div className="profile-setting-info">
@@ -332,7 +334,7 @@ export default function ProfilePage() {
 
           <button 
             className="profile-setting-btn"
-            onClick={() => setIsPasswordModalOpen(true)}
+            onClick={() => { trigger(10); setIsPasswordModalOpen(true); }}
           >
             <span className="profile-setting-icon"><IconLock /></span>
             <div className="profile-setting-info">
@@ -350,7 +352,7 @@ export default function ProfilePage() {
         <div className="profile-settings-list">
           <button
             className="profile-setting-btn"
-            onClick={() => setIsReportsModalOpen(true)}
+            onClick={() => { trigger(10); setIsReportsModalOpen(true); }}
           >
             <span className="profile-setting-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -376,7 +378,7 @@ export default function ProfilePage() {
         <div className="profile-settings-list">
           <button 
             className="profile-setting-btn"
-            onClick={() => setIsHelpModalOpen(true)}
+            onClick={() => { trigger(10); setIsHelpModalOpen(true); }}
           >
             <span className="profile-setting-icon"><IconHelp /></span>
             <div className="profile-setting-info">
@@ -388,7 +390,7 @@ export default function ProfilePage() {
 
           <button 
             className="profile-setting-btn"
-            onClick={() => setIsPrivacyModalOpen(true)}
+            onClick={() => { trigger(10); setIsPrivacyModalOpen(true); }}
           >
             <span className="profile-setting-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -410,7 +412,7 @@ export default function ProfilePage() {
         <div className="profile-settings-list">
           <button 
             className="profile-setting-btn"
-            onClick={() => setIsLogoutModalOpen(true)}
+            onClick={() => { trigger(10); setIsLogoutModalOpen(true); }}
           >
             <span className="profile-setting-icon"><IconLogout /></span>
             <div className="profile-setting-info">
@@ -428,7 +430,7 @@ export default function ProfilePage() {
         <div className="profile-settings-list">
           <button 
             className="profile-setting-btn profile-danger-btn"
-            onClick={() => setIsDeleteModalOpen(true)}
+            onClick={() => { trigger(10); setIsDeleteModalOpen(true); }}
           >
             <span className="profile-setting-icon"><IconTrash /></span>
             <div className="profile-setting-info">

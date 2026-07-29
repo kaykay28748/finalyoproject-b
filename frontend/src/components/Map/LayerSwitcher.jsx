@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useHaptics } from "../../hooks/useHaptics";
 import "./LayerSwitcher.css";
 
 const LAYERS = [
@@ -12,6 +13,7 @@ const LAYERS = [
 export default function LayerSwitcher({ mapLayer, onMapLayerChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { trigger } = useHaptics();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -27,7 +29,7 @@ export default function LayerSwitcher({ mapLayer, onMapLayerChange }) {
     <div className="layer-switcher" ref={ref}>
       <button
         className="layer-switcher-btn"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { trigger(8); setOpen((o) => !o); }}
         aria-label="Switch map layer"
         title={current.label}
       >
@@ -42,7 +44,7 @@ export default function LayerSwitcher({ mapLayer, onMapLayerChange }) {
             <button
               key={layer.id}
               className={`layer-switcher-option${layer.id === mapLayer ? " layer-switcher-option--active" : ""}`}
-              onClick={() => { onMapLayerChange(layer.id); setOpen(false); }}
+              onClick={() => { trigger(8); onMapLayerChange(layer.id); setOpen(false); }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d={layer.icon} />

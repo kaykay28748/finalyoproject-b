@@ -32,6 +32,7 @@ import {
   IconSpeakerWave,
 } from "../ui/icon";
 import { useVoiceGuidance } from "../../hooks/useVoiceGuidance";
+import { useHaptics } from "../../hooks/useHaptics";
 import { useFocus } from "../../context/FocusContext";
 import { generateDirections } from "../../services/directions";
 import WeatherBanner from "./WeatherBanner";
@@ -416,6 +417,7 @@ const Legend = forwardRef(function Legend(
   const pendingDragDownRef = useRef(null); // Track pending drag-down gesture from sheet body
 
   const { isVoiceEnabled, toggleVoice, speak, speakTurn, speakArrival } = useVoiceGuidance();
+  const { trigger } = useHaptics();
   const focus = useFocus();
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -564,6 +566,7 @@ const Legend = forwardRef(function Legend(
   }, [route, vehicleMode]);
 
   const handleVoiceToggle = () => {
+    trigger(10);
     const wasEnabled = isVoiceEnabled;
     toggleVoice();
     if (!wasEnabled && pendingRouteSummaryRef.current) {
@@ -1102,7 +1105,7 @@ const Legend = forwardRef(function Legend(
                   key={m.key}
                   className={`legend-mode-btn ${isActive ? "legend-mode-btn--active" : ""}`}
                   style={{ '--mode-color': m.color }}
-                  onClick={() => onVehicleModeChange?.(m.key)}
+                  onClick={() => { trigger(10); onVehicleModeChange?.(m.key); }}
                   title={m.label}
                   aria-label={`Switch to ${m.label}`}
                 >
@@ -1153,14 +1156,14 @@ const Legend = forwardRef(function Legend(
               <div className="legend-tab-bar">
                 <button
                   className={`legend-tab ${activeTab === "stats" ? "legend-tab--active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setActiveTab("stats"); }}
+                  onClick={(e) => { e.stopPropagation(); trigger(10); setActiveTab("stats"); }}
                 >
                   <IconChartBar className="w-4 h-4" />
                   <span>Stats</span>
                 </button>
                 <button
                   className={`legend-tab ${activeTab === "directions" ? "legend-tab--active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setActiveTab("directions"); }}
+                  onClick={(e) => { e.stopPropagation(); trigger(10); setActiveTab("directions"); }}
                 >
                   <IconDirections className="w-4 h-4" />
                   <span>Directions</span>
@@ -1303,7 +1306,7 @@ const Legend = forwardRef(function Legend(
                       <div className="legend-alts">
                         <div
                           className={`legend-alt ${activeAlternativeIndex === 0 ? "legend-alt--active" : ""} ${focus.isFocused("legendItem", "alt-0") ? "item--focused" : ""}`}
-                          onClick={() => { focus.setFocus("legendItem", "alt-0", "legend"); onSelectAlternative?.(0); }}
+                          onClick={() => { trigger(10); focus.setFocus("legendItem", "alt-0", "legend"); onSelectAlternative?.(0); }}
                         >
                           <span className="alt-line alt-line--primary" />
                           <div className="alt-info">
@@ -1316,7 +1319,7 @@ const Legend = forwardRef(function Legend(
                           <div
                             key={i}
                             className={`legend-alt ${activeAlternativeIndex === i + 1 ? "legend-alt--active" : ""} ${focus.isFocused("legendItem", `alt-${i + 1}`) ? "item--focused" : ""}`}
-                            onClick={() => { focus.setFocus("legendItem", `alt-${i + 1}`, "legend"); onSelectAlternative?.(i + 1); }}
+                            onClick={() => { trigger(10); focus.setFocus("legendItem", `alt-${i + 1}`, "legend"); onSelectAlternative?.(i + 1); }}
                           >
                             <span className="alt-line alt-line--secondary" />
                             <div className="alt-info">
@@ -1330,7 +1333,7 @@ const Legend = forwardRef(function Legend(
                     </>
                   )}
 
-                  <button className="legend-share-btn" onClick={handleShareLocation}>
+                  <button className="legend-share-btn" onClick={() => { trigger(10); handleShareLocation(); }}>
                     <span className="share-icon">
                       <IconShare className="w-4 h-4" color="#3b82f6" />
                     </span>
@@ -1379,7 +1382,7 @@ const Legend = forwardRef(function Legend(
                         <button
                           key={slot.label}
                           className={`legend-heatmap-pill ${selectedHour === slot.hour ? "legend-heatmap-pill--active" : ""}`}
-                          onClick={(e) => { e.stopPropagation(); onSelectedHourChange?.(slot.hour); }}
+                          onClick={(e) => { e.stopPropagation(); trigger(8); onSelectedHourChange?.(slot.hour); }}
                         >
                           {slot.label}
                         </button>
@@ -1424,7 +1427,7 @@ const Legend = forwardRef(function Legend(
                 key={p.key}
                 data-profile={p.key}
                 className={`legend-profile-btn ${isActive ? "legend-profile-btn--active" : ""}`}
-                onClick={() => onProfileChange?.(p.key)}
+                onClick={() => { trigger(10); onProfileChange?.(p.key); }}
                 title={p.label}
                 aria-label={`Switch to ${p.label} profile`}
               >
