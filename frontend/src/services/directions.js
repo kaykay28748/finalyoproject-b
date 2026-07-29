@@ -27,22 +27,13 @@ function distanceMeters(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Determine maneuver type based on angle change
 function getManeuver(angleChange) {
   const absAngle = Math.abs(angleChange);
   
   if (absAngle < 15) return "straight";
-  if (absAngle < 40) return "slight-right";
-  if (absAngle < 120) return "turn-right";
-  if (absAngle < 160) return "sharp-right";
-  if (absAngle > 200) {
-    const oppositeAngle = 360 - absAngle;
-    if (oppositeAngle < 15) return "straight";
-    if (oppositeAngle < 40) return "slight-left";
-    if (oppositeAngle < 120) return "turn-left";
-    return "sharp-left";
-  }
-  return "turn-left";
+  if (absAngle < 40) return angleChange > 0 ? "slight-right" : "slight-left";
+  if (absAngle < 120) return angleChange > 0 ? "turn-right" : "turn-left";
+  return angleChange > 0 ? "sharp-right" : "sharp-left";
 }
 
 // Generate natural language instruction with road name
