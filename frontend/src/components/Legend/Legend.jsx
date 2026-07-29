@@ -157,7 +157,7 @@ const Legend = forwardRef(function Legend({
     isExpanded: () => expanded,
   }), [expanded]);
 
-  useEffect(() => { initPosition(); }, [visible, hasRoute]);
+  useEffect(() => { initPosition(); }, [visible, hasRoute, expanded]);
 
   if (!visible) return null;
 
