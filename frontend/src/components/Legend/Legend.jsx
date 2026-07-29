@@ -224,6 +224,7 @@ const Legend = forwardRef(function Legend({
       </div>
 
       <LegendProfileBar activeProfile={activeProfile} onProfileChange={onProfileChange} />
+      <div className="legend-home-spacer" />
     </div>
   );
 });

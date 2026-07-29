@@ -880,12 +880,25 @@
   border-color: rgba(255, 255, 255, 0.07);
 }
 
+.legend-home-spacer {
+  height: 34px;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.88);
+  pointer-events: auto;
+}
+
+.ug-root.dark .legend-home-spacer {
+  background: rgba(15, 23, 42, 0.88);
+}
+
 /* ── Inline profile bar ──────────────────────────────────────────────────── */
 .legend-profiles-bar-inline {
   display: flex;
   flex-direction: row;
   gap: 8px;
-  padding: 8px 16px 34px;
+  padding: 8px 16px;
   width: 100%;
   max-width: 480px;
   background: rgba(255, 255, 255, 0.88);
