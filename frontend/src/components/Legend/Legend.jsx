@@ -406,6 +406,10 @@ const Legend = forwardRef(function Legend(
     return () => ro.disconnect();
   }, [updateIndicator]);
 
+  const isDraggingRef = useRef(false);
+
+  useEffect(() => { isDraggingRef.current = isDragging; }, [isDragging]);
+
   const lastAnnouncedRouteIdRef = useRef(null);
   const pendingRouteSummaryRef = useRef(null);
   const lastRouteSigRef = useRef(null); // Senior Fix: Track if destination actually changed
@@ -505,9 +509,19 @@ const Legend = forwardRef(function Legend(
     let initialSnapped = false;
     const ro = new ResizeObserver(() => {
       recalcPositions();
-      if (!initialSnapped) {
-        initialSnapped = true;
-        snapTo(peekTranslateY.current);
+      if (!isDraggingRef.current) {
+        if (!initialSnapped) {
+          initialSnapped = true;
+          snapTo(peekTranslateY.current);
+        } else if (sheetRef.current) {
+          const style = window.getComputedStyle(sheetRef.current);
+          const matrix = new DOMMatrix(style.transform);
+          const currentY = matrix.m42;
+          const targetY = expanded ? expandedTranslateY.current : peekTranslateY.current;
+          if (Math.abs(currentY - targetY) > 1) {
+            snapTo(targetY);
+          }
+        }
       }
     });
     ro.observe(el);
