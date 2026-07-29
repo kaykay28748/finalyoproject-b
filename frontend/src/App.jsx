@@ -578,18 +578,7 @@ export default function App() {
             isRouteLocked={isRouteLocked}
             registerLegendCollapse={registerLegendCollapse}
             showHeatmap={showHeatmap}
-            onToggleHeatmap={() => {
-              setShowHeatmap(h => !h);
-              if (!showHeatmap) {
-                const hh = new Date().getHours();
-                setSelectedHour(
-                  hh >= 6 && hh <= 9 ? 8 :
-                  hh >= 10 && hh <= 14 ? 12 :
-                  hh >= 15 && hh <= 17 ? 16 :
-                  hh >= 18 && hh <= 21 ? 19 : 22
-                );
-              }
-            }}
+            onToggleHeatmap={() => setShowHeatmap(h => !h)}
             selectedHour={selectedHour}
             onSelectedHourChange={setSelectedHour}
             onOpenReportModal={handleOpenReportModal}

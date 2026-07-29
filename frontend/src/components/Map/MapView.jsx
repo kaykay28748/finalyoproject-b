@@ -711,10 +711,6 @@ export default function MapView({
         autoCollapse={isNavExpanded}
         disableDrag={isPanelTransitioning}
         onNavPanelClose={onNavPanelClose}
-        showHeatmap={showHeatmap}
-        selectedHour={selectedHour}
-        onSelectedHourChange={onSelectedHourChange}
-        heatmapBounds={mapBounds}
       />
 
       {waitingForStart && (

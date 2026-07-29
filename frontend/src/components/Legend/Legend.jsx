@@ -36,7 +36,6 @@ import { useHaptics } from "../../hooks/useHaptics";
 import { useFocus } from "../../context/FocusContext";
 import { generateDirections } from "../../services/directions";
 import WeatherBanner from "./WeatherBanner";
-import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 import "./Legend.css";
 import "./LegendProfile.css";
 
@@ -329,18 +328,12 @@ const Legend = forwardRef(function Legend(
     disableDrag = false,
     onNavPanelClose,
     onDragProgress,
-    showHeatmap = false,
-    selectedHour,
-    onSelectedHourChange,
-    heatmapBounds,
   },
   ref,
 ) {
   const [expanded, setExpanded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [directions, setDirections] = useState([]);
-  const [heatmapPointCount, setHeatmapPointCount] = useState(0);
-  const [heatmapLastRefresh, setHeatmapLastRefresh] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [completedDistance, setCompletedDistance] = useState(0);
   const [wasExpandedBeforeCollapse, setWasExpandedBeforeCollapse] =
@@ -654,40 +647,6 @@ const Legend = forwardRef(function Legend(
     }
     prevHasRouteRef.current = hasRoute;
   }, [hasRoute, visible]);
-
-  const TIME_SLOTS = [
-    { label: "All day", hour: undefined },
-    { label: "Morning", hour: 8 },
-    { label: "Midday", hour: 12 },
-    { label: "Afternoon", hour: 16 },
-    { label: "Evening", hour: 19 },
-    { label: "Night", hour: 22 },
-  ];
-
-  function timeAgo(date) {
-    const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  }
-
-  useEffect(() => {
-    if (!showHeatmap || !heatmapBounds) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const points = await fetchHeatmapData(heatmapBounds, { hour: selectedHour });
-        if (!cancelled) {
-          setHeatmapPointCount(points.length);
-          setHeatmapLastRefresh(new Date());
-        }
-      } catch {
-        // silently fail
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [showHeatmap, heatmapBounds, selectedHour]);
 
   useEffect(() => {
     if (currentStepIndex >= 0 && directionsRef.current) {
@@ -1083,7 +1042,7 @@ const Legend = forwardRef(function Legend(
     <>
     <div
       ref={sheetRef}
-      className={`legend-sheet ${expanded ? "legend-sheet--expanded" : "legend-sheet--peek"} ${(hasRoute || showHeatmap) ? "legend-sheet--with-bar" : ""}`}
+      className={`legend-sheet ${expanded ? "legend-sheet--expanded" : "legend-sheet--peek"} legend-sheet--with-bar`}
       onMouseDown={handleSheetMouseDown}
       onTouchStart={handleSheetTouchStart}
       onTouchMoveCapture={handleSheetTouchMoveCapture}
@@ -1414,91 +1373,33 @@ const Legend = forwardRef(function Legend(
         </div>
       )}
 
-      {/* ── Heatmap ── */}
-      {showHeatmap && hasRoute && (
-        <div className="legend-heatmap">
-          <div className="legend-heatmap-pills">
-            {TIME_SLOTS.map((slot) => (
-              <button
-                key={slot.label}
-                className={`legend-heatmap-pill ${selectedHour === slot.hour ? "legend-heatmap-pill--active" : ""}`}
-                onClick={(e) => { e.stopPropagation(); trigger(8); onSelectedHourChange?.(slot.hour); }}
-              >
-                {slot.label}
-              </button>
-            ))}
-          </div>
-          <div className="legend-heatmap-stats">
-            {!heatmapBounds ? (
-              <span className="heatmap-empty">Move map to see data</span>
-            ) : heatmapPointCount > 0 ? (
-              <span>{heatmapPointCount.toLocaleString()} data point{heatmapPointCount !== 1 ? 's' : ''}</span>
-            ) : (
-              <span className="heatmap-empty">No activity in this area</span>
-            )}
-            {heatmapLastRefresh && (
-              <span className="heatmap-refresh-time">
-                Updated {timeAgo(heatmapLastRefresh)}
-              </span>
-            )}
-          </div>
-          <div className="legend-heatmap-legend">
-            <span className="heatmap-legend-label">Low</span>
-            <div className="heatmap-legend-bar" />
-            <span className="heatmap-legend-label">High</span>
-          </div>
-        </div>
-      )}
     </div>
 
-      {/* ── Fixed bottom bar: profile buttons or heatmap controls ── */}
-      {(hasRoute || showHeatmap) && (
-        <div className="legend-profiles-bar">
-          {hasRoute ? (
-            PROFILES.map((p) => {
-              const IconComponent = p.icon;
-              const isActive = activeProfile === p.key;
-              return (
-                <button
-                  key={p.key}
-                  data-profile={p.key}
-                  className={`legend-profile-btn ${isActive ? "legend-profile-btn--active" : ""}`}
-                  onClick={() => { trigger(10); onProfileChange?.(p.key); }}
-                  title={p.label}
-                  aria-label={`Switch to ${p.label} profile`}
-                >
-                  <span className="legend-profile-icon">
-                    <IconComponent
-                      className="w-4 h-4"
-                      color={isActive ? p.color : "currentColor"}
-                    />
-                  </span>
-                  <span className="legend-profile-label">{p.label}</span>
-                </button>
-              );
-            })
-          ) : (
-            <div className="legend-heatmap-bar">
-              <div className="heatmap-bar-pills">
-                {TIME_SLOTS.map((slot) => (
-                  <button
-                    key={slot.label}
-                    className={`legend-heatmap-pill ${selectedHour === slot.hour ? "legend-heatmap-pill--active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); trigger(8); onSelectedHourChange?.(slot.hour); }}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
-              </div>
-              <div className="heatmap-bar-legend">
-                <span className="heatmap-legend-label">Low</span>
-                <div className="heatmap-legend-bar" />
-                <span className="heatmap-legend-label">High</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* ── Fixed profile bar (always visible at bottom of viewport) ── */}
+      <div className="legend-profiles-bar">
+        {PROFILES.map((p) => {
+          const IconComponent = p.icon;
+          const isActive = activeProfile === p.key;
+          return (
+            <button
+              key={p.key}
+              data-profile={p.key}
+              className={`legend-profile-btn ${isActive ? "legend-profile-btn--active" : ""}`}
+              onClick={() => { trigger(10); onProfileChange?.(p.key); }}
+              title={p.label}
+              aria-label={`Switch to ${p.label} profile`}
+            >
+              <span className="legend-profile-icon">
+                <IconComponent
+                  className="w-4 h-4"
+                  color={isActive ? p.color : "currentColor"}
+                />
+              </span>
+              <span className="legend-profile-label">{p.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </>
   );
 
