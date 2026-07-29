@@ -314,6 +314,7 @@ const Legend = forwardRef(function Legend(
   {
     visible,
     route,
+    routeActive = false,
     activeProfile = "standard",
     vehicleMode = "walk",
     warnings = [],
@@ -1081,7 +1082,7 @@ const Legend = forwardRef(function Legend(
               <span className="dot" />
               <span className="dot" />
             </div>
-            <span>Search for a destination to get directions</span>
+            <span>{routeActive ? "Restoring your route..." : "Search for a destination to get directions"}</span>
           </div>
         ) : (
           <div className="legend-peek-hint legend-peek-hint--insights">
@@ -1145,10 +1146,21 @@ const Legend = forwardRef(function Legend(
                   <span className="dot" />
                 </div>
               </div>
-              <h3 className="empty-route-title">Be in the know</h3>
-              <p className="empty-route-text">
-                Tap the search bar to find places on campus and get step-by-step directions.
-              </p>
+              {routeActive ? (
+                <>
+                  <h3 className="empty-route-title">Restoring your route</h3>
+                  <p className="empty-route-text">
+                    Loading the road network and recalculating your route...
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="empty-route-title">Be in the know</h3>
+                  <p className="empty-route-text">
+                    Tap the search bar to find places on campus and get step-by-step directions.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>

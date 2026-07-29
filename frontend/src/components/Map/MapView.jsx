@@ -697,7 +697,8 @@ export default function MapView({
         startText={displayStartPoint?.name || startText || "Start"}
         destText={destText}
         visible={markersVisible || showHeatmap}
-        route={primaryRoute}
+        route={markersVisible ? primaryRoute : null}
+        routeActive={markersVisible}
         allRoutes={allRoutes}
         activeProfile={activeProfile}
         vehicleMode={vehicleMode}
