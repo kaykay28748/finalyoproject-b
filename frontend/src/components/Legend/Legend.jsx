@@ -193,7 +193,12 @@ const Legend = forwardRef(function Legend({
                 <div className="legend-metrics-row">
                   <span className="legend-metrics-time">{metrics?.time || formatTravelTime(route?.totalDistance, vehicleMode)}</span>
                   <span className="legend-metrics-dist">{metrics?.distance || formatDistance(route?.totalDistance)}</span>
-                  <span className="legend-traffic-text">{getTrafficLabel()}</span>
+                  <span className="legend-traffic-text">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8.25 18.75a1.5 1.5 0 0 1-3 0m15 0a1.5 1.5 0 0 1-3 0M3 9.375h18M5.25 14.25h13.5M6 14.25h12m-9.75 0h7.5M4.5 9.375L5.25 18h13.5l.75-8.625M4.5 9.375L6 6.75h12l1.5 2.625" />
+                    </svg>
+                    {getTrafficLabel()}
+                  </span>
                 </div>
                 <WeatherBanner />
                 <LegendDirectionsTab
