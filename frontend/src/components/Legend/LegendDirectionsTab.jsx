@@ -95,7 +95,7 @@ export default function LegendDirectionsTab({
           title={isVoiceEnabled ? "Disable voice guidance" : "Enable voice guidance"}
           aria-pressed={isVoiceEnabled}
         >
-          <IconSpeakerWave className="w-2.5 h-2.5" color={isVoiceEnabled ? "#3b82f6" : "#9ca3af"} />
+          <IconSpeakerWave style={{ width: 10, height: 10 }} color={isVoiceEnabled ? "#3b82f6" : "#9ca3af"} />
           <span>{isVoiceEnabled ? "Voice guidance ON" : "Voice guidance OFF"}</span>
         </button>
       </div>
@@ -151,7 +151,7 @@ export default function LegendDirectionsTab({
       )}
 
       <button className="legend-share-btn" onClick={handleShare}>
-        <IconShare className="w-2.5 h-2.5" color="#3b82f6" />
+        <IconShare style={{ width: 10, height: 10 }} color="#3b82f6" />
         <span>Share my location</span>
       </button>
 

@@ -157,6 +157,7 @@ export const IconShare = ({
   className = "w-5 h-5",
   strokeWidth = 1.5,
   color = "currentColor",
+  ...rest
 }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -165,6 +166,7 @@ export const IconShare = ({
     strokeWidth={strokeWidth}
     stroke={color}
     className={className}
+    {...rest}
   >
     <path
       strokeLinecap="round"
@@ -543,6 +545,7 @@ export const IconSpeakerWave = ({
   className = "w-5 h-5",
   strokeWidth = 1.5,
   color = "currentColor",
+  ...rest
 }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -551,6 +554,7 @@ export const IconSpeakerWave = ({
     strokeWidth={strokeWidth}
     stroke={color}
     className={className}
+    {...rest}
   >
     <path
       strokeLinecap="round"
