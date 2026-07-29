@@ -102,10 +102,6 @@ export function useDragSheet({ expanded, onExpandedChange, disableDrag, onDragPr
     if (shouldExpand !== expandedRef.current) {
       onExpandedChange?.(shouldExpand);
       if (shouldExpand && onNavPanelClose) onNavPanelClose();
-      requestAnimationFrame(() => {
-        const newPos = recalcPositions();
-        if (newPos) snapTo(shouldExpand ? newPos.expandedY : newPos.peekY);
-      });
     } else {
       snapTo(shouldExpand ? pos.expandedY : pos.peekY);
     }
