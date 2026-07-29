@@ -2,6 +2,7 @@
 import express from 'express';
 import { query } from '../config/db.js';
 import { verifyToken } from '../middleware/auth.js';
+import { requireAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
 
@@ -314,18 +315,14 @@ heatmapRouter.get('/', async (req, res) => {
 });
 
 /**
- * GET /analytics/reset
+ * GET /analytics/heatmap/reset
  * Clears all heatmap data from route_segments.
- * No auth — hit this endpoint to reset before switching to GPS pings.
+ * Requires admin JWT — protects against accidental or malicious wipe.
  */
-heatmapRouter.get('/reset', async (req, res) => {
+heatmapRouter.get('/reset', verifyToken, requireAdmin, async (req, res) => {
   try {
-    const isProduction = process.env.NODE_ENV === 'production';
-    if (isProduction && req.query.confirm !== 'yes') {
-      return res.status(400).json({ error: 'Production: add ?confirm=yes to reset' });
-    }
     await query('DELETE FROM route_segments');
-    console.log('[Heatmap Reset] All heatmap data cleared');
+    console.log(`[Heatmap Reset] Cleared by admin user ${req.user?.userId}`);
     res.json({ success: true, message: 'Heatmap data reset successfully' });
   } catch (error) {
     console.error('[Heatmap Reset] Error:', error.message);
