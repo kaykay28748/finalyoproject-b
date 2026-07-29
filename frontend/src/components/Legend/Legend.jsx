@@ -1096,6 +1096,7 @@ const Legend = forwardRef(function Legend(
         )}
 
         {/* Mode strip (icons only) with sliding indicator */}
+        {hasRoute && (
         <div
           ref={modeStripRef}
           className="legend-mode-strip"
@@ -1118,7 +1119,7 @@ const Legend = forwardRef(function Legend(
                   className="w-6 h-6"
                   color={isActive ? m.color : "#9ca3af"}
                 />
-                {hasRoute && modeTimes[m.key] && (
+                {modeTimes[m.key] && (
                   <span className="mode-btn-time">{modeTimes[m.key]}</span>
                 )}
               </button>
@@ -1131,6 +1132,7 @@ const Legend = forwardRef(function Legend(
             />
           </div>
         </div>
+        )}
       </div>
 
 
@@ -1385,50 +1387,51 @@ const Legend = forwardRef(function Legend(
                 </>
               )}
 
-              {/* ── Heatmap ── */}
-              {showHeatmap && (
-                <>
-                  <div className="legend-divider" />
-                  <div className="legend-heatmap">
-                    <div className="legend-heatmap-header">
-                      <span className="legend-heatmap-title">Popular Routes</span>
-                    </div>
-                    <div className="legend-heatmap-pills">
-                      {TIME_SLOTS.map((slot) => (
-                        <button
-                          key={slot.label}
-                          className={`legend-heatmap-pill ${selectedHour === slot.hour ? "legend-heatmap-pill--active" : ""}`}
-                          onClick={(e) => { e.stopPropagation(); trigger(8); onSelectedHourChange?.(slot.hour); }}
-                        >
-                          {slot.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="legend-heatmap-stats">
-                      {!heatmapBounds ? (
-                        <span className="heatmap-empty">Move map to see data</span>
-                      ) : heatmapPointCount > 0 ? (
-                        <span>{heatmapPointCount.toLocaleString()} data point{heatmapPointCount !== 1 ? 's' : ''}</span>
-                      ) : (
-                        <span className="heatmap-empty">No data yet</span>
-                      )}
-                      {heatmapLastRefresh && (
-                        <span className="heatmap-refresh-time">
-                          Updated {heatmapLastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="legend-heatmap-legend">
-                      <span className="heatmap-legend-label">Low</span>
-                      <div className="heatmap-legend-bar" />
-                      <span className="heatmap-legend-label">High</span>
-                    </div>
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
+      )}
+
+      {/* ── Heatmap ── */}
+      {showHeatmap && (
+        <>
+          <div className="legend-divider" />
+          <div className="legend-heatmap">
+            <div className="legend-heatmap-header">
+              <span className="legend-heatmap-title">Popular Routes</span>
+            </div>
+            <div className="legend-heatmap-pills">
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot.label}
+                  className={`legend-heatmap-pill ${selectedHour === slot.hour ? "legend-heatmap-pill--active" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); trigger(8); onSelectedHourChange?.(slot.hour); }}
+                >
+                  {slot.label}
+                </button>
+              ))}
+            </div>
+            <div className="legend-heatmap-stats">
+              {!heatmapBounds ? (
+                <span className="heatmap-empty">Move map to see data</span>
+              ) : heatmapPointCount > 0 ? (
+                <span>{heatmapPointCount.toLocaleString()} data point{heatmapPointCount !== 1 ? 's' : ''}</span>
+              ) : (
+                <span className="heatmap-empty">No data yet</span>
+              )}
+              {heatmapLastRefresh && (
+                <span className="heatmap-refresh-time">
+                  Updated {heatmapLastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+            <div className="legend-heatmap-legend">
+              <span className="heatmap-legend-label">Low</span>
+              <div className="heatmap-legend-bar" />
+              <span className="heatmap-legend-label">High</span>
+            </div>
+          </div>
+        </>
       )}
     </div>
 
