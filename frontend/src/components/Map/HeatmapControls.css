@@ -1,191 +1,292 @@
-/* HeatmapControls.css */
+/* HeatmapControls.css — matches LayerSwitcher glass style */
 
-.heatmap-controls {
+.heatmap-switcher {
   position: absolute;
-  bottom: 100px;
-  right: 12px;
-  z-index: 1000;
-  background: var(--drop-bg, #ffffff);
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 14px;
-  padding: 12px 14px;
-  width: 220px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  font-family: "Outfit", sans-serif;
-  pointer-events: auto;
-  touch-action: manipulation;
+  right: 20px;
+  top: calc(50% - 56px);
+  z-index: 999;
 }
 
-.ug-root.dark .heatmap-controls {
-  background: #1f2937;
-  border-color: #374151;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-/* Header section */
-.heatmap-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.heatmap-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text, #111827);
+.heatmap-switcher-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.ug-root.dark .heatmap-title {
-  color: #f3f4f6;
-}
-
-/* Close button */
-.heatmap-close {
-  background: none;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   border: none;
-  font-size: 12px;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 2px 5px;
-  border-radius: 6px;
-  line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  outline: none;
+  color: rgba(0, 0, 0, 0.75);
+
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+
+  border-radius: 22px;
+  border: 0.5px solid rgba(255, 255, 255, 0.8);
+
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.10),
+    0 1px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+
+  transition:
+    background 0.2s ease,
+    transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1);
+
+  animation: heatmap-btn-in 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) 0.06s both;
 }
 
-.heatmap-close:hover {
-  background: #f3f4f6;
-  color: #374151;
+.heatmap-switcher-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
-.ug-root.dark .heatmap-close:hover {
-  background: #374151;
-  color: #d1d5db;
+.heatmap-switcher-btn:active {
+  transform: scale(0.88);
+  transition:
+    transform 0.08s cubic-bezier(0.2, 0, 0, 1),
+    background 0.1s ease;
+  background: rgba(0, 0, 0, 0.09);
 }
 
-/* Loading spinner */
-.heatmap-spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #f59e0b;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+.heatmap-switcher-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
 }
 
-/* Time filter pills */
-.heatmap-time-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-bottom: 10px;
+.heatmap-switcher-btn--active {
+  color: #f97316;
 }
 
-.heatmap-pill {
-  font-size: 11px;
-  font-family: "Outfit", sans-serif;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 20px;
-  border: 1.5px solid #e5e7eb;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  pointer-events: auto;
-  touch-action: manipulation;
-}
+/* ── Popover ──────────────────────────────────────────── */
+.heatmap-switcher-popover {
+  position: absolute;
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
 
-.heatmap-pill:hover {
-  border-color: #f59e0b;
-  color: #f59e0b;
-}
-
-.heatmap-pill--active {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: #ffffff;
-}
-
-/* Stats section */
-.heatmap-stats {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 10px;
+  padding: 6px;
+
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+
+  border-radius: 22px;
+  border: 0.5px solid rgba(255, 255, 255, 0.8);
+
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.15),
+    0 1px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+
+  animation: heatmap-popover-in 0.2s cubic-bezier(0.2, 0, 0, 1) both;
+  white-space: nowrap;
+  min-width: 160px;
 }
 
-.heatmap-stats span {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.ug-root.dark .heatmap-stats span {
-  color: #9ca3af;
-}
-
-.heatmap-empty {
-  font-style: italic;
-}
-
-.heatmap-refresh-time {
-  opacity: 0.6;
-}
-
-/* Color legend */
-.heatmap-legend {
+.heatmap-switcher-option {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 510;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  color: rgba(0, 0, 0, 0.75);
+  transition:
+    background 0.15s ease,
+    transform 0.25s cubic-bezier(0.34, 1.3, 0.64, 1);
+
+  width: 100%;
+  text-align: left;
 }
 
-.heatmap-legend-label {
-  font-size: 10px;
-  color: #9ca3af;
-  white-space: nowrap;
+.heatmap-switcher-option:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
-.heatmap-legend-bar {
+.heatmap-switcher-option:active {
+  transform: scale(0.96);
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.heatmap-switcher-option svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
+  flex-shrink: 0;
+}
+
+.heatmap-switcher-option span {
   flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(to right,
-    #313695,
-    #4575b4,
-    #74add1,
-    #fee090,
-    #f46d43,
-    #d73027,
-    #a50026
-  );
 }
 
-/* Animation */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.heatmap-switcher-option--active {
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.08);
 }
 
-/* Mobile responsive */
+.heatmap-switcher-option--active:hover {
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.heatmap-switcher-check {
+  width: 16px;
+  height: 16px;
+  color: #f97316;
+  flex-shrink: 0;
+}
+
+.heatmap-switcher-divider {
+  height: 0.5px;
+  margin: 2px 14px;
+  background: rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+/* ── Dark mode ─────────────────────────────────────────── */
+.ug-root.dark .heatmap-switcher-btn {
+  background: rgba(30, 30, 32, 0.60);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ug-root.dark .heatmap-switcher-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ug-root.dark .heatmap-switcher-btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ug-root.dark .heatmap-switcher-btn--active {
+  color: #fb923c;
+}
+
+.ug-root.dark .heatmap-switcher-popover {
+  background: rgba(30, 30, 32, 0.60);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.ug-root.dark .heatmap-switcher-option {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ug-root.dark .heatmap-switcher-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ug-root.dark .heatmap-switcher-option:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ug-root.dark .heatmap-switcher-option--active {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.ug-root.dark .heatmap-switcher-option--active:hover {
+  background: rgba(251, 146, 60, 0.18);
+}
+
+.ug-root.dark .heatmap-switcher-check {
+  color: #fb923c;
+}
+
+.ug-root.dark .heatmap-switcher-divider {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* ── Animations ────────────────────────────────────────── */
+@keyframes heatmap-btn-in {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes heatmap-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.92) translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1) translateX(0);
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 600px) {
-  .heatmap-controls {
-    bottom: 80px;
-    right: 8px;
-    width: 200px;
-    padding: 10px 12px;
+  .heatmap-switcher {
+    right: 12px;
   }
-  
-  .heatmap-pill {
-    font-size: 10px;
-    padding: 2px 7px;
+
+  .heatmap-switcher-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 20px;
   }
-  
-  .heatmap-title {
-    font-size: 12px;
+
+  .heatmap-switcher-btn svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .heatmap-switcher-popover {
+    right: calc(100% + 10px);
+    min-width: 140px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heatmap-switcher {
+    right: 24px;
+  }
+
+  .heatmap-switcher-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 24px;
+  }
+
+  .heatmap-switcher-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .heatmap-switcher-option {
+    font-size: 13.5px;
+    padding: 10px 14px;
   }
 }

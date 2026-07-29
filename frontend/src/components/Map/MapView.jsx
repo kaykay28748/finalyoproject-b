@@ -660,11 +660,10 @@ export default function MapView({
         ]}
       />
 
-      {/* ── Heatmap Controls ────────────────────────────────────── */}
+      {/* ── Heatmap Controls (right side, above layers) ──────────── */}
       <HeatmapControls
         visible={showHeatmap}
         onToggle={onToggleHeatmap}
-        mapBounds={mapBounds}
         selectedHour={selectedHour}
         onSelectedHourChange={onSelectedHourChange}
       />

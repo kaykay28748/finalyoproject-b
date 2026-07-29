@@ -1,114 +1,82 @@
-// frontend/src/components/Map/HeatmapControls.jsx
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useHaptics } from "../../hooks/useHaptics";
-import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 import "./HeatmapControls.css";
 
 const TIME_SLOTS = [
   { label: "All day", hour: undefined },
   { label: "Morning", hour: 8 },
-  { label: "Midday", hour: 12 },
-  { label: "Afternoon", hour: 16 },
+  { label: "Afternoon", hour: 14 },
   { label: "Evening", hour: 19 },
-  { label: "Night", hour: 22 },
 ];
 
-export default function HeatmapControls({ visible, onToggle, mapBounds, selectedHour, onSelectedHourChange }) {
+export default function HeatmapControls({ visible, onToggle, selectedHour, onSelectedHourChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
   const { trigger } = useHaptics();
-  const [isLoading, setIsLoading] = useState(false);
-  const [pointCount, setPointCount] = useState(0);
-  const [lastRefresh, setLastRefresh] = useState(null);
-
-  const refreshStats = async () => {
-    if (!visible || !mapBounds) return;
-    
-    setIsLoading(true);
-    try {
-      const points = await fetchHeatmapData(mapBounds, { hour: selectedHour });
-      setPointCount(points.length);
-      setLastRefresh(new Date());
-    } catch (err) {
-      console.error("[HeatmapControls] Fetch failed:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
-    if (visible && mapBounds) {
-      refreshStats();
-    }
-  }, [visible, mapBounds, selectedHour]);
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  if (!visible) return null;
-
-  const stopPropagation = (e) => {
-    e.stopPropagation();
-  };
+  const current = TIME_SLOTS.find((s) => s.hour === selectedHour) || TIME_SLOTS[0];
 
   return (
-    <div 
-      className="heatmap-controls"
-      onMouseDown={stopPropagation}
-      onTouchStart={stopPropagation}
-      onClick={stopPropagation}
-    >
-      <div className="heatmap-header">
-        <span className="heatmap-title">
-          🔥 Congestion
-          {isLoading && <span className="heatmap-spinner" />}
-        </span>
-        <button 
-          className="heatmap-close" 
-          onClick={(e) => {
-            e.stopPropagation();
-            trigger(10);
-            onToggle();
-          }}
-          onMouseDown={stopPropagation}
-          onTouchStart={stopPropagation}
-          aria-label="Hide heatmap"
-        >
-          ✕
-        </button>
-      </div>
+    <div className="heatmap-switcher" ref={ref}>
+      <button
+        className={`heatmap-switcher-btn${visible ? " heatmap-switcher-btn--active" : ""}`}
+        onClick={() => { trigger(8); setOpen((o) => !o); }}
+        aria-label="Heatmap time filter"
+        title={current.label}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+          <path d="M12 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
+        </svg>
+      </button>
 
-      <div className="heatmap-time-pills">
-        {TIME_SLOTS.map((slot) => (
+      {open && (
+        <div className="heatmap-switcher-popover">
           <button
-            key={slot.label}
-            className={`heatmap-pill ${selectedHour === slot.hour ? "heatmap-pill--active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              trigger(8);
-              onSelectedHourChange(slot.hour);
-            }}
-            onMouseDown={stopPropagation}
-            onTouchStart={stopPropagation}
+            className={`heatmap-switcher-option${visible ? " heatmap-switcher-option--active" : ""}`}
+            onClick={() => { trigger(8); onToggle(); setOpen(false); }}
           >
-            {slot.label}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {visible ? (
+                <polyline points="20 6 9 17 4 12" />
+              ) : (
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              )}
+            </svg>
+            <span>{visible ? "Hide heatmap" : "Show heatmap"}</span>
+            {visible && (
+              <svg className="heatmap-switcher-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
           </button>
-        ))}
-      </div>
 
-      <div className="heatmap-stats">
-        {pointCount > 0 ? (
-          <span>{pointCount.toLocaleString()} data point{pointCount !== 1 ? 's' : ''}</span>
-        ) : (
-          <span className="heatmap-empty">No data yet — routes you calculate will appear here</span>
-        )}
-        {lastRefresh && (
-          <span className="heatmap-refresh-time">
-            Updated {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        )}
-      </div>
+          <div className="heatmap-switcher-divider" />
 
-      <div className="heatmap-legend">
-        <span className="heatmap-legend-label">Low</span>
-        <div className="heatmap-legend-bar" />
-        <span className="heatmap-legend-label">High</span>
-      </div>
+          {TIME_SLOTS.map((slot) => (
+            <button
+              key={slot.label}
+              className={`heatmap-switcher-option${selectedHour === slot.hour ? " heatmap-switcher-option--active" : ""}`}
+              onClick={() => { trigger(8); onSelectedHourChange(slot.hour); setOpen(false); }}
+            >
+              <span>{slot.label}</span>
+              {selectedHour === slot.hour && (
+                <svg className="heatmap-switcher-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
