@@ -423,6 +423,8 @@ export default function MapView({
     }
   };
 
+  const currentLayer = LAYERS.find((l) => l.id === mapLayer) || LAYERS[0];
+
   const handleCompassClick = async () => {
     let canToggle = true;
     if (headingPermission === "unsupported" || headingPermission === "denied") {
