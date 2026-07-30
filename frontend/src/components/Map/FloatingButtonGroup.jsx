@@ -6,6 +6,10 @@ const FloatingButtonGroup = ({ buttons }) => {
   const [openPopoverIndex, setOpenPopoverIndex] = useState(null);
   const containerRef = useRef(null);
 
+  const closePopover = useCallback(() => {
+    setOpenPopoverIndex(null);
+  }, []);
+
   const handleClick = useCallback((button, index) => {
     if (button.popover) {
       setOpenPopoverIndex(prev => prev === index ? null : index);
@@ -67,7 +71,9 @@ const FloatingButtonGroup = ({ buttons }) => {
 
           {openPopoverIndex === index && button.popover && (
             <div className="floating-glass-popover">
-              {button.popover}
+              {typeof button.popover === 'function'
+                ? button.popover({ closePopover, isOpen: openPopoverIndex === index })
+                : button.popover}
             </div>
           )}
         </div>

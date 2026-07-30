@@ -656,15 +656,19 @@ export default function MapView({
               </svg>
             ),
             label: "Heatmap",
-            onClick: onToggleHeatmap,
+            onClick: () => {},
             active: showHeatmap,
-            popover: showHeatmap ? (
+            popover: ({ closePopover }) => (
               <div>
                 {TIME_SLOTS.map((slot) => (
                   <button
                     key={slot.label}
                     className={`floating-glass-popover-item${selectedHour === slot.hour ? " floating-glass-popover-item--active" : ""}`}
-                    onClick={() => onSelectedHourChange(slot.hour)}
+                    onClick={() => {
+                      onSelectedHourChange(slot.hour);
+                      if (!showHeatmap) onToggleHeatmap();
+                      closePopover();
+                    }}
                   >
                     <span>{slot.label}</span>
                     {selectedHour === slot.hour && (
@@ -675,7 +679,7 @@ export default function MapView({
                   </button>
                 ))}
               </div>
-            ) : null,
+            ),
           },
           {
             icon: (
