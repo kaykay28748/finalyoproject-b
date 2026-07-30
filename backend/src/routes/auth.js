@@ -195,11 +195,15 @@ router.post('/change-password', verifyToken, async (req, res) => {
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://ugnavigator.onrender.com';
 
+function getSupabaseKey() {
+  return process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
 async function sendPasswordRecovery(email) {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  const supabaseKey = getSupabaseKey();
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase not configured');
   }
 
@@ -207,7 +211,7 @@ async function sendPasswordRecovery(email) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': supabaseAnonKey
+      'apikey': supabaseKey
     },
     body: JSON.stringify({
       email,
