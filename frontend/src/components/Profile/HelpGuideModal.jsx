@@ -348,7 +348,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
           <div className="helpguide-section">
             <SectionHeader icon={<IconCompass />} title="Overview" />
             <p className="helpguide-section-desc">
-              Your intelligent accessibility-first navigation companion.
+              Your intelligent, context-aware pedestrian navigation companion.
             </p>
             <Card icon={<IconMapPin />} accentColor="#2563eb" title="Smart Routing">
               Search any campus landmark and get turn-by-turn directions optimized for your chosen profile.

@@ -51,11 +51,11 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
         <h1>
           Navigate
           <br />
-          Legon.
+          without limits.
         </h1>
         <p>
-          Context-aware routing for University of Ghana — accessible, safe, and
-          fast.
+          Context-aware, pedestrian-first routing that adapts to how you move through
+          the world.
         </p>
       </div>
 

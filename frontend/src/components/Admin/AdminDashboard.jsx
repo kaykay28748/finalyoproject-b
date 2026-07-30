@@ -392,7 +392,7 @@ export default function AdminDashboard() {
             </svg>
             <span>TransitGuide</span>
           </div>
-          <p className="admin-sidebar-subtitle">Admin Portal</p>
+          <p className="admin-sidebar-subtitle">Admin</p>
         </div>
 
         <nav className="admin-nav">

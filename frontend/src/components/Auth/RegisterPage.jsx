@@ -171,12 +171,13 @@ export default function RegisterPage({ onSwitchToLogin }) {
         <div className="auth-hero-bg">TG</div>
         <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
         <h1>
-          Join the
+          Start your
           <br />
-          community.
+          journey.
         </h1>
         <p>
-          Create an account and start navigating Legon campus with confidence.
+          Create an account and unlock dynamic, pedestrian-first routing
+          that adapts to your needs.
         </p>
       </div>
 

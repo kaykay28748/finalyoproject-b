@@ -322,7 +322,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
             </p>
             <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.7, margin: '0 0 12px 0' }}>
               TransitGuide is committed to protecting your privacy. This policy explains how we collect, use, and
-              safeguard your information when you use our navigation service.
+              safeguard your information when you use our pedestrian navigation service.
             </p>
             <HighlightCard icon={<IconShieldSmall />} accentColor="#2563eb" title="Our Promise">
               We collect only the minimum data needed to provide navigation services. We never sell your personal

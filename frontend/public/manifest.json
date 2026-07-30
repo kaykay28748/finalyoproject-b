@@ -1,7 +1,7 @@
 {
   "name": "TransitGuide",
   "short_name": "TransitGuide",
-  "description": "Context-aware accessibility-first navigation",
+  "description": "Context-aware, pedestrian-first navigation",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#0d0d0d",

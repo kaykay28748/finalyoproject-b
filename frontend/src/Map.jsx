@@ -432,7 +432,7 @@ export default function Map() {
             <div>
               <p className="ug-title">TransitGuide</p>
               <p className="ug-subtitle">
-                Accessibility-first navigation
+                Context-aware · pedestrian-first
                 {accuracy && (
                   <span className={accuracy < 20 ? "ug-accuracy-good" : accuracy < 50 ? "ug-accuracy-ok" : "ug-accuracy-poor"}>
                     · GPS ±{accuracy}m
