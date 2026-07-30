@@ -103,6 +103,10 @@ const Legend = forwardRef(function Legend({
   }, [hasRoute, visible]);
 
   useEffect(() => {
+    if (hasRoute && window.innerWidth >= 1024) setExpanded(true);
+  }, [hasRoute]);
+
+  useEffect(() => {
     if (autoCollapse && expanded) {
       wasExpandedBeforeCollapse.current = true;
       setExpanded(false);

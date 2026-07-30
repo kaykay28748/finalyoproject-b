@@ -1016,18 +1016,79 @@
 
 /* ── Desktop ─────────────────────────────────────────────────────────────── */
 @media (min-width: 1024px) {
-  .legend-sheet {
-    border-radius: 28px 28px 0 0;
+  .legend-root {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    left: auto;
+    width: 380px;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    pointer-events: none;
   }
 
-  .legend-mode-btn { padding: 8px 14px 10px; }
-  .legend-mode-btn svg { width: 24px; height: 24px; }
+  .legend-sheet {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+    padding-bottom: 0;
+    transform: none !important;
+  }
 
-  .legend-body { padding: 12px 24px max(24px, env(safe-area-inset-bottom, 24px)); }
+  .ug-root.dark .legend-sheet {
+    border-left-color: rgba(255, 255, 255, 0.08);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .legend-drag-header {
+    cursor: default;
+    touch-action: auto;
+  }
+
+  .legend-handle-wrap,
+  .legend-peek-hint {
+    display: none;
+  }
+
+  .legend-body {
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
+    padding: 8px 20px;
+  }
 
   .legend-profiles-bar-inline {
-    border-radius: 0 0 28px 28px;
+    max-width: none;
+    border-radius: 0;
+    padding: 8px 16px;
   }
 
-  .legend-profile-btn { padding: 8px 4px; font-size: 11px; }
+  .legend-profile-btn {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .legend-mode-btn {
+    padding: 8px 16px 10px;
+  }
+
+  .legend-mode-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .legend-metrics-time {
+    font-size: 24px;
+  }
+
+  .legend-peek-row {
+    padding: 8px 20px 4px;
+  }
 }
