@@ -28,6 +28,21 @@ async function runMigration() {
   console.log('[Migration] Starting PostgreSQL migration...');
   
   try {
+    // Create route_feedback with PG syntax BEFORE schema.sql runs
+    // (schema.sql uses SQLite AUTOINCREMENT which would crash in PG)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS route_feedback (
+        id             SERIAL PRIMARY KEY,
+        user_id        UUID,
+        profile_key    TEXT NOT NULL DEFAULT 'standard',
+        rating         INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+        comment        TEXT,
+        created_at     TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+      )
+    `);
+    console.log('[Migration] ✓ route_feedback table ready');
+
     // Read schema.sql
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');

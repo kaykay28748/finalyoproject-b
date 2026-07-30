@@ -855,60 +855,6 @@
   text-overflow: ellipsis;
 }
 
-/* ── Feedback Cards ────────────────────────────────────────── */
-.feedback-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.feedback-card {
-  background: var(--a-panel-alt);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 10px;
-  padding: 20px;
-  transition: all var(--a-transition);
-}
-
-.feedback-card:hover {
-  background: var(--a-panel-hover);
-  border-color: rgba(255,255,255,0.08);
-}
-
-.feedback-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.feedback-profile {
-  font-weight: 700;
-  font-size: 13px;
-  text-transform: capitalize;
-  color: var(--a-accent);
-}
-
-.feedback-stars {
-  color: #f59e0b;
-  font-size: 14px;
-  letter-spacing: 1px;
-}
-
-.feedback-comment {
-  font-size: 13px;
-  color: var(--a-text-secondary);
-  margin: 0 0 12px 0;
-  line-height: 1.5;
-}
-
-.feedback-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #555;
-}
-
 /* ── Cluster Cards ─────────────────────────────────────────── */
 .clusters-list {
   display: flex;

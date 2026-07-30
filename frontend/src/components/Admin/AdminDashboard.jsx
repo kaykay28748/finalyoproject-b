@@ -16,11 +16,6 @@ const Icons = {
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   ),
-  Star: () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  ),
   Users: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -189,7 +184,6 @@ export default function AdminDashboard() {
   const [users,            setUsers]            = useState([]);
   const [activity,         setActivity]         = useState([]);
   const [reports,          setReports]          = useState([]);
-  const [feedback,         setFeedback]         = useState([]);
   const [pendingCount,     setPendingCount]      = useState(0);
   const [isLoading,        setIsLoading]        = useState(true);
   const [error,            setError]            = useState('');
@@ -253,14 +247,13 @@ export default function AdminDashboard() {
 
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
-      const [statsRes, usersRes, activityRes, feedbackRes] = await Promise.all([
+      const [statsRes, usersRes, activityRes] = await Promise.all([
         fetch(`${API_URL}/admin/stats`,    { headers }),
         fetch(`${API_URL}/admin/users`,    { headers }),
         fetch(`${API_URL}/admin/activity`, { headers }),
-        fetch(`${API_URL}/api/reports/feedback`, { headers }),
       ]);
 
-      if ([statsRes, usersRes, activityRes, feedbackRes].some(r => r.status === 401 || r.status === 403)) {
+      if ([statsRes, usersRes, activityRes].some(r => r.status === 401 || r.status === 403)) {
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
         sessionStorage.removeItem('user');
@@ -271,7 +264,6 @@ export default function AdminDashboard() {
       const statsData    = statsRes.ok    ? await statsRes.json()    : {};
       const usersData    = usersRes.ok    ? await usersRes.json()    : { users: [] };
       const activityData = activityRes.ok ? await activityRes.json() : { activity: [] };
-      const feedbackData = feedbackRes.ok ? await feedbackRes.json() : { feedback: [] };
 
       const parsedActivity = (activityData.activity || []).map(item => {
         let parsedMeta = {};
@@ -286,7 +278,6 @@ export default function AdminDashboard() {
       setStats(statsData);
       setUsers(usersData.users || []);
       setActivity(parsedActivity);
-      setFeedback(feedbackData.feedback || []);
       setLastUpdated(new Date());
       setError('');
     } catch (err) {
@@ -378,7 +369,6 @@ export default function AdminDashboard() {
   const tabTitle = {
     overview: 'Dashboard',
     reports:  'Reports & Messages',
-    feedback: 'Path Ratings',
     users:    'User Management',
     activity: 'Activity Log',
   }[activeTab] ?? 'Dashboard';
@@ -409,7 +399,6 @@ export default function AdminDashboard() {
           {[
             { key: 'overview', label: 'Overview', Icon: Icons.Dashboard },
             { key: 'reports',  label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount },
-            { key: 'feedback', label: 'Ratings',  Icon: Icons.Star },
             { key: 'users',    label: 'Users',    Icon: Icons.Users },
             { key: 'activity', label: 'Activity', Icon: Icons.Activity },
           ].map(({ key, label, Icon, badge }) => (
@@ -600,36 +589,7 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* ── Feedback / Ratings ─────────────────────────────────────────────── */}
-        {activeTab === 'feedback' && (
-          <div className="admin-card full-width">
-            <div className="admin-table-header">
-              <h3>Path Feedback & Ratings</h3>
-              <span className="admin-table-stats">{feedback.length} total ratings</span>
-            </div>
-            <div className="feedback-grid">
-              {feedback.length > 0 ? feedback.map((item) => (
-                <div key={item.id} className="feedback-card">
-                  <div className="feedback-card-top">
-                    <span className="feedback-profile">{item.profile_key}</span>
-                    <div className="feedback-stars">
-                      {'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}
-                    </div>
-                  </div>
-                  <p className="feedback-comment">{item.comment || "No comment provided."}</p>
-                  <div className="feedback-meta">
-                    <span>User: {item.user_id?.substring(0, 8) || 'Guest'}</span>
-                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              )) : (
-                <div className="admin-empty"><p>No feedback yet.</p></div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Reports + Messages (merged) ────────────────────────────────────── */}
+        {/* ── Reports ────────────────────────────────────────────────────────── */}
         {activeTab === 'reports' && (
           <>
             {/* ── Pending Clusters ──────────────────────────────────────────── */}
