@@ -65,8 +65,8 @@ export const startDotIcon = L.divIcon({
 // Modern blue START marker with flag icon (legacy)
 export const startIcon = makeHeroPin("#2563eb", heroiconPaths.flag, "START");
 
-// Modern green DEST marker with check icon
-export const destIcon = makeHeroPin("#22c55e", heroiconPaths.checkCircle, "DEST");
+// Modern green DEST marker with check icon (no label)
+export const destIcon = makeHeroPin("#22c55e", heroiconPaths.checkCircle, "");
 
 // ── Type-specific destination icons (Apple Maps style) ────────────────
 const TYPE_SVG = {
