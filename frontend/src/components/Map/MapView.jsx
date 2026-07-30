@@ -13,12 +13,9 @@ import { GpsLocationMarker, CustomLocationMarker } from "./LocationMarker";
 import RouteMarkers from "./RouteMarkers";
 import RouteLayer from "./RouteLayer";
 import HeatmapLayer from "./HeatmapLayer";
-import HeatmapControls from "./HeatmapControls";
 import Legend from "../Legend/Legend";
 import WeatherOverlay from "./WeatherOverlay";
 import FloatingButtonGroup from "./FloatingButtonGroup";
-import LayerSwitcher from "./LayerSwitcher";
-import CompassButton from "./CompassButton";
 import ReportMarkers from "./ReportMarkers";
 import { useWeather } from "../../hooks/useWeather";
 import { useDeviceHeading } from "../../hooks/useDeviceHeading";
@@ -34,6 +31,21 @@ import {
 import "./MapView.css";
 
 import { ROUTE_COLORS } from "../../function/utils/colors";
+
+const LAYERS = [
+  { id: "standard", label: "Standard", icon: "M3 3h18v18H3z" },
+  { id: "dark", label: "Dark", icon: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" },
+  { id: "cycle", label: "Cycle", icon: "M5 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM14 8l-2 6m0 0l-3 6m3-6h5m-5 0H8" },
+  { id: "transport", label: "Transit", icon: "M3 7h18M3 17h18M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" },
+  { id: "humanitarian", label: "Humanitarian", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+];
+
+const TIME_SLOTS = [
+  { label: "All day", hour: undefined },
+  { label: "Morning", hour: 8 },
+  { label: "Afternoon", hour: 14 },
+  { label: "Evening", hour: 19 },
+];
 
 // Lazy-load the 3D map only when the user actually enables 3D mode.
 // If the module fails to load, keep the 2D experience intact instead of crashing.
@@ -400,18 +412,24 @@ export default function MapView({
 
   const handleCompassToggle = () => {
     if (isHeadingUp) {
-      // Currently heading-up → snap to north
       setIsHeadingUp(false);
       setMapBearing(0);
       setSnapTrigger((n) => n + 1);
     } else if (Math.abs(displayBearing) > 1) {
-      // Manually rotated → snap to north
       setMapBearing(0);
       setSnapTrigger((n) => n + 1);
     } else {
-      // Already north → enable heading-up
       setIsHeadingUp(true);
     }
+  };
+
+  const handleCompassClick = async () => {
+    let canToggle = true;
+    if (headingPermission === "unsupported" || headingPermission === "denied") {
+      const granted = await requestHeadingPermission();
+      canToggle = granted;
+    }
+    if (canToggle) handleCompassToggle();
   };
 
   return (
@@ -571,27 +589,13 @@ export default function MapView({
         buttons={[
           {
             icon: isRecenterZoomed ? (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 <line x1="8" y1="11" x2="14" y2="11" />
               </svg>
             ) : (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <polygon points="12 6 12 12 16 14" />
                 <line x1="12" y1="12" x2="12" y2="18" />
@@ -602,19 +606,10 @@ export default function MapView({
             active: false,
           },
           {
-            // 2D/3D Toggle
             icon: is3DMode ? (
-              <span
-                style={{ fontSize: "14px", fontWeight: 700, lineHeight: 1 }}
-              >
-                2D
-              </span>
+              <span style={{ fontSize: "14px", fontWeight: 700, lineHeight: 1 }}>2D</span>
             ) : (
-              <span
-                style={{ fontSize: "14px", fontWeight: 700, lineHeight: 1 }}
-              >
-                3D
-              </span>
+              <span style={{ fontSize: "14px", fontWeight: 700, lineHeight: 1 }}>3D</span>
             ),
             label: is3DMode ? "Switch to 2D" : "Switch to 3D",
             onClick: handleToggle3D,
@@ -622,14 +617,38 @@ export default function MapView({
           },
           {
             icon: (
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d={currentLayer.icon} />
+              </svg>
+            ),
+            label: currentLayer.label,
+            onClick: () => {},
+            active: false,
+            popover: (
+              <div>
+                {LAYERS.map((l) => (
+                  <button
+                    key={l.id}
+                    className={`floating-glass-popover-item${mapLayer === l.id ? " floating-glass-popover-item--active" : ""}`}
+                    onClick={() => onMapLayerChange(l.id)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={l.icon} />
+                    </svg>
+                    <span>{l.label}</span>
+                    {mapLayer === l.id && (
+                      <svg className="floating-glass-popover-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ),
+          },
+          {
+            icon: (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="2" />
                 <path d="M12 2v4M22 12h-4M12 20v4M4 12H2M19.07 4.93l-2.83 2.83M6.9 17.1l-2.83 2.83M17.1 17.1l2.83 2.83M4.93 4.93l2.83 2.83" />
               </svg>
@@ -637,17 +656,42 @@ export default function MapView({
             label: "Heatmap",
             onClick: onToggleHeatmap,
             active: showHeatmap,
+            popover: showHeatmap ? (
+              <div>
+                {TIME_SLOTS.map((slot) => (
+                  <button
+                    key={slot.label}
+                    className={`floating-glass-popover-item${selectedHour === slot.hour ? " floating-glass-popover-item--active" : ""}`}
+                    onClick={() => onSelectedHourChange(slot.hour)}
+                  >
+                    <span>{slot.label}</span>
+                    {selectedHour === slot.hour && (
+                      <svg className="floating-glass-popover-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : null,
           },
           {
             icon: (
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                stroke="currentColor"
-                strokeWidth="1"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <span style={{ transform: `rotate(${-displayBearing}deg)`, display: "inline-block", transition: "transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)" }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="22" height="22">
+                  <polygon points="12,2 16,10 12,9 8,10" fill={isHeadingUp ? "#007AFF" : "currentColor"} stroke={isHeadingUp ? "#007AFF" : "currentColor"} />
+                  <polygon points="12,22 16,14 12,15 8,14" fill="currentColor" stroke="currentColor" opacity="0.4" />
+                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                </svg>
+              </span>
+            ),
+            label: isHeadingUp ? "Heading-up" : "North-up",
+            onClick: handleCompassClick,
+            active: isHeadingUp,
+          },
+          {
+            icon: (
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2L2 19h20L12 2z" />
                 <line x1="12" y1="9" x2="12" y2="13" stroke="white" />
                 <line x1="12" y1="17" x2="12.01" y2="17" stroke="white" />
@@ -658,30 +702,6 @@ export default function MapView({
             active: false,
           },
         ]}
-      />
-
-      {/* ── Heatmap Controls (right side, above layers) ──────────── */}
-      <HeatmapControls
-        visible={showHeatmap}
-        onToggle={onToggleHeatmap}
-        selectedHour={selectedHour}
-        onSelectedHourChange={onSelectedHourChange}
-      />
-
-      {/* ── Layer Switcher (right side) ──────────────────────────── */}
-      <LayerSwitcher
-        mapLayer={mapLayer}
-        onMapLayerChange={onMapLayerChange}
-      />
-
-      {/* ── Compass (right side, below LayerSwitcher) ────────────── */}
-      <CompassButton
-        heading={deviceHeading}
-        mapBearing={displayBearing}
-        isHeadingUp={isHeadingUp}
-        onToggle={handleCompassToggle}
-        permissionState={headingPermission}
-        onRequestPermission={requestHeadingPermission}
       />
 
 

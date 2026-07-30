@@ -261,6 +261,81 @@
   }
 }
 
+/* ── Popover ──────────────────────────────────────────────── */
+.floating-glass-popover {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  min-width: 140px;
+  background: rgba(30, 30, 32, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 10px;
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  animation: tooltip-in 0.18s cubic-bezier(0.2, 0, 0, 1) both;
+  overflow: hidden;
+}
+
+.floating-glass-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  cursor: pointer;
+  border-radius: 7px;
+  text-align: left;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.floating-glass-popover-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.floating-glass-popover-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.floating-glass-popover-item--active {
+  color: #fff;
+  background: rgba(0, 122, 255, 0.25);
+}
+
+.floating-glass-popover-item--active:hover {
+  background: rgba(0, 122, 255, 0.35);
+}
+
+.floating-glass-popover-check {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.floating-glass-popover-separator {
+  height: 0.5px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 8px;
+}
+
+.ug-root.dark .floating-glass-popover {
+  background: rgba(18, 18, 20, 0.82);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
 @media (min-width: 1024px) {
   .floating-glass-container {
     left: 24px;
@@ -277,5 +352,9 @@
   .floating-glass-icon svg {
     width: 22px;
     height: 22px;
+  }
+
+  .floating-glass-popover {
+    left: calc(100% + 16px);
   }
 }

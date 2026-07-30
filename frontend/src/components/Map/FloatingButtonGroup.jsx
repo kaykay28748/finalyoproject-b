@@ -1,21 +1,34 @@
-// components/Map/FloatingButtonGroup.jsx
-// Apple visionOS/macOS-style grouped glass buttons (icon-only + tooltip)
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import './FloatingButtonGroup.css';
 
 const FloatingButtonGroup = ({ buttons }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [openPopoverIndex, setOpenPopoverIndex] = useState(null);
+  const containerRef = useRef(null);
 
-  const handleClick = useCallback((button) => {
-    button.onClick();
-    // Haptic feedback on mobile (10ms light tap, Apple-style)
+  const handleClick = useCallback((button, index) => {
+    if (button.popover) {
+      setOpenPopoverIndex(prev => prev === index ? null : index);
+    }
+    button.onClick?.();
     if (window.navigator?.vibrate) {
       window.navigator.vibrate(10);
     }
   }, []);
 
+  useEffect(() => {
+    if (openPopoverIndex === null) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpenPopoverIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openPopoverIndex]);
+
   return (
-    <div className="floating-glass-container" role="toolbar" aria-label="Map controls">
+    <div className="floating-glass-container" ref={containerRef} role="toolbar" aria-label="Map controls">
       {buttons.map((button, index) => (
         <div
           key={index}
@@ -24,14 +37,14 @@ const FloatingButtonGroup = ({ buttons }) => {
           onMouseLeave={() => setHoveredIndex(null)}
           onClick={(e) => {
             e.stopPropagation();
-            handleClick(button);
+            handleClick(button, index);
           }}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              handleClick(button);
+              handleClick(button, index);
             }
           }}
           role="button"
@@ -45,10 +58,16 @@ const FloatingButtonGroup = ({ buttons }) => {
             {button.icon}
           </span>
 
-          {hoveredIndex === index && (
+          {hoveredIndex === index && openPopoverIndex !== index && (
             <div className="floating-glass-tooltip" role="tooltip">
               <span className="tooltip-arrow" aria-hidden="true" />
               {button.label}
+            </div>
+          )}
+
+          {openPopoverIndex === index && button.popover && (
+            <div className="floating-glass-popover">
+              {button.popover}
             </div>
           )}
         </div>
