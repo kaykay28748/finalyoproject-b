@@ -551,13 +551,23 @@
   pointer-events: auto;
 }
 
-/* Mobile responsivenesss */
+/* Mobile */
 @media (max-width: 600px) {
   .map-report-btn {
     left: 12px;
     bottom: 100px;
     width: 38px;
     height: 38px;
+  }
+}
+
+/* Desktop — move zoom controls to left side (legend occupies right) */
+@media (min-width: 1024px) {
+  .map-zoom-controls {
+    left: 16px;
+    right: auto;
+    top: 16px;
+    transform: none;
   }
 }
 
