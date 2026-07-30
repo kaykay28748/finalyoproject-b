@@ -554,16 +554,15 @@ export default function AdminDashboard() {
 
       {/* ── Main content ─────────────────────────────────────────────────────── */}
       <main className="admin-main">
-        <div className="admin-main-header">
-          <div>
-            <h1>{tabTitle}</h1>
-            <p>Welcome back, {user?.username || 'Admin'}</p>
+        <div className="admin-topbar">
+          <div className="admin-topbar-left">
+            <span className="admin-topbar-title">{tabTitle}</span>
+            <span className="admin-topbar-welcome">Welcome back, {user?.username || 'Admin'}</span>
           </div>
-          <div className="admin-header-actions">
-            <span className="admin-last-updated">
-              Updated: {lastUpdated?.toLocaleTimeString() || '--:--:--'}
-            </span>
-            <button onClick={() => { trigger(10); fetchData(); }} className="admin-refresh-btn">
+          <div className="admin-topbar-right">
+            <span className="admin-updated">Updated: {lastUpdated?.toLocaleTimeString() || '--:--:--'}</span>
+            <button onClick={() => { trigger(10); }} className="admin-topbar-btn settings">SETTINGS</button>
+            <button onClick={() => { trigger(10); fetchData(); }} className="admin-topbar-btn">
               <Icons.Refresh />
               Refresh
             </button>
@@ -579,6 +578,8 @@ export default function AdminDashboard() {
             </button>
           </div>
         )}
+
+        <div className="admin-content">
 
         {/* ── Overview ───────────────────────────────────────────────────────── */}
         {activeTab === 'overview' && (
@@ -622,10 +623,21 @@ export default function AdminDashboard() {
                 <h3>Route Preferences</h3>
                 <div className="profile-stats">
                   {stats?.profilePreferences?.length > 0 ? (
-                    stats.profilePreferences.map((p) => (
+                    stats.profilePreferences.map((p, idx) => (
                       <div key={p.profile_used} className="profile-bar">
                         <div className="profile-bar-header">
-                          <span className="profile-name">{p.profile_used}</span>
+                          <span className="profile-name">
+                            {p.profile_used}
+                            <button
+                              className={`star-default-btn${idx === 0 ? ' is-default' : ''}`}
+                              onClick={() => { trigger(10); }}
+                              title="Set as default profile"
+                            >
+                              <svg viewBox="0 0 24 24" fill={idx === 0 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                            </button>
+                          </span>
                           <span className="profile-percent">
                             {stats.routes?.total ? ((p.count / stats.routes.total) * 100).toFixed(0) : 0}%
                           </span>
@@ -1113,6 +1125,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+        </div>
       </main>
 
       {/* ── Toast Container ──────────────────────────────────────────────────── */}
