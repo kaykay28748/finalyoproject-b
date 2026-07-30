@@ -321,15 +321,15 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
               Last updated: June 2026 — How we handle your data
             </p>
             <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.7, margin: '0 0 12px 0' }}>
-              UG Navigator is committed to protecting your privacy. This policy explains how we collect, use, and
-              safeguard your information when you use our campus navigation service.
+              TransitGuide is committed to protecting your privacy. This policy explains how we collect, use, and
+              safeguard your information when you use our navigation service.
             </p>
             <HighlightCard icon={<IconShieldSmall />} accentColor="#2563eb" title="Our Promise">
               We collect only the minimum data needed to provide navigation services. We never sell your personal
               information. Your location data is processed locally and never stored permanently.
             </HighlightCard>
             <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.7, margin: '12px 0 0 0' }}>
-              By using UG Navigator, you agree to the collection and use of information in accordance with this policy.
+              By using TransitGuide, you agree to the collection and use of information in accordance with this policy.
             </p>
           </div>
 
@@ -425,7 +425,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
               Contact us to request a copy of your personal data in a machine-readable format. We will respond within 30 days.
             </Card>
             <HighlightCard icon={<IconShieldSmall />} accentColor="#6366f1" title="GDPR Compliance">
-              UG Navigator is fully compliant with the General Data Protection Regulation (GDPR). If you are a resident of
+              TransitGuide is fully compliant with the General Data Protection Regulation (GDPR). If you are a resident of
               the EEA, you have all rights afforded under GDPR.
             </HighlightCard>
           </div>
@@ -458,7 +458,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
               <span style={{ fontSize: 11, color: '#9ca3af' }}>Response time: within 48 hours</span>
             </Card>
             <Card icon={<IconBuilding />} accentColor="#14b8a6" title="Data Controller">
-              UG Navigator<br />University of Ghana, Legon<br />Accra, Ghana
+              TransitGuide<br />Accra, Ghana
             </Card>
             <HighlightCard icon={<IconShieldSmall />} accentColor="#14b8a6" title="Data Protection Officer">
               If you have concerns about how your data is handled, please contact our Data Protection Officer at the email
@@ -468,7 +468,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
         </div>
 
         <div className="ppolicy-footer">
-          <span className="ppolicy-footer-text">UG Navigator v1.0 — Privacy Policy &amp; Cookie Notice</span>
+          <span className="ppolicy-footer-text">TransitGuide v1.0 — Privacy Policy &amp; Cookie Notice</span>
         </div>
       </div>
     </div>

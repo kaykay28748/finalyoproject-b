@@ -1,5 +1,5 @@
 {
-  "name": "ug-campus-nav-backend",
+  "name": "transitguide-backend",
   "version": "1.0.0",
   "description": "Campus navigation app - Authentication & User Management (Zero-Trust)",
   "type": "module",

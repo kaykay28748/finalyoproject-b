@@ -72,8 +72,8 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
   return (
     <div className="auth-container-split">
       <div className="auth-hero">
-        <div className="auth-hero-bg">UG</div>
-        <img src="/icon-512.png" alt="UG Navigator" width={80} height={80} fetchpriority="high" />
+        <div className="auth-hero-bg">TG</div>
+        <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
         <h1>
           Forgot
           <br />

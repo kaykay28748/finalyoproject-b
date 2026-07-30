@@ -1,7 +1,7 @@
 // services/preferencesStore.js
 // IndexedDB storage for user preferences + localStorage for route state
 
-const DB_NAME = 'ug-routing-preferences';
+const DB_NAME = 'tg-routing-preferences';
 const STORE_NAME = 'prefs';
 const PREFS_KEY = 'user-preferences';
 
@@ -9,13 +9,13 @@ let dbInstance = null;
 
 // localStorage keys for route persistence
 const ROUTE_STATE_KEYS = {
-  START_POINT: 'ug_nav_start_point',
-  DEST_POINT: 'ug_nav_dest_point',
-  START_TEXT: 'ug_nav_start_text',
-  DEST_TEXT: 'ug_nav_dest_text',
-  MARKERS_VISIBLE: 'ug_nav_markers_visible',
-  VEHICLE_MODE: 'ug_nav_vehicle_mode',
-  ACTIVE_PROFILE: 'ug_nav_active_profile'
+  START_POINT: 'tg_nav_start_point',
+  DEST_POINT: 'tg_nav_dest_point',
+  START_TEXT: 'tg_nav_start_text',
+  DEST_TEXT: 'tg_nav_dest_text',
+  MARKERS_VISIBLE: 'tg_nav_markers_visible',
+  VEHICLE_MODE: 'tg_nav_vehicle_mode',
+  ACTIVE_PROFILE: 'tg_nav_active_profile'
 };
 
 /**

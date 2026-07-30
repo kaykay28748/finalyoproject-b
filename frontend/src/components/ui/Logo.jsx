@@ -25,14 +25,14 @@ export default function Logo({ size = "md", showText = true, className = "" }) {
     <div className={`flex items-center gap-2 ${className}`}>
       <img 
         src={logoSrc}
-        alt="UG Navigator" 
+        alt="TransitGuide" 
         width={logoSize}
         height={logoSize}
         className="object-contain"
       />
       {showText && (
         <span className={`font-syne font-bold ${textSizes[size]} text-gray-900 dark:text-white`}>
-          UG Navigator
+          TransitGuide
         </span>
       )}
     </div>

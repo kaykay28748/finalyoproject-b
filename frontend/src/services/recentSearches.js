@@ -1,5 +1,5 @@
 // services/recentSearches.js
-const RECENT_KEY = "ug_navigator_recent";
+const RECENT_KEY = "tg_recent";
 const MAX_RECENT = 10;
 const MAX_AGE_DAYS = 30;
 

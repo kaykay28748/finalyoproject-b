@@ -114,7 +114,7 @@ async function fetchOverpassWithRetry(endpoint, body, retries = 3) {
         body,
         headers: {
           'Content-Type': 'text/plain',
-          'User-Agent': 'UG-Navigator/1.0 (https://ugnavigator.onrender.com)',
+          'User-Agent': 'TransitGuide/1.0 (https://ugnavigator.onrender.com)',
         },
         signal: AbortSignal.timeout(60000),
       });
@@ -280,7 +280,7 @@ async function fetchWithRetry(url, maxRetries = 2) {
     try {
       const response = await fetch(url, {
         signal: AbortSignal.timeout(10000),
-        headers: { 'User-Agent': 'UG-Navigator/1.0 (https://ugnavigator.onrender.com)' }
+        headers: { 'User-Agent': 'TransitGuide/1.0 (https://ugnavigator.onrender.com)' }
       });
       
       if (!response.ok) {
@@ -488,7 +488,7 @@ async function startServer() {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
-║    UG Campus Navigation API                               ║
+║    TransitGuide API                                       ║
 ║    🔐 Supabase Auth - JWT Verification Only               ║
 ║    Server running on 0.0.0.0:${PORT} (all interfaces)        ║
 ║                                                            ║

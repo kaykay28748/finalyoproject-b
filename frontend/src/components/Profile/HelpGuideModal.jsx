@@ -337,7 +337,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="helpguide-header">
-          <h2>UG Navigator Guide</h2>
+          <h2>TransitGuide Guide</h2>
           <button className="helpguide-close" onClick={() => { trigger(10); onClose(); }} ref={firstFocusRef} aria-label="Close guide">
             <IconClose />
           </button>
@@ -348,7 +348,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
           <div className="helpguide-section">
             <SectionHeader icon={<IconCompass />} title="Overview" />
             <p className="helpguide-section-desc">
-              Your intelligent campus navigation companion for the University of Ghana, Legon.
+              Your intelligent accessibility-first navigation companion.
             </p>
             <Card icon={<IconMapPin />} accentColor="#2563eb" title="Smart Routing">
               Search any campus landmark and get turn-by-turn directions optimized for your chosen profile.
@@ -444,7 +444,7 @@ export default function HelpGuideModal({ isOpen, onClose }) {
           <div className="helpguide-section">
             <SectionHeader icon={<IconAccessibility />} title="Accessibility" />
             <p className="helpguide-section-desc">
-              UG Navigator is built with inclusive design at its core.
+              TransitGuide is built with inclusive design at its core.
             </p>
             <Card icon={<IconAccessibilitySmall />} accentColor="#14b8a6" title="Accessible Routing">
               The Accessible profile avoids steep slopes, stairs, and uneven terrain — optimized for wheelchair users.
@@ -499,13 +499,13 @@ export default function HelpGuideModal({ isOpen, onClose }) {
               Change your password anytime. Account deletion is permanent — all data will be erased.
             </Card>
             <Card icon={<IconSmartphone />} accentColor="#6b7280" title="Cross-Platform">
-              UG Navigator works in any browser. Your preferences sync via your account across sessions.
+              TransitGuide works in any browser. Your preferences sync via your account across sessions.
             </Card>
           </div>
         </div>
 
         <div className="helpguide-footer">
-          <span className="helpguide-footer-text">UG Navigator v1.0 — University of Ghana, Legon</span>
+          <span className="helpguide-footer-text">TransitGuide v1.0</span>
         </div>
       </div>
     </div>

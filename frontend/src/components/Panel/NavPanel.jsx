@@ -264,7 +264,7 @@ export default function NavPanel({
                 className="nav-pill-logo-wrap nav-pill-logo-wrap--active" 
                 style={{ "--profile-glow": activeColor }}
               >
-                <img src={logo} alt="UG Navigator" className="nav-pill-logo" />
+                <img src={logo} alt="TransitGuide" className="nav-pill-logo" />
               </div>
               <div
                 className="nav-pill-content"
@@ -311,7 +311,7 @@ export default function NavPanel({
                   className="nav-pill-logo-wrap nav-pill-logo-wrap--active"
                   style={{ "--profile-glow": activeColor }}
                 >
-                  <img src={logo} alt="UG Navigator" className="nav-pill-logo" />
+                  <img src={logo} alt="TransitGuide" className="nav-pill-logo" />
                 </div>
                 <span className="nav-search-text-hint">Search here...</span>
               </button>

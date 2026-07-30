@@ -1,7 +1,7 @@
 // public/sw.js
-// UG Navigator Service Worker - Offline support with proper API handling
+// TransitGuide Service Worker - Offline support with proper API handling
 
-const CACHE_NAME = 'ug-navigator-v1';
+const CACHE_NAME = 'transitguide-v1';
 const urlsToCache = [
   '/',
   '/index.html',

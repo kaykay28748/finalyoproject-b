@@ -40,14 +40,14 @@ export async function sendPasswordResetEmail(to, token, frontendUrl = 'https://u
     <body>
       <div class="container">
         <h1>Reset Your Password</h1>
-        <p>We received a request to reset your UG Navigator password. Click the button below to create a new one.</p>
+        <p>We received a request to reset your TransitGuide password. Click the button below to create a new one.</p>
         <div style="text-align:center">
           <a href="${resetLink}" class="btn">Reset Password</a>
         </div>
         <p style="margin-top:16px">Or paste this link into your browser:</p>
         <p class="token">${resetLink}</p>
         <p>This link expires in <strong>1 hour</strong>. If you didn't request this, ignore this email.</p>
-        <div class="footer"><p>UG Navigator — University of Ghana, Legon</p></div>
+        <div class="footer"><p>TransitGuide — Accra, Ghana</p></div>
       </div>
     </body>
     </html>
@@ -55,9 +55,9 @@ export async function sendPasswordResetEmail(to, token, frontendUrl = 'https://u
 
   try {
     const info = await transporter.sendMail({
-      from:    `"UG Navigator" <${EMAIL_USER}>`,
+      from:    `"TransitGuide" <${EMAIL_USER}>`,
       to,
-      subject: 'Reset Your UG Navigator Password',
+      subject: 'Reset Your TransitGuide Password',
       text:    `Reset your password: ${resetLink} (expires in 1 hour)`,
       html,
     });
@@ -121,7 +121,7 @@ export async function sendReportNotification(report) {
         </div>
         <a href="${mapLink}" class="btn" target="_blank">View on Map →</a>
         <div class="footer">
-          <p>UG Navigator — University of Ghana, Legon</p>
+          <p>TransitGuide — Accra, Ghana</p>
           <p>Log into the admin dashboard to approve or reject this report.</p>
         </div>
       </div>
@@ -131,9 +131,9 @@ export async function sendReportNotification(report) {
 
   try {
     await transporter.sendMail({
-      from:    `"UG Navigator Reports" <${EMAIL_USER}>`,
+      from:    `"TransitGuide Reports" <${EMAIL_USER}>`,
       to:      ADMIN_EMAIL,
-      subject: `[UG Navigator] New Accessibility Report #${report.id} — ${issueLabel}`,
+      subject: `[TransitGuide] New Accessibility Report #${report.id} — ${issueLabel}`,
       text:    `New ${issueLabel} report #${report.id} submitted. View: ${mapLink}`,
       html,
     });
@@ -185,7 +185,7 @@ export async function sendReportResolutionEmail(report, status, adminNotes = nul
     <body>
       <div class="container">
         <h1>${isApproved ? '✅ Report Approved' : '📋 Report Reviewed'}</h1>
-        <p>Thank you for helping improve campus accessibility at UG.</p>
+        <p>Thank you for helping improve campus accessibility.</p>
         <div class="detail-box">
           <p><strong>Report #${report.id}</strong> — ${issueLabel}</p>
           <p>Status: <strong class="${isApproved ? 'approved' : 'rejected'}">${isApproved ? 'Approved — will be factored into route planning' : 'Not accepted at this time'}</strong></p>
@@ -196,7 +196,7 @@ export async function sendReportResolutionEmail(report, status, adminNotes = nul
           ? '<p>This issue will now be weighted in the accessibility routing profile so other users get safer routes.</p>'
           : '<p>If you believe this was submitted in error, feel free to resubmit with additional details.</p>'
         }
-        <div class="footer"><p>UG Navigator — University of Ghana, Legon</p></div>
+        <div class="footer"><p>TransitGuide — Accra, Ghana</p></div>
       </div>
     </body>
     </html>
@@ -204,11 +204,11 @@ export async function sendReportResolutionEmail(report, status, adminNotes = nul
 
   try {
     await transporter.sendMail({
-      from:    `"UG Navigator Accessibility" <${EMAIL_USER}>`,
+      from:    `"TransitGuide Accessibility" <${EMAIL_USER}>`,
       to:      userEmail,
       subject: isApproved
-        ? `[UG Navigator] Your accessibility report #${report.id} was approved ✅`
-        : `[UG Navigator] Update on your accessibility report #${report.id}`,
+        ? `[TransitGuide] Your accessibility report #${report.id} was approved ✅`
+        : `[TransitGuide] Update on your accessibility report #${report.id}`,
       text: isApproved
         ? `Your report #${report.id} (${issueLabel}) has been approved and will be factored into route planning.${adminNotes ? ' Admin notes: ' + adminNotes : ''}`
         : `Your report #${report.id} (${issueLabel}) was reviewed but not accepted at this time.${adminNotes ? ' Admin notes: ' + adminNotes : ''}`,

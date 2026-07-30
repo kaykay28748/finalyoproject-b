@@ -39,7 +39,7 @@ const currentLocationIcon = L.divIcon({
 
 L.Marker.prototype.options.icon = makePin("#2563eb", "START");
 
-// ─── UG campus bounds ─────────────────────────────────────────────────────────
+// ─── Campus bounds ────────────────────────────────────────────────────────────
 const UG_BOUNDS = L.latLngBounds(
   [5.6200, -0.2100], // southwest — stadium, Liman, Kwapong, Sey, Nelson, Diamond Jubilee
   [5.6720, -0.1750]  // northeast — diaspora halls and upper campus
@@ -49,7 +49,7 @@ const UG_MAX_BOUNDS = L.latLngBounds(
   [5.6800, -0.1650]
 );
 
-// UG campus center — used to sort results by proximity
+// Campus center — used to sort results by proximity
 const UG_CENTER = { lat: 5.6502, lng: -0.1962 };
 
 // ─── Distance helper ──────────────────────────────────────────────────────────
@@ -65,14 +65,14 @@ function distanceKm(lat1, lng1, lat2, lng2) {
 
 // ─── Geocoding ────────────────────────────────────────────────────────────────
 // Strategy:
-// 1. Search near UG Legon with a proximity bias (not bounded — so partial matches work)
-// 2. If nothing comes back, retry without the UG suffix
-// 3. Sort all results by distance to UG center so campus locations float to the top
+// 1. Search near the center with a proximity bias (not bounded — so partial matches work)
+// 2. If nothing comes back, retry without the suffix
+// 3. Sort all results by distance to center so nearby locations float to the top
 async function geocode(query) {
   try {
-    const headers = { "Accept-Language": "en", "User-Agent": "UGNavigator/1.0" };
+    const headers = { "Accept-Language": "en", "User-Agent": "TransitGuide/1.0" };
 
-    // First pass — bias search toward UG Legon area
+    // First pass — bias search toward center area
     const q1  = encodeURIComponent(query + " University of Ghana Legon Accra");
     const url1 = `https://nominatim.openstreetmap.org/search?q=${q1}&format=json&limit=8&countrycodes=gh&lat=${UG_CENTER.lat}&lon=${UG_CENTER.lng}`;
     const res1 = await fetch(url1, { headers });
@@ -113,7 +113,7 @@ async function reverseGeocode(lat, lng) {
   try {
     const res  = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { "Accept-Language": "en", "User-Agent": "UGNavigator/1.0" } }
+      { headers: { "Accept-Language": "en", "User-Agent": "TransitGuide/1.0" } }
     );
     const data = await res.json();
     return data.display_name?.split(",").slice(0, 2).join(", ") || "Selected point";
@@ -430,9 +430,9 @@ export default function Map() {
               </svg>
             </div>
             <div>
-              <p className="ug-title">UG Navigator</p>
+              <p className="ug-title">TransitGuide</p>
               <p className="ug-subtitle">
-                University of Ghana · Legon
+                Accessibility-first navigation
                 {accuracy && (
                   <span className={accuracy < 20 ? "ug-accuracy-good" : accuracy < 50 ? "ug-accuracy-ok" : "ug-accuracy-poor"}>
                     · GPS ±{accuracy}m

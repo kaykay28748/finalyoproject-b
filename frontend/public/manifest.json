@@ -1,7 +1,7 @@
 {
-  "name": "UG Navigator",
-  "short_name": "UG Navigator",
-  "description": "Context-aware campus navigation for University of Ghana",
+  "name": "TransitGuide",
+  "short_name": "TransitGuide",
+  "description": "Context-aware accessibility-first navigation",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#0d0d0d",
