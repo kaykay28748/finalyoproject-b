@@ -684,9 +684,8 @@
     padding: 24px 24px;
   }
 
-  .profile-content-body .profile-section h3 {
-    font-size: 16px;
-    margin-bottom: 18px;
+  .profile-content-body .profile-section > h3 {
+    display: none;
   }
 
   .profile-content-body .profile-setting-btn {
