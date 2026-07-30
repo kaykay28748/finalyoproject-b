@@ -2,9 +2,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthContext } from '../../context/AuthContext';
 import { API_URL } from '../../config';
-import { getReports, updateReportStatus, getReportClusters, resolveCluster, getReportMessages, sendReportMessage, getReportAdminInbox } from '../../services/reportService';
+import { getReports, updateReportStatus, getReportClusters, resolveCluster, sendReportMessage } from '../../services/reportService';
 import { isTokenValid } from '../Profile/auth';
 import { useHaptics } from '../../hooks/useHaptics';
+import LogoutConfirmationModal from '../Profile/LogoutConfirmationModal';
 import './AdminDashboard.css';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -173,47 +174,8 @@ function getActivityDisplay(item) {
 // ── Skeleton Loader ───────────────────────────────────────────────────────────
 function SkeletonLoader() {
   return (
-    <div className="admin-dashboard">
-      <aside className="admin-sidebar">
-        <div className="admin-sidebar-header">
-          <div className="admin-logo">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#2563eb" opacity="0.3"/>
-            </svg>
-            <div className="skeleton" style={{ width: 120, height: 18 }} />
-          </div>
-        </div>
-        <div className="admin-nav" style={{ padding: '20px 12px' }}>
-          {[80, 65, 70, 55, 50, 65].map((w, i) => (
-            <div key={i} className="skeleton" style={{ width: `${w}%`, height: 38, borderRadius: 10, marginBottom: 4 }} />
-          ))}
-        </div>
-      </aside>
-      <main className="admin-main">
-        <div style={{ marginBottom: 28 }}>
-          <div className="skeleton" style={{ width: 220, height: 26, marginBottom: 8 }} />
-          <div className="skeleton" style={{ width: 160, height: 14 }} />
-        </div>
-        <div className="skeleton-stats">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="skeleton-stat-card">
-              <div className="skeleton skeleton-stat-icon" />
-              <div className="skeleton-stat-lines">
-                <div className="skeleton skeleton-stat-value" />
-                <div className="skeleton skeleton-stat-label" />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="skeleton-card">
-          <div className="skeleton skeleton-card-title" />
-          <div className="skeleton-card-lines">
-            <div className="skeleton skeleton-line w-full" />
-            <div className="skeleton skeleton-line w-3-4" />
-            <div className="skeleton skeleton-line w-1-2" />
-          </div>
-        </div>
-      </main>
+    <div className="admin-dashboard" style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '50%' }} />
     </div>
   );
 }
@@ -240,14 +202,13 @@ export default function AdminDashboard() {
   const [expandedCluster,  setExpandedCluster]  = useState(null);
   const [clusterNotes,     setClusterNotes]     = useState({});
   const [clusterProcessing, setClusterProcessing] = useState(null);
-  const [reportMessages,   setReportMessages]   = useState({});
-  const [newMessage,       setNewMessage]       = useState({});
-  const [sendingMessage,   setSendingMessage]   = useState(null);
-  const [messageThreadReport, setMessageThreadReport] = useState(null);
-  const [adminInbox,          setAdminInbox]          = useState([]);
-  const [adminInboxLoading,   setAdminInboxLoading]   = useState(false);
-  const [unreadMsgCount,      setUnreadMsgCount]      = useState(0);
+  const [searchReports,   setSearchReports]   = useState('');
+  const [searchUsers,     setSearchUsers]     = useState('');
+  const [searchActivity,  setSearchActivity]  = useState('');
   const [toasts,              setToasts]              = useState([]);
+  const [isRefreshing,        setIsRefreshing]        = useState(false);
+  const [showLogoutModal,     setShowLogoutModal]     = useState(false);
+  const [showSettings,        setShowSettings]        = useState(false);
 
   const intervalRef = useRef(null);
 
@@ -262,26 +223,11 @@ export default function AdminDashboard() {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  // ── Fetch pending count for sidebar badge ─────────────────────────────────────
-  const fetchPendingCount = useCallback(async () => {
-    try {
-      const token = getToken();
-      if (!token) return;
-      const res = await fetch(`${API_URL}/api/reports/stats/summary`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setPendingCount(Number(data.stats?.pending) || 0);
-    } catch { /* silent */ }
-  }, []);
-
   // ── Fetch reports list ────────────────────────────────────────────────────────
   const fetchReports = useCallback(async () => {
     try {
       const data = await getReports('pending', 100);
       setReports(data.reports || []);
-      setPendingCount(data.reports?.length ?? 0);
     } catch (err) {
       console.error('[Admin] Fetch reports error:', err);
     }
@@ -298,21 +244,9 @@ export default function AdminDashboard() {
   }, []);
 
   // ── Fetch admin inbox ─────────────────────────────────────────────────────────
-  const fetchAdminInbox = useCallback(async () => {
-    setAdminInboxLoading(true);
-    try {
-      const data = await getReportAdminInbox();
-      setAdminInbox(data.inbox || []);
-      setUnreadMsgCount((data.inbox || []).reduce((sum, i) => sum + (i.unread_count || 0), 0));
-    } catch (err) {
-      console.error('[Admin] Fetch inbox error:', err);
-    } finally {
-      setAdminInboxLoading(false);
-    }
-  }, []);
-
   // ── Fetch main dashboard data ─────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const token = getToken();
       if (!token) { window.location.href = '/'; return; }
@@ -355,14 +289,22 @@ export default function AdminDashboard() {
       setFeedback(feedbackData.feedback || []);
       setLastUpdated(new Date());
       setError('');
-      await fetchPendingCount();
     } catch (err) {
       console.error('[Admin] Fetch error:', err);
       setError('Failed to load dashboard data');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  }, [fetchPendingCount]);
+  }, []);
+
+  // ── Close settings dropdown on outside click ──────────────────────────────────
+  useEffect(() => {
+    if (!showSettings) return;
+    const handler = (e) => { if (!e.target.closest('.admin-settings-wrap')) setShowSettings(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSettings]);
 
   // ── Initial load + 30s poll ───────────────────────────────────────────────────
   useEffect(() => {
@@ -376,9 +318,8 @@ export default function AdminDashboard() {
     if (activeTab === 'reports') {
       fetchReports();
       fetchClusters();
-      fetchAdminInbox();
     }
-  }, [activeTab, fetchReports, fetchClusters, fetchAdminInbox]);
+  }, [activeTab, fetchReports, fetchClusters]);
 
   // ── Approve / Reject ──────────────────────────────────────────────────────────
   const handleUpdateReport = useCallback(async (reportId, status) => {
@@ -394,7 +335,6 @@ export default function AdminDashboard() {
       })));
       addToast('success', `Report #${reportId} ${status}`);
       await fetchReports();
-      fetchData();
     } catch (err) {
       const msg = err.message || `Failed to ${status} report`;
       setError(msg);
@@ -402,31 +342,10 @@ export default function AdminDashboard() {
     } finally {
       setProcessingReport(null);
     }
-  }, [adminNotes, fetchReports, fetchData, addToast]);
+  }, [adminNotes, fetchReports, addToast]);
 
   const handleApproveReport = (id) => handleUpdateReport(id, 'approved');
   const handleRejectReport  = (id) => handleUpdateReport(id, 'rejected');
-
-  // ── Send cluster-level message (without approve/reject) ──────────────────────
-  const handleSendClusterMessage = useCallback(async (clusterId) => {
-    const cluster = clusters.find(c => c.id === clusterId);
-    if (!cluster) return;
-    const text = (clusterNotes[clusterId] || '').trim();
-    if (!text) return;
-
-    setClusterProcessing(clusterId);
-    try {
-      for (const report of cluster.reports) {
-        await sendReportMessage(report.id, text);
-      }
-      setClusterNotes(prev => ({ ...prev, [clusterId]: '' }));
-      addToast('success', `Message sent to ${cluster.reports.length} report(s)`);
-    } catch (err) {
-      addToast('error', err.message || 'Failed to send message');
-    } finally {
-      setClusterProcessing(null);
-    }
-  }, [clusters, clusterNotes, addToast]);
 
   // ── Cluster bulk resolve ──────────────────────────────────────────────────────
   const handleClusterResolve = useCallback(async (cluster, status) => {
@@ -437,9 +356,7 @@ export default function AdminDashboard() {
       await resolveCluster(reportIds, status, clusterNotes[cluster.id] || '');
       setClusterNotes(prev => ({ ...prev, [cluster.id]: '' }));
       addToast('success', `${cluster.reports.length} report(s) ${status}`);
-      await fetchReports();
       await fetchClusters();
-      fetchData();
     } catch (err) {
       const msg = err.message || `Failed to ${status} cluster`;
       setError(msg);
@@ -447,34 +364,7 @@ export default function AdminDashboard() {
     } finally {
       setClusterProcessing(null);
     }
-  }, [clusterNotes, fetchReports, fetchClusters, fetchData, addToast]);
-
-  // ── Messaging ─────────────────────────────────────────────────────────────────
-  const loadMessages = useCallback(async (reportId) => {
-    try {
-      const data = await getReportMessages(reportId);
-      setReportMessages(prev => ({ ...prev, [reportId]: data.messages || [] }));
-    } catch (err) {
-      console.error('[Admin] Load messages error:', err);
-    }
-  }, []);
-
-  const handleSendMessage = useCallback(async (reportId) => {
-    const text = (newMessage[reportId] || '').trim();
-    if (!text) return;
-    setSendingMessage(reportId);
-    try {
-      await sendReportMessage(reportId, text);
-      setNewMessage(prev => ({ ...prev, [reportId]: '' }));
-      await loadMessages(reportId);
-    } catch (err) {
-      const msg = err.message || 'Failed to send message';
-      setError(msg);
-      addToast('error', msg);
-    } finally {
-      setSendingMessage(null);
-    }
-  }, [newMessage, loadMessages, addToast]);
+  }, [clusterNotes, fetchClusters, addToast]);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -518,7 +408,7 @@ export default function AdminDashboard() {
         <nav className="admin-nav">
           {[
             { key: 'overview', label: 'Overview', Icon: Icons.Dashboard },
-            { key: 'reports',  label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount + unreadMsgCount },
+            { key: 'reports',  label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount },
             { key: 'feedback', label: 'Ratings',  Icon: Icons.Star },
             { key: 'users',    label: 'Users',    Icon: Icons.Users },
             { key: 'activity', label: 'Activity', Icon: Icons.Activity },
@@ -545,7 +435,7 @@ export default function AdminDashboard() {
               <span className="admin-user-role">Administrator</span>
             </div>
           </div>
-          <button onClick={() => { trigger(10); logout(); }} className="admin-logout-btn">
+          <button onClick={() => { trigger(10); setShowLogoutModal(true); }} className="admin-logout-btn">
             <Icons.Logout />
             <span>Logout</span>
           </button>
@@ -561,10 +451,24 @@ export default function AdminDashboard() {
           </div>
           <div className="admin-topbar-right">
             <span className="admin-updated">Updated: {lastUpdated?.toLocaleTimeString() || '--:--:--'}</span>
-            <button onClick={() => { trigger(10); }} className="admin-topbar-btn settings">SETTINGS</button>
-            <button onClick={() => { trigger(10); fetchData(); }} className="admin-topbar-btn">
-              <Icons.Refresh />
-              Refresh
+            <div className="admin-settings-wrap">
+              <button onClick={() => { trigger(10); setShowSettings(s => !s); }} className="admin-topbar-btn settings">SETTINGS</button>
+              {showSettings && (
+                <div className="settings-dropdown">
+                  <button className="settings-dropdown-item" onClick={() => { trigger(10); setShowSettings(false); addToast('success', 'Profile settings coming soon'); }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Profile
+                  </button>
+                  <button className="settings-dropdown-item" onClick={() => { trigger(10); setShowSettings(false); addToast('success', 'Preferences coming soon'); }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Preferences
+                  </button>
+                </div>
+              )}
+            </div>
+            <button onClick={() => { trigger(10); if (!isRefreshing) fetchData(); }} className="admin-topbar-btn" disabled={isRefreshing}>
+              <span className={isRefreshing ? 'spin-icon' : ''}><Icons.Refresh /></span>
+              {isRefreshing ? 'Loading…' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -793,7 +697,6 @@ export default function AdminDashboard() {
                               onClick={() => {
                                 trigger(10);
                                 setExpandedCluster(isExpanded ? null : cluster.id);
-                                if (!isExpanded) cluster.reports.forEach(r => loadMessages(r.id));
                               }}
                             >
                               {isExpanded ? 'Collapse' : `View ${cluster.report_count} report${cluster.report_count > 1 ? 's' : ''}`}
@@ -841,7 +744,7 @@ export default function AdminDashboard() {
                             <div className="cluster-actions" style={{ marginTop: 0, marginBottom: 0 }}>
                               <button
                                 className="btn btn-primary"
-                                onClick={() => { trigger(10); handleSendClusterMessage(cluster.id); }}
+                                onClick={async () => { trigger(10); const c = clusters.find(x => x.id === cluster.id); if (!c) return; const t = (clusterNotes[cluster.id] || '').trim(); if (!t) return; setClusterProcessing(cluster.id); try { for (const r of c.reports) { await sendReportMessage(r.id, t); } setClusterNotes(prev => ({ ...prev, [cluster.id]: '' })); addToast('success', `Message sent to ${c.reports.length} report(s)`); } catch (err) { addToast('error', err.message || 'Failed to send message'); } finally { setClusterProcessing(null); } }}
                                 disabled={isProcessing || !(clusterNotes[cluster.id] || '').trim()}
                               >
                                 Send Message
@@ -852,7 +755,6 @@ export default function AdminDashboard() {
                               {cluster.reports.map((report) => {
                                 const rSev = SEVERITY_CONFIG[report.severity] || SEVERITY_CONFIG[2];
                                 const isReportProcessing = processingReport === report.id;
-                                const msgs = reportMessages[report.id] || [];
 
                                 return (
                                   <div key={report.id} className="cluster-report-card">
@@ -904,41 +806,6 @@ export default function AdminDashboard() {
                                           </button>
                                         </div>
                                       </div>
-                                    )}
-
-                                    <div className="message-thread-section">
-                                      <div className="message-thread-label">Messages ({msgs.length})</div>
-                                      {msgs.length > 0 && (
-                                        <div className="message-list">
-                                          {msgs.map(msg => (
-                                            <div key={msg.id} className={`message-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                              <div className={`message-sender ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                                {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
-                                              </div>
-                                              <div className="message-text">{msg.message}</div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                      <div className="message-input-row">
-                                        <input
-                                          type="text"
-                                          className="message-input"
-                                          placeholder="Send a message to the reporter..."
-                                          value={newMessage[report.id] || ''}
-                                          onChange={(e) => setNewMessage(prev => ({ ...prev, [report.id]: e.target.value }))}
-                                          onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(report.id); }}
-                                          disabled={sendingMessage === report.id}
-                                        />
-                                        <button
-                                          className="btn btn-primary"
-                                          onClick={() => { trigger(10); handleSendMessage(report.id); }}
-                                          disabled={sendingMessage === report.id || !(newMessage[report.id] || '').trim()}
-                                        >
-                                          {sendingMessage === report.id ? '...' : 'Send'}
-                                        </button>
-                                      </div>
-                                    </div>
                                   </div>
                                 );
                               })}
@@ -952,102 +819,6 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* ── Messages Inbox (hidden when cluster is expanded) ──────────── */}
-            {!expandedCluster && (
-            <div className="admin-card full-width inbox-section">
-              <div className="inbox-section-header">
-                <h3>Messages Inbox</h3>
-                <span className="admin-table-stats">
-                  {adminInbox.length} report{adminInbox.length !== 1 ? 's' : ''} with new messages
-                </span>
-              </div>
-
-              {adminInboxLoading ? (
-                <div className="admin-empty"><p>Loading messages...</p></div>
-              ) : adminInbox.length === 0 ? (
-                <div className="admin-empty"><p>No unread messages from users.</p></div>
-              ) : (
-                <div className="inbox-list">
-                  {adminInbox.map(item => {
-                    const rSev = SEVERITY_CONFIG[item.severity] || SEVERITY_CONFIG[2];
-                    const msgs = reportMessages[item.id] || [];
-                    const isThreadOpen = messageThreadReport === item.id;
-
-                    return (
-                      <div key={item.id} className={`inbox-card${isThreadOpen ? ' is-expanded' : ''}`}>
-                        <div className="inbox-card-header">
-                          <div className="inbox-card-info">
-                            <div className="inbox-card-badges">
-                              <span className="badge badge-id">#{item.id}</span>
-                              <span className={`badge badge-severity-${item.severity}`}>{rSev.label}</span>
-                              <span className="badge badge-pending">{item.unread_count} unread</span>
-                            </div>
-                            {item.location_name && (
-                              <div className="inbox-card-location">{item.location_name}</div>
-                            )}
-                            {item.latest_message_preview && (
-                              <div className="inbox-card-preview">"{item.latest_message_preview}"</div>
-                            )}
-                            <div className="inbox-card-meta">
-                              {item.issue_type?.replace(/_/g, ' ')} · {new Date(item.latest_message_at).toLocaleString()}
-                            </div>
-                          </div>
-                          <button
-                            className={`btn ${isThreadOpen ? 'btn-outline' : 'btn-primary'}`}
-                            onClick={() => {
-                              trigger(10);
-                              setMessageThreadReport(isThreadOpen ? null : item.id);
-                              if (!isThreadOpen) loadMessages(item.id);
-                            }}
-                          >
-                            {isThreadOpen ? 'Close' : 'View Thread'}
-                          </button>
-                        </div>
-
-                        {isThreadOpen && (
-                          <div className="inbox-thread-expanded">
-                            {msgs.length > 0 ? (
-                              <div className="message-list">
-                                {msgs.map(msg => (
-                                  <div key={msg.id} className={`message-bubble ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                    <div className={`message-sender ${msg.sender_is_admin ? 'admin' : 'user'}`}>
-                                      {msg.sender_is_admin ? 'Admin' : msg.sender_name || 'User'} · {new Date(msg.created_at).toLocaleString()}
-                                    </div>
-                                    <div className="message-text">{msg.message}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p style={{ fontSize: 12, color: 'var(--a-text-muted)', margin: '0 0 8px' }}>No messages yet.</p>
-                            )}
-
-                            <div className="message-input-row">
-                              <input
-                                type="text"
-                                className="message-input"
-                                placeholder="Reply to reporter..."
-                                value={newMessage[item.id] || ''}
-                                onChange={(e) => setNewMessage(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(item.id); }}
-                                disabled={sendingMessage === item.id}
-                              />
-                              <button
-                                className="btn btn-primary"
-                                onClick={() => { trigger(10); handleSendMessage(item.id); }}
-                                disabled={sendingMessage === item.id || !(newMessage[item.id] || '').trim()}
-                              >
-                                {sendingMessage === item.id ? '...' : 'Send'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            )}
           </>
         )}
 
@@ -1127,6 +898,12 @@ export default function AdminDashboard() {
         )}
         </div>
       </main>
+
+      <LogoutConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => { trigger(10); setShowLogoutModal(false); }}
+        onConfirm={() => { logout(); }}
+      />
 
       {/* ── Toast Container ──────────────────────────────────────────────────── */}
       {toasts.length > 0 && (
