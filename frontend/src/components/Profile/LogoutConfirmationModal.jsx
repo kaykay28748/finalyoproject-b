@@ -1,6 +1,6 @@
 import { useHaptics } from '../../hooks/useHaptics';
 
-export default function LogoutConfirmationModal({ isOpen, onClose, onConfirm }) {
+export default function LogoutConfirmationModal({ isOpen, onClose, onConfirm, message }) {
   const { trigger } = useHaptics();
 
   if (!isOpen) return null;
@@ -16,7 +16,7 @@ export default function LogoutConfirmationModal({ isOpen, onClose, onConfirm }) 
             </svg>
           </div>
           <h2>Sign Out</h2>
-          <p>Are you sure you want to end your current session? You'll need to sign back in to access your saved routes.</p>
+          <p>{message || "Are you sure you want to end your current session? You'll need to sign back in to access your saved routes."}</p>
         </div>
         <div className="modal-actions">
           <button className="modal-btn modal-btn-secondary" onClick={() => { trigger(10); onClose(); }}>Stay Signed In</button>

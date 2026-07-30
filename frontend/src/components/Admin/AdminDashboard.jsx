@@ -928,6 +928,7 @@ export default function AdminDashboard() {
         isOpen={showLogoutModal}
         onClose={() => { trigger(10); setShowLogoutModal(false); }}
         onConfirm={() => { logout(); }}
+        message="Are you sure you want to sign out of the admin dashboard? You'll need to log back in to manage reports and users."
       />
 
       {/* ── Toast Container ──────────────────────────────────────────────────── */}
