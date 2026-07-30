@@ -193,6 +193,34 @@ router.post('/change-password', verifyToken, async (req, res) => {
   }
 });
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://ugnavigator.onrender.com';
+
+async function sendPasswordRecovery(email) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase not configured');
+  }
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': supabaseAnonKey
+    },
+    body: JSON.stringify({
+      email,
+      redirect_to: `${FRONTEND_URL}/reset-password`
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.msg || `Supabase returned ${response.status}`);
+  }
+}
+
 // POST /auth/forgot-password - Send password reset email via Supabase
 router.post('/forgot-password', async (req, res) => {
   try {
@@ -202,33 +230,14 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('[Forgot Password] Supabase not configured');
-      return res.status(500).json({ error: 'Password reset is not available' });
-    }
-
-    const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey
-      },
-      body: JSON.stringify({ email })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('[Forgot Password] Supabase error:', response.status, errorData);
-      return res.status(400).json({ error: errorData.msg || 'Failed to send reset email. Please try again.' });
-    }
-
+    await sendPasswordRecovery(email);
     res.json({ success: true, message: 'Password reset email sent' });
   } catch (error) {
-    console.error('[Auth] Forgot password error:', error);
-    res.status(500).json({ error: 'Failed to send reset email' });
+    console.error('[Auth] Forgot password error:', error.message);
+    if (error.message === 'Supabase not configured') {
+      return res.status(503).json({ error: 'Password reset is temporarily unavailable. Please try again later.' });
+    }
+    res.status(400).json({ error: error.message || 'Failed to send reset email. Please try again.' });
   }
 });
 
@@ -241,33 +250,14 @@ router.post('/resend', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.warn('[Resend Reset] Supabase not configured');
-      return res.status(500).json({ error: 'Password reset is not available' });
-    }
-
-    const response = await fetch(`${supabaseUrl}/auth/v1/recover`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseAnonKey
-      },
-      body: JSON.stringify({ email })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('[Resend Reset] Supabase error:', response.status, errorData);
-      return res.status(400).json({ error: errorData.msg || 'Failed to resend email. Please try again.' });
-    }
-
+    await sendPasswordRecovery(email);
     res.json({ success: true, message: 'Reset email resent' });
   } catch (error) {
-    console.error('[Auth] Resend error:', error);
-    res.status(500).json({ error: 'Failed to resend email' });
+    console.error('[Auth] Resend error:', error.message);
+    if (error.message === 'Supabase not configured') {
+      return res.status(503).json({ error: 'Password reset is temporarily unavailable. Please try again later.' });
+    }
+    res.status(400).json({ error: error.message || 'Failed to resend email. Please try again.' });
   }
 });
 
