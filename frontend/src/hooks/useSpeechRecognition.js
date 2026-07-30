@@ -4,11 +4,17 @@ export default function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const recognitionRef = useRef(null);
-  const listeningRef = useRef(false);
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      console.warn("[useSpeechRecognition] not supported");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch (_) {}
+    }
 
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
@@ -16,33 +22,25 @@ export default function useSpeechRecognition() {
     recognition.lang = "en-US";
 
     recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript;
-      setTranscript(text);
+      setTranscript(event.results[0][0].transcript);
       setIsListening(false);
-      listeningRef.current = false;
     };
 
     recognition.onerror = () => {
       setIsListening(false);
-      listeningRef.current = false;
     };
 
     recognition.onend = () => {
-      if (listeningRef.current) {
-        setIsListening(false);
-        listeningRef.current = false;
-      }
+      setIsListening(false);
     };
 
     recognitionRef.current = recognition;
-    listeningRef.current = true;
     recognition.start();
     setIsListening(true);
     setTranscript("");
   }, []);
 
   const stopListening = useCallback(() => {
-    listeningRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch (_) {}
       recognitionRef.current = null;
