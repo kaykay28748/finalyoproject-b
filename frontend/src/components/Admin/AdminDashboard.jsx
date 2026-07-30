@@ -641,6 +641,22 @@ export default function AdminDashboard() {
                 </span>
               </div>
 
+              <div className="admin-search-wrap">
+                <svg className="admin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Search reports by issue type or location..."
+                  value={searchReports}
+                  onChange={(e) => setSearchReports(e.target.value)}
+                />
+                {searchReports && (
+                  <button className="admin-search-clear" onClick={() => setSearchReports('')}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                )}
+              </div>
+
               {clusters.length === 0 ? (
                 <div className="admin-empty">
                   <div className="admin-empty-icon">&#10003;</div>
@@ -648,7 +664,13 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="clusters-list">
-                  {clusters.map((cluster) => {
+                  {(searchReports
+                    ? clusters.filter(c =>
+                        (ISSUE_TYPE_LABELS[c.issue_type] || c.issue_type || '').toLowerCase().includes(searchReports.toLowerCase()) ||
+                        (c.location_name || '').toLowerCase().includes(searchReports.toLowerCase())
+                      )
+                    : clusters
+                  ).map((cluster) => {
                     const sev = SEVERITY_CONFIG[cluster.max_severity] || SEVERITY_CONFIG[2];
                     const isExpanded = expandedCluster === cluster.id;
                     const isProcessing = clusterProcessing === cluster.id;
@@ -829,6 +851,21 @@ export default function AdminDashboard() {
               <h3>All Users</h3>
               <span className="admin-table-stats">{users.length} total users</span>
             </div>
+            <div className="admin-search-wrap">
+              <svg className="admin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search users by name or email..."
+                value={searchUsers}
+                onChange={(e) => setSearchUsers(e.target.value)}
+              />
+              {searchUsers && (
+                <button className="admin-search-clear" onClick={() => setSearchUsers('')}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
+            </div>
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
@@ -841,7 +878,13 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => (
+                  {(searchUsers
+                    ? users.filter(u =>
+                        (u.username || '').toLowerCase().includes(searchUsers.toLowerCase()) ||
+                        (u.email || '').toLowerCase().includes(searchUsers.toLowerCase())
+                      )
+                    : users
+                  ).map((u) => (
                     <tr key={u.id}>
                       <td>
                         <div className="user-cell">
@@ -871,6 +914,21 @@ export default function AdminDashboard() {
               <h3>Full Activity Log</h3>
               <span className="admin-table-stats">{activity.length} events</span>
             </div>
+            <div className="admin-search-wrap">
+              <svg className="admin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search activity by user or event type..."
+                value={searchActivity}
+                onChange={(e) => setSearchActivity(e.target.value)}
+              />
+              {searchActivity && (
+                <button className="admin-search-clear" onClick={() => setSearchActivity('')}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
+            </div>
             <div className="admin-table-wrapper">
               <table className="admin-table">
                 <thead>
@@ -881,7 +939,13 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.map((a) => (
+                  {(searchActivity
+                    ? activity.filter(a =>
+                        (a.username || a.email || '').toLowerCase().includes(searchActivity.toLowerCase()) ||
+                        getActivityDisplay(a).toLowerCase().includes(searchActivity.toLowerCase())
+                      )
+                    : activity
+                  ).map((a) => (
                     <tr key={a.id}>
                       <td>{a.username || a.email}</td>
                       <td>{getActivityDisplay(a)}</td>

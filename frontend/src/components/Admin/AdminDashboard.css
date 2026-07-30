@@ -396,6 +396,71 @@
   padding: 32px 36px 56px;
 }
 
+/* ── Search ────────────────────────────────────────────────── */
+.admin-search-wrap {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.admin-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #555;
+  pointer-events: none;
+}
+
+.admin-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px 10px 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color: var(--a-text);
+  font-size: 13px;
+  font-family: 'Outfit', sans-serif;
+  transition: all var(--a-transition);
+}
+
+.admin-search-input:focus {
+  outline: none;
+  border-color: rgba(59,130,246,0.3);
+  background: rgba(255,255,255,0.03);
+}
+
+.admin-search-input::placeholder {
+  color: #555;
+}
+
+.admin-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #555;
+  display: flex;
+  transition: all var(--a-transition);
+  border-radius: 4px;
+}
+
+.admin-search-clear:hover {
+  color: #aaa;
+  background: rgba(255,255,255,0.05);
+}
+
+.admin-search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* ── Cards ─────────────────────────────────────────────────── */
 .admin-card {
   background: var(--a-panel);
@@ -1206,175 +1271,6 @@
 .report-action-row {
   display: flex;
   gap: 8px;
-}
-
-/* ── Message Thread ────────────────────────────────────────── */
-.message-thread-section {
-  margin-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  padding-top: 12px;
-}
-
-.message-thread-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.message-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.message-bubble {
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.message-bubble.admin {
-  background: rgba(59,130,246,0.06);
-  border: 1px solid rgba(59,130,246,0.1);
-}
-
-.message-bubble.user {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
-}
-
-.message-sender {
-  font-size: 11px;
-  font-weight: 600;
-  margin-bottom: 3px;
-}
-
-.message-sender.admin {
-  color: var(--a-accent);
-}
-
-.message-sender.user {
-  color: #888;
-}
-
-.message-text {
-  color: var(--a-text);
-  line-height: 1.4;
-  font-size: 12px;
-}
-
-.message-input-row {
-  display: flex;
-  gap: 8px;
-}
-
-.message-input {
-  flex: 1;
-  padding: 9px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.06);
-  font-size: 12px;
-  font-family: 'Outfit', sans-serif;
-  background: rgba(255,255,255,0.02);
-  color: var(--a-text);
-  transition: all var(--a-transition);
-}
-
-.message-input:focus {
-  outline: none;
-  border-color: rgba(59,130,246,0.3);
-  background: rgba(255,255,255,0.03);
-}
-
-.message-input::placeholder {
-  color: #555;
-}
-
-/* ── Inbox ─────────────────────────────────────────────────── */
-.inbox-section {
-  margin-top: 8px;
-}
-
-.inbox-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.inbox-section-header h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--a-text);
-  margin: 0;
-}
-
-.inbox-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.inbox-card {
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 10px;
-  background: var(--a-panel);
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.inbox-card.is-expanded {
-  border-color: var(--a-accent);
-  box-shadow: 0 0 0 1px rgba(59,130,246,0.15), 0 8px 32px rgba(0,0,0,0.3);
-}
-
-.inbox-card-header {
-  padding: 14px 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.inbox-card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.inbox-card-badges {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-  flex-wrap: wrap;
-}
-
-.inbox-card-location {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 2px;
-}
-
-.inbox-card-preview {
-  font-size: 12px;
-  color: var(--a-text-secondary);
-  font-style: italic;
-  margin-top: 5px;
-}
-
-.inbox-card-meta {
-  font-size: 11px;
-  color: #555;
-  margin-top: 3px;
-}
-
-.inbox-thread-expanded {
-  border-top: 1px solid rgba(255,255,255,0.04);
-  padding: 14px 18px;
 }
 
 /* ── Empty State ───────────────────────────────────────────── */
