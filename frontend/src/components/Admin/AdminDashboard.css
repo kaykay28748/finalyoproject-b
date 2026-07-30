@@ -1241,13 +1241,16 @@
 /* ── Toasts ────────────────────────────────────────────────── */
 .toast-container {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9999;
   display: flex;
-  flex-direction: column-reverse;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   pointer-events: none;
+  width: 100%;
+  max-width: 420px;
 }
 
 .toast {
@@ -1255,26 +1258,33 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 18px;
-  border-radius: 10px;
+  padding: 10px 16px;
+  border-radius: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   font-family: 'Outfit', sans-serif;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  animation: toast-in 0.25s cubic-bezier(0.16,1,0.3,1);
-  max-width: 400px;
-}
-
-.toast-success {
-  background: #0d2818;
-  color: #86efac;
-  border: 1px solid rgba(34,197,94,0.2);
+  background: rgba(20, 20, 20, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--a-text);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  animation: toast-in 0.28s cubic-bezier(0.16,1,0.3,1);
+  max-width: 420px;
+  width: calc(100% - 32px);
+  margin: 0 auto;
 }
 
 .toast-error {
-  background: #2d0a0a;
-  color: #fca5a5;
-  border: 1px solid rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.15);
+  background: rgba(30, 10, 10, 0.92);
+}
+
+.toast-error svg {
+  color: #f87171;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
 }
 
 .toast-dismiss {
@@ -1283,23 +1293,24 @@
   border: none;
   cursor: pointer;
   padding: 2px;
-  opacity: 0.5;
+  opacity: 0.4;
   color: inherit;
   display: flex;
-  transition: opacity var(--a-transition);
+  transition: opacity 0.15s;
+  flex-shrink: 0;
 }
 
 .toast-dismiss:hover {
-  opacity: 1;
+  opacity: 0.8;
 }
 
 .toast-dismiss svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -1436,13 +1447,8 @@
   .cluster-header-top { flex-direction: column; }
   .cluster-actions { flex-wrap: wrap; }
 
-  .toast-container {
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
-  }
-
-  .toast { max-width: none; }
+  .toast-container { max-width: none; }
+  .toast { width: calc(100% - 32px); max-width: none; }
 }
 
 @media (max-width: 480px) {

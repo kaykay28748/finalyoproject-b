@@ -210,7 +210,7 @@ export default function AdminDashboard() {
   const addToast = useCallback((type, text) => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, type, text }]);
-    if (type === 'success') setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   }, []);
 
   const dismissToast = useCallback((id) => {
@@ -934,8 +934,8 @@ export default function AdminDashboard() {
       {toasts.length > 0 && (
         <div className="toast-container">
           {toasts.map((t) => (
-            <div key={t.id} className={`toast toast-${t.type}`}>
-              {t.type === 'success' ? <Icons.Check /> : <Icons.AlertIcon />}
+            <div key={t.id} className={`toast ${t.type === 'error' ? 'toast-error' : ''}`}>
+              {t.type === 'error' && <Icons.AlertIcon />}
               <span>{t.text}</span>
               <button className="toast-dismiss" onClick={() => { trigger(10); dismissToast(t.id); }} aria-label="Dismiss">
                 <Icons.X />
