@@ -826,8 +826,8 @@ export default function AdminDashboard() {
                                           >
                                             {isReportProcessing ? '...' : 'Approve'}
                                           </button>
-                                        </div>
                                       </div>
+                                    )}
                                   </div>
                                 );
                               })}
