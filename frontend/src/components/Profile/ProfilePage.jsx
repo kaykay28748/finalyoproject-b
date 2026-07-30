@@ -504,7 +504,18 @@ export default function ProfilePage() {
     </div>
   );
 
-  const renderSection = (sectionId) => {
+  const renderDesktopProfile = () => (
+    <div className="profile-section">
+      <div className="profile-welcome-card">
+        <p className="profile-member-since" style={{ fontSize: '14px', opacity: 1 }}>
+          Member since {formatDate(profile.created_at)}
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderSection = (sectionId, isDesktop) => {
+    if (isDesktop && sectionId === "profile") return renderDesktopProfile();
     switch (sectionId) {
       case "profile": return renderAvatarSection();
       case "appearance": return renderAppearanceSection();
@@ -622,7 +633,7 @@ export default function ProfilePage() {
             <h1>{sectionTitles[activeSection]}</h1>
           </div>
           <div className="profile-content-body">
-            {renderSection(activeSection)}
+            {renderSection(activeSection, true)}
           </div>
         </main>
       </div>
