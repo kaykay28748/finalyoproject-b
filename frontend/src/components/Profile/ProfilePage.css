@@ -477,10 +477,221 @@
   }
 }
 
-/* Tablet & Desktop */
+/* Mobile only layout */
+.profile-layout-desktop {
+  display: none;
+}
+
+/* Desktop sidebar + content panel layout */
 @media (min-width: 601px) {
+  .profile-layout-mobile {
+    display: none;
+  }
+
+  .profile-layout-desktop {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    width: 100%;
+  }
+
   .profile-back-btn span {
     display: inline;
+  }
+
+  /* Sidebar */
+  .profile-sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--panel);
+    border-right: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .profile-sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 24px 20px 20px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .profile-sidebar-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #2563eb;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .profile-sidebar-avatar:hover {
+    transform: scale(1.05);
+  }
+
+  .profile-sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .profile-sidebar-user-info strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Outfit', sans-serif;
+    color: var(--text);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .profile-sidebar-user-info span {
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    color: var(--sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+
+  .profile-sidebar-nav {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .profile-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 14px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--sub);
+    margin-bottom: 2px;
+  }
+
+  .profile-nav-item:hover {
+    background: var(--hover-row);
+    color: var(--text);
+  }
+
+  .profile-nav-item.active {
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    font-weight: 600;
+  }
+
+  .ug-root.dark .profile-nav-item.active {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+  }
+
+  .profile-nav-item.nav-danger {
+    margin-top: auto;
+    margin-bottom: 12px;
+  }
+
+  .profile-nav-item.nav-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+
+  .profile-nav-item.nav-danger.active {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+  }
+
+  .profile-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    color: inherit;
+  }
+
+  .profile-nav-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .profile-nav-label {
+    flex: 1;
+  }
+
+  /* Content panel */
+  .profile-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .profile-content-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--panel);
+    border-bottom: 0.5px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .profile-content-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .profile-content-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 40px;
+  }
+
+  .profile-content-body .profile-avatar-section {
+    padding: 40px 24px;
+  }
+
+  .profile-content-body .profile-avatar {
+    width: 140px;
+    height: 140px;
+  }
+
+  .profile-content-body .profile-section {
+    padding: 24px 24px;
+  }
+
+  .profile-content-body .profile-section h3 {
+    font-size: 16px;
+    margin-bottom: 18px;
+  }
+
+  .profile-content-body .profile-setting-btn {
+    padding: 16px 20px;
+    border-radius: 24px;
   }
 }
 
