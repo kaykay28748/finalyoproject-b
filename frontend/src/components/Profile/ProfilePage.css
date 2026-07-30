@@ -478,6 +478,13 @@
 }
 
 /* Mobile only layout */
+.profile-layout-mobile {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
 .profile-layout-desktop {
   display: none;
 }
