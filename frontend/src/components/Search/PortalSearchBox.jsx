@@ -41,6 +41,7 @@ export default function PortalSearchBox({
   showCurrentLocationOption,
   accentColor,
   onFocus,
+  searchNonce,
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -100,6 +101,15 @@ export default function PortalSearchBox({
 
   useEffect(() => () => cancelPending(), [cancelPending]);
 
+  // Fetch remote suggestions and merge with local ones, deduped by name.
+  const fetchApiSuggestions = useCallback(async (val, localResults, controller) => {
+    const apiResults = await geocode(val, controller.signal);
+    if (apiResults === null) return null;
+    const localNames = new Set(localResults.map((r) => r.name.toLowerCase()));
+    const fresh = apiResults.filter((r) => !localNames.has(r.name.toLowerCase()));
+    return [...localResults, ...fresh].slice(0, 7);
+  }, []);
+
   // ── Input change ─────────────────────────────────────────────────────────────
   const handleChange = (e) => {
     const val = e.target.value;
@@ -128,13 +138,9 @@ export default function PortalSearchBox({
       abortRef.current = controller;
 
       try {
-        const apiResults = await geocode(val, controller.signal);
-
-        if (apiResults === null) return;
-
-        const localNames = new Set(localResults.map((r) => r.name.toLowerCase()));
-        const fresh = apiResults.filter((r) => !localNames.has(r.name.toLowerCase()));
-        setSuggestions([...localResults, ...fresh].slice(0, 7));
+        const combined = await fetchApiSuggestions(val, localResults, controller);
+        if (combined === null) return;
+        setSuggestions(combined);
       } catch {
         // silent
       } finally {
@@ -166,6 +172,52 @@ export default function PortalSearchBox({
     setShowDropdown(true);
     onFocus?.();
   };
+
+  // ── External commit (e.g. voice search) ────────────────────────────────────
+  // When searchNonce bumps, treat the current value as a committed query:
+  // search it, auto-select a clear match, otherwise open the dropdown.
+  useEffect(() => {
+    if (!searchNonce) return;
+    const val = value;
+    if (val.length < 2) return;
+
+    cancelPending();
+    setLoading(true);
+    setShowDropdown(false);
+
+    const localResults = searchLocal(val);
+    setSuggestions(localResults);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    (async () => {
+      try {
+        const combined =
+          (await fetchApiSuggestions(val, localResults, controller)) || localResults;
+        setSuggestions(combined);
+        setLoading(false);
+
+        const top = combined[0];
+        const localTop = localResults[0];
+        const clearMatch =
+          combined.length === 1 ||
+          (localResults.length === 1 && top && top.name === localTop.name);
+
+        if (clearMatch && top) {
+          handleSelect(top);
+        } else {
+          setShowDropdown(true);
+        }
+      } catch {
+        setLoading(false);
+        setShowDropdown(true);
+      } finally {
+        abortRef.current = null;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchNonce]);
 
   // ── Close on outside click ───────────────────────────────────────────────────
   useEffect(() => {

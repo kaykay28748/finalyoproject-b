@@ -1,11 +1,10 @@
 // components/Panel/NavPanel.jsx
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "../../context/AuthContext";
 import { useFocus } from "../../context/FocusContext";
 import { useHaptics } from "../../hooks/useHaptics";
-import useSpeechRecognition from "../../hooks/useSpeechRecognition";
-import SearchBox from "../Search/SearchBox";
 import PortalSearchBox from "../Search/PortalSearchBox";
+import VoiceSearchModal from "../Search/VoiceSearchModal";
 import { useNavigate } from "react-router-dom";
 import logo from "./icon-192.png";
 import {
@@ -147,6 +146,8 @@ export default function NavPanel({
 }) {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [swapRotation, setSwapRotation] = useState(0);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [voiceSearchNonce, setVoiceSearchNonce] = useState(0);
   // Senior Dev Fix: Initialize derived state BEFORE hooks that depend on it
   const isExpanded =
     externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -155,17 +156,6 @@ export default function NavPanel({
   const focus = useFocus();
   const navigate = useNavigate();
   const { trigger } = useHaptics();
-  const {
-    supported,
-    isListening,
-    transcript,
-    interimTranscript,
-    error,
-    startListening,
-    stopListening,
-    clearError,
-  } = useSpeechRecognition();
-  const transcriptHandledRef = useRef(false);
 
   const setIsExpanded = (value) => {
     if (onExpandRequest) {
@@ -207,31 +197,14 @@ export default function NavPanel({
   };
 
   const handleMicClick = () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
     trigger(10);
-    transcriptHandledRef.current = false;
-    startListening();
+    setVoiceModalOpen(true);
   };
 
-  useEffect(() => {
-    if (transcript && !transcriptHandledRef.current) {
-      transcriptHandledRef.current = true;
-      onDestTextChange(transcript);
-      setIsExpanded(true);
-    }
-  }, [transcript, onDestTextChange]);
-
-  useEffect(() => {
-    if (!error) return;
-    const t = setTimeout(clearError, 6000);
-    return () => clearTimeout(t);
-  }, [error, clearError]);
-
-  const voiceErrorIsRetryable =
-    error && !["unsupported", "not-allowed"].includes(error.code);
+  const handleVoiceUseText = (text) => {
+    onDestTextChange(text);
+    setVoiceSearchNonce((n) => n + 1);
+  };
 
   const statusClass = locationError
     ? "error"
@@ -309,11 +282,10 @@ export default function NavPanel({
                 <span className="nav-compact-dest">{destText}</span>
               </div>
               <button
-                className={`nav-mic-btn nav-mic-btn--compact${isListening ? " nav-mic-btn--listening" : ""}`}
+                className="nav-mic-btn nav-mic-btn--compact"
                 onClick={handleMicClick}
-                aria-busy={isListening}
-                aria-label={isListening ? "Stop listening" : "Voice search a new destination"}
-                title={isListening ? "Stop listening" : "Search a new destination by voice"}
+                aria-label="Voice search a new destination"
+                title="Search a new destination by voice"
               >
                 <IconMic strokeWidth={2} />
               </button>
@@ -344,17 +316,10 @@ export default function NavPanel({
                 <span className="nav-search-text-hint">Search here...</span>
               </button>
               <button
-                className={`nav-mic-btn${isListening ? " nav-mic-btn--listening" : ""}`}
+                className="nav-mic-btn"
                 onClick={handleMicClick}
-                aria-busy={isListening}
-                aria-label={isListening ? "Stop listening" : "Voice search destination"}
-                title={
-                  !supported
-                    ? "Voice search isn't supported in this browser"
-                    : isListening
-                      ? "Tap to stop listening"
-                      : "Search by voice"
-                }
+                aria-label="Voice search destination"
+                title="Search by voice"
               >
                 <IconMic strokeWidth={2} />
               </button>
@@ -437,19 +402,13 @@ export default function NavPanel({
                 showCurrentLocationOption={false}
                 accentColor="#22c55e"
                 onFocus={handleSearchFocus}
+                searchNonce={voiceSearchNonce}
               />
               <button
-                className={`nav-mic-btn nav-mic-btn--to${isListening ? " nav-mic-btn--listening" : ""}`}
+                className="nav-mic-btn nav-mic-btn--to"
                 onClick={handleMicClick}
-                aria-busy={isListening}
-                aria-label={isListening ? "Stop listening" : "Speak or edit the destination"}
-                title={
-                  !supported
-                    ? "Voice search isn't supported in this browser"
-                    : isListening
-                      ? "Tap to stop listening"
-                      : "Speak the destination"
-                }
+                aria-label="Speak the destination"
+                title="Speak the destination"
               >
                 <IconMic strokeWidth={2} />
               </button>
@@ -557,82 +516,14 @@ export default function NavPanel({
             </p>
           </div>
         )}
-
-        {(isListening || error) && (
-          <div className="nav-voice-card" role="status" aria-live="polite">
-            <div className="nav-voice-body">
-              <div
-                className={`nav-voice-visual${isListening ? " nav-voice-visual--live" : " nav-voice-visual--error"}`}
-                aria-hidden="true"
-              >
-                {isListening ? (
-                  <IconMic strokeWidth={1.8} />
-                ) : (
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                )}
-              </div>
-
-              <div className="nav-voice-text">
-                <span className="nav-voice-title">
-                  {isListening ? "Listening…" : "Voice search unavailable"}
-                </span>
-                <span className="nav-voice-hint">
-                  {isListening
-                    ? "Speak now — tap Stop when you're done"
-                    : error.message}
-                </span>
-                {isListening && interimTranscript && (
-                  <span className="nav-voice-interim" aria-live="polite">
-                    {interimTranscript}
-                  </span>
-                )}
-              </div>
-
-              <div className="nav-voice-actions">
-                {isListening ? (
-                  <button className="nav-voice-stop" onClick={handleMicClick}>
-                    Stop
-                  </button>
-                ) : (
-                  <>
-                    {voiceErrorIsRetryable && (
-                      <button className="nav-voice-again" onClick={handleMicClick}>
-                        Try again
-                      </button>
-                    )}
-                    <button className="nav-voice-dismiss" onClick={clearError}>
-                      Dismiss
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {isListening && (
-              <div className="nav-voice-eq" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      <VoiceSearchModal
+        open={voiceModalOpen}
+        onClose={() => setVoiceModalOpen(false)}
+        onUseText={handleVoiceUseText}
+        accentColor="#22c55e"
+      />
     </>
   );
 }
