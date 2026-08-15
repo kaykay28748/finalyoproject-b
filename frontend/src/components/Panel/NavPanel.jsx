@@ -1,5 +1,5 @@
 // components/Panel/NavPanel.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAuthContext } from "../../context/AuthContext";
 import { useFocus } from "../../context/FocusContext";
 import { useHaptics } from "../../hooks/useHaptics";
@@ -204,6 +204,7 @@ export default function NavPanel({
   const handleVoiceUseText = (text) => {
     onDestTextChange(text);
     setVoiceSearchNonce((n) => n + 1);
+    setIsExpanded(true);
   };
 
   const statusClass = locationError
@@ -281,14 +282,6 @@ export default function NavPanel({
                 />
                 <span className="nav-compact-dest">{destText}</span>
               </div>
-              <button
-                className="nav-mic-btn nav-mic-btn--compact"
-                onClick={handleMicClick}
-                aria-label="Voice search a new destination"
-                title="Search a new destination by voice"
-              >
-                <IconMic strokeWidth={2} />
-              </button>
               <button
                 className="nav-glass-btn nav-compact-swap"
                 onClick={handleSwapClick}
