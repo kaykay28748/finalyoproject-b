@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { playMicStart, playMicStop, playMicError } from "../services/soundCue";
 
 const ERROR_MESSAGES = {
   unsupported:
@@ -48,7 +49,7 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
-      } catch (_) {}
+      } catch { /* ignore */ }
       recognitionRef.current = null;
     }
   }, []);
@@ -64,9 +65,10 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
-      } catch (_) {}
+      } catch { /* ignore */ }
       recognitionRef.current = null;
     }
+    playMicStop();
     if (mountedRef.current) {
       setIsListening(false);
       setInterimTranscript("");
@@ -76,6 +78,7 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
   const startListening = useCallback(() => {
     if (!supported) {
       setError({ code: "unsupported", message: ERROR_MESSAGES.unsupported });
+      playMicError();
       return;
     }
 
@@ -92,6 +95,7 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
     recognition.lang = lang;
 
     let finalTranscript = "";
+    let failed = false;
 
     const isCurrentSession = () => session === sessionRef.current;
 
@@ -116,7 +120,7 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
         }
         try {
           recognition.stop();
-        } catch (_) {}
+        } catch { /* ignore */ }
       }
     };
 
@@ -124,10 +128,12 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
       if (!isCurrentSession()) return;
       const code = event && event.error ? event.error : "unknown";
       if (code === "aborted") return;
+      failed = true;
       const message = ERROR_MESSAGES[code] || ERROR_MESSAGES["no-speech"];
       if (mountedRef.current) {
         if (code !== "no-speech") setIsListening(false);
         setError({ code, message });
+        playMicError();
       }
     };
 
@@ -140,6 +146,7 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
       if (mountedRef.current) {
         setIsListening(false);
         setInterimTranscript("");
+        if (!failed) playMicStop();
       }
     };
 
@@ -153,24 +160,30 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
 
     try {
       recognition.start();
-      if (mountedRef.current) setIsListening(true);
+      if (mountedRef.current) {
+        setIsListening(true);
+        playMicStart();
+      }
 
       silenceRef.current = setTimeout(() => {
         silenceRef.current = null;
         if (isCurrentSession() && finalTranscript === "") {
+          failed = true;
           try {
             recognition.abort();
-          } catch (_) {}
+          } catch { /* ignore */ }
           if (mountedRef.current) {
             setError({ code: "no-speech", message: ERROR_MESSAGES["no-speech"] });
             setIsListening(false);
+            playMicError();
           }
         }
       }, SILENCE_TIMEOUT_MS);
-    } catch (e) {
+    } catch {
       if (mountedRef.current) {
         setError({ code: "start-failed", message: ERROR_MESSAGES["no-speech"] });
         setIsListening(false);
+        playMicError();
       }
     }
   }, [supported, lang, cleanup]);

@@ -81,6 +81,15 @@
   background: transparent;
   color: var(--sub);
   transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Accessible hit area — 34px visual, ≥44px touch target */
+.nav-mic-btn::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
 }
 
 .nav-mic-btn:hover {
@@ -105,6 +114,26 @@
 .nav-mic-btn--compact {
   width: 38px;
   height: 38px;
+}
+
+/* To-field mic (expanded state) — green to match the destination accent */
+.nav-mic-btn--to {
+  width: 40px;
+  height: 40px;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.nav-mic-btn--to:hover {
+  background: rgba(34, 197, 94, 0.14);
+  color: #16a34a;
+}
+
+.ug-root.dark .nav-mic-btn--to {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #4ade80;
 }
 
 .nav-mic-btn--listening {
@@ -1280,11 +1309,13 @@
 
 .nav-voice-interim {
   font-size: 14px;
-  font-weight: 600;
-  color: #ef4444;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--text-secondary, #6b7280);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  animation: ugfade 0.25s ease;
 }
 
 .nav-voice-actions {
@@ -1298,7 +1329,8 @@
 .nav-voice-again,
 .nav-voice-dismiss {
   border: none;
-  padding: 7px 12px;
+  padding: 8px 14px;
+  min-height: 40px;
   border-radius: 30px;
   font-size: 11px;
   font-weight: 600;

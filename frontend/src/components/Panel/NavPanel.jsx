@@ -17,6 +17,7 @@ import "./NavPanel.css";
 
 // Integrated Avatar component (Google Maps style)
 function Avatar({ username, size = 36, onClick, accuracy }) {
+  const { trigger } = useHaptics();
   const seed = username || "guest";
   const avatarUrl = `https://api.navii.dev/avatar/${encodeURIComponent(seed)}?size=${size}&motion=true`;
 
@@ -310,6 +311,7 @@ export default function NavPanel({
               <button
                 className={`nav-mic-btn nav-mic-btn--compact${isListening ? " nav-mic-btn--listening" : ""}`}
                 onClick={handleMicClick}
+                aria-busy={isListening}
                 aria-label={isListening ? "Stop listening" : "Voice search a new destination"}
                 title={isListening ? "Stop listening" : "Search a new destination by voice"}
               >
@@ -344,6 +346,7 @@ export default function NavPanel({
               <button
                 className={`nav-mic-btn${isListening ? " nav-mic-btn--listening" : ""}`}
                 onClick={handleMicClick}
+                aria-busy={isListening}
                 aria-label={isListening ? "Stop listening" : "Voice search destination"}
                 title={
                   !supported
@@ -435,6 +438,21 @@ export default function NavPanel({
                 accentColor="#22c55e"
                 onFocus={handleSearchFocus}
               />
+              <button
+                className={`nav-mic-btn nav-mic-btn--to${isListening ? " nav-mic-btn--listening" : ""}`}
+                onClick={handleMicClick}
+                aria-busy={isListening}
+                aria-label={isListening ? "Stop listening" : "Speak or edit the destination"}
+                title={
+                  !supported
+                    ? "Voice search isn't supported in this browser"
+                    : isListening
+                      ? "Tap to stop listening"
+                      : "Speak the destination"
+                }
+              >
+                <IconMic strokeWidth={2} />
+              </button>
             </div>
 
             <div className="nav-action-row">
@@ -573,11 +591,13 @@ export default function NavPanel({
                 </span>
                 <span className="nav-voice-hint">
                   {isListening
-                    ? interimTranscript || "Speak your destination now"
+                    ? "Speak now — tap Stop when you're done"
                     : error.message}
                 </span>
                 {isListening && interimTranscript && (
-                  <span className="nav-voice-interim">{interimTranscript}</span>
+                  <span className="nav-voice-interim" aria-live="polite">
+                    {interimTranscript}
+                  </span>
                 )}
               </div>
 
