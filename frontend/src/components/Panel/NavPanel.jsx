@@ -154,7 +154,16 @@ export default function NavPanel({
   const focus = useFocus();
   const navigate = useNavigate();
   const { trigger } = useHaptics();
-  const { isListening, transcript, startListening, stopListening } = useSpeechRecognition();
+  const {
+    supported,
+    isListening,
+    transcript,
+    interimTranscript,
+    error,
+    startListening,
+    stopListening,
+    clearError,
+  } = useSpeechRecognition();
   const transcriptHandledRef = useRef(false);
 
   const setIsExpanded = (value) => {
@@ -213,6 +222,15 @@ export default function NavPanel({
       setIsExpanded(true);
     }
   }, [transcript, onDestTextChange]);
+
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(clearError, 6000);
+    return () => clearTimeout(t);
+  }, [error, clearError]);
+
+  const voiceErrorIsRetryable =
+    error && !["unsupported", "not-allowed"].includes(error.code);
 
   const statusClass = locationError
     ? "error"
@@ -290,6 +308,14 @@ export default function NavPanel({
                 <span className="nav-compact-dest">{destText}</span>
               </div>
               <button
+                className={`nav-mic-btn nav-mic-btn--compact${isListening ? " nav-mic-btn--listening" : ""}`}
+                onClick={handleMicClick}
+                aria-label={isListening ? "Stop listening" : "Voice search a new destination"}
+                title={isListening ? "Stop listening" : "Search a new destination by voice"}
+              >
+                <IconMic strokeWidth={2} />
+              </button>
+              <button
                 className="nav-glass-btn nav-compact-swap"
                 onClick={handleSwapClick}
                 title="Swap"
@@ -318,8 +344,14 @@ export default function NavPanel({
               <button
                 className={`nav-mic-btn${isListening ? " nav-mic-btn--listening" : ""}`}
                 onClick={handleMicClick}
-                aria-label={isListening ? "Listening..." : "Voice search destination"}
-                title={isListening ? "Listening..." : "Search by voice"}
+                aria-label={isListening ? "Stop listening" : "Voice search destination"}
+                title={
+                  !supported
+                    ? "Voice search isn't supported in this browser"
+                    : isListening
+                      ? "Tap to stop listening"
+                      : "Search by voice"
+                }
               >
                 <IconMic strokeWidth={2} />
               </button>
@@ -505,6 +537,79 @@ export default function NavPanel({
               )}
               {statusMsg}
             </p>
+          </div>
+        )}
+
+        {(isListening || error) && (
+          <div className="nav-voice-card" role="status" aria-live="polite">
+            <div className="nav-voice-body">
+              <div
+                className={`nav-voice-visual${isListening ? " nav-voice-visual--live" : " nav-voice-visual--error"}`}
+                aria-hidden="true"
+              >
+                {isListening ? (
+                  <IconMic strokeWidth={1.8} />
+                ) : (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                )}
+              </div>
+
+              <div className="nav-voice-text">
+                <span className="nav-voice-title">
+                  {isListening ? "Listening…" : "Voice search unavailable"}
+                </span>
+                <span className="nav-voice-hint">
+                  {isListening
+                    ? interimTranscript || "Speak your destination now"
+                    : error.message}
+                </span>
+                {isListening && interimTranscript && (
+                  <span className="nav-voice-interim">{interimTranscript}</span>
+                )}
+              </div>
+
+              <div className="nav-voice-actions">
+                {isListening ? (
+                  <button className="nav-voice-stop" onClick={handleMicClick}>
+                    Stop
+                  </button>
+                ) : (
+                  <>
+                    {voiceErrorIsRetryable && (
+                      <button className="nav-voice-again" onClick={handleMicClick}>
+                        Try again
+                      </button>
+                    )}
+                    <button className="nav-voice-dismiss" onClick={clearError}>
+                      Dismiss
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {isListening && (
+              <div className="nav-voice-eq" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
           </div>
         )}
       </div>
