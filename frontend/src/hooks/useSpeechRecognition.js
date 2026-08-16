@@ -16,6 +16,35 @@ const ERROR_MESSAGES = {
 const DEFAULT_LANG = "en-US";
 const SILENCE_TIMEOUT_MS = 12000;
 
+export const isStandalonePwa = () => {
+  if (typeof window === "undefined") return false;
+  return (
+    window.navigator.standalone === true ||
+    !!window.matchMedia?.("(display-mode: standalone)").matches
+  );
+};
+
+// Pre-grant microphone access before starting recognition. Installed PWAs
+// often don't show SpeechRecognition's own permission prompt, so we request it
+// explicitly via getUserMedia and surface a clear error if it's denied.
+const warmMicPermission = async () => {
+  if (!navigator.mediaDevices?.getUserMedia) return { ok: true };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    return { ok: true };
+  } catch (err) {
+    const name = err && err.name;
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return { ok: false, code: "not-allowed" };
+    }
+    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      return { ok: false, code: "audio-capture" };
+    }
+    return { ok: true };
+  }
+};
+
 export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
   const supported =
     typeof window !== "undefined" &&
@@ -75,7 +104,7 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
     }
   }, []);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (!supported) {
       setError({ code: "unsupported", message: ERROR_MESSAGES.unsupported });
       playMicError();
@@ -83,11 +112,28 @@ export default function useSpeechRecognition({ lang = DEFAULT_LANG } = {}) {
     }
 
     cleanup();
+    // Capture the session id AFTER cleanup so a stop/close during the async
+    // warm-up is detected and we don't start listening in the background.
+    const session = sessionRef.current;
+
+    // Installed PWAs need an explicit mic permission grant and a fresh user
+    // gesture; without this, recognition can fail silently.
+    if (isStandalonePwa()) {
+      const permission = await warmMicPermission();
+      if (!mountedRef.current || session !== sessionRef.current) return;
+      if (!permission.ok) {
+        setError({
+          code: permission.code,
+          message: ERROR_MESSAGES[permission.code] || ERROR_MESSAGES["no-speech"],
+        });
+        playMicError();
+        return;
+      }
+    }
 
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    const session = sessionRef.current;
 
     recognition.continuous = false;
     recognition.interimResults = true;

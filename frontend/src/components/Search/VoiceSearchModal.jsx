@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import useSpeechRecognition from "../../hooks/useSpeechRecognition";
+import useSpeechRecognition, { isStandalonePwa } from "../../hooks/useSpeechRecognition";
 import { IconMic } from "../ui/icon";
 import "./VoiceSearchModal.css";
 
 const UNSUPPORTED_MSG =
   "Voice search isn't available here. It needs a secure HTTPS connection and a browser like Chrome, Edge, or Safari.";
+
+const UNSUPPORTED_MSG_PWA =
+  "Voice search isn't supported inside the installed app on this device. Open TransitGuide in your browser (Safari or Chrome) to use it.";
 
 function IconClose() {
   return (
@@ -65,9 +68,16 @@ export default function VoiceSearchModal({
   const [touched, setTouched] = useState(false);
   const inputRef = useRef(null);
 
+  const isStandalone = isStandalonePwa();
   const isUnsupported = !supported;
   const effectiveError =
-    error || (isUnsupported ? { code: "unsupported", message: UNSUPPORTED_MSG } : null);
+    error ||
+    (isUnsupported
+      ? {
+          code: "unsupported",
+          message: isStandalone ? UNSUPPORTED_MSG_PWA : UNSUPPORTED_MSG,
+        }
+      : null);
 
   // Sync the final transcript into the editable draft as soon as it lands.
   useEffect(() => {
@@ -80,14 +90,16 @@ export default function VoiceSearchModal({
   // Reset state and auto-start each time the modal opens. Opening always
   // happens from a mic tap, so the user-activation gesture is still warm for
   // SpeechRecognition.start(). If the browser still refuses, the idle
-  // "tap to speak" state is the fallback.
+  // "tap to speak" state is the fallback. In installed-PWA (standalone) mode
+  // we deliberately skip auto-start: it's unreliable there, and a fresh tap on
+  // the mic gives the cleanest gesture + permission prompt.
   useEffect(() => {
     if (!open) return;
     setDraft("");
     setTouched(false);
     clearError();
-    if (supported) startListening();
-  }, [open, supported, startListening, clearError]);
+    if (supported && !isStandalone) startListening();
+  }, [open, supported, isStandalone, startListening, clearError]);
 
   const close = useCallback(() => {
     stopListening();

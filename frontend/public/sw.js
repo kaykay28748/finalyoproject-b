@@ -1,7 +1,7 @@
 // public/sw.js
 // TransitGuide Service Worker - Offline support with proper API handling
 
-const CACHE_NAME = 'transitguide-v1';
+const CACHE_NAME = 'transitguide-v2';
 const urlsToCache = [
   '/',
   '/index.html',
