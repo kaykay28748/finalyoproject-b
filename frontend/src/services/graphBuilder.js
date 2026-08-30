@@ -5,6 +5,8 @@ import { UG_BOUNDS } from "../function/utils/bounds";
 import { distanceKm } from "../function/utils/distance";
 import { getCachedGraph, cacheGraph } from "./cacheStore";
 import { API_URL } from "../config";
+import { UG_GATES } from "./gateSchedule";
+import { setGateNodeIds } from "./costFunction";
 
 const OVERPASS_PROXY = `${API_URL}/api/overpass`;
 
@@ -72,6 +74,7 @@ export async function buildGraph() {
     const cached = await getCachedGraph();
     if (cached) {
       console.log("[GraphBuilder] Using cached graph from IndexedDB");
+      registerGateNodes(cached);
       return cached;
     }
 
@@ -113,6 +116,7 @@ export async function buildGraph() {
     );
 
     await cacheGraph(graph);
+    registerGateNodes(graph);
     return graph;
 
   } catch (error) {
@@ -373,6 +377,26 @@ export function findConnectedComponents(graph) {
     components.push(component);
   }
   return components;
+}
+
+/**
+ * Snaps each campus gate to its closest graph node and registers those node IDs
+ * with the cost function, so that vehicle routing is correctly blocked at gates
+ * that are restricted during the 00:00–05:00 window (see gateSchedule.js).
+ */
+function registerGateNodes(graph) {
+  if (!graph || !Object.keys(graph.nodes).length) return;
+
+  const ids = {};
+  let found = 0;
+  for (const [key, gate] of Object.entries(UG_GATES)) {
+    const nodeId = findClosestNode(graph, gate.lat, gate.lng);
+    if (nodeId) { ids[key] = nodeId; found++; }
+  }
+  if (found > 0) {
+    setGateNodeIds(ids);
+    console.log(`[GraphBuilder] Registered ${found}/${Object.keys(UG_GATES).length} gate nodes`);
+  }
 }
 
 export function findClosestNode(graph, lat, lng) {

@@ -7,6 +7,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  
     port: 5173,
+    watch: {
+      // Playwright writes these directories during E2E; watching+locking them
+      // crashed the Vite dev server (EBUSY). Ignore them.
+      ignored: ['**/playwright-report/**', '**/test-results/**', '**/tmp-*.png'],
+    },
     proxy: {
       '/api/nominatim': {
         target: 'https://nominatim.openstreetmap.org',
