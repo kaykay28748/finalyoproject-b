@@ -64,6 +64,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'https://ugnavigator.onrender.com',
+    ...Array.from({ length: 9 }, (_, i) => `http://localhost:${5171 + i}`),
+    ...Array.from({ length: 9 }, (_, i) => `http://127.0.0.1:${5171 + i}`),
     process.env.CORS_ORIGIN,
   ].filter(Boolean),
   credentials: true,

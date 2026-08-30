@@ -13,10 +13,11 @@ export default function LegendProfileBar({ activeProfile, onProfileChange }) {
           <button
             key={p.key}
             data-profile={p.key}
+            data-tooltip={p.description}
             className={`legend-profile-btn ${isActive ? "legend-profile-btn--active" : ""}`}
             onClick={() => { trigger(10); onProfileChange?.(p.key); }}
-            title={p.label}
-            aria-label={`Switch to ${p.label} profile`}
+            title={p.description}
+            aria-label={`Switch to ${p.label} profile — ${p.description}`}
             aria-pressed={isActive}
           >
             <span className="legend-profile-icon">
