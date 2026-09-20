@@ -474,7 +474,7 @@ export default function MapLibre3DView({
     try {
       mapRef.current.flyTo({
         center: [flyTarget.lng, flyTarget.lat],
-        zoom: 17.5,           // Tighter zoom for targets
+        zoom: flyTarget.zoom ?? 17.5,   // Respect recenter zoom level, tighter for other targets
         pitch: 65,            // More dramatic tilt
         duration: 2000,       // Slower, more premium feel
         essential: true,      // Ensures animation runs even if user is moving

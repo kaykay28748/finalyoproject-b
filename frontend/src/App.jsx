@@ -485,7 +485,7 @@ export default function App() {
     if (!currentLocation) return;
     const zoomedIn = !isRecenterZoomed;
     setIsRecenterZoomed(zoomedIn);
-    setFlyTarget({ ...currentLocation, zoom: zoomedIn ? 17 : 13, _t: Date.now() });
+    setFlyTarget({ ...currentLocation, zoom: zoomedIn ? 17 : 15, _t: Date.now() });
   };
 
   // ── Report modal handlers ────────────────────────────────────────────────
