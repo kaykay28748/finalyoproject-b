@@ -35,11 +35,10 @@ const Legend = forwardRef(function Legend({
   const { trigger } = useHaptics();
   const weather = useWeather();
   const headerRef = useRef(null);
-  const lastRouteSigRef = useRef(null);
   const lastAnnouncedStepRef = useRef(-1);
   const lastAnnouncedRouteIdRef = useRef(null);
   const prevHasRouteRef = useRef(hasRoute);
-  const wasExpandedBeforeCollapse = useRef(true);
+  const wasExpandedBeforeCollapse = useRef(false);
 
   const { sheetRef, handleDragStart, toggleExpanded, initPosition } = useDragSheet({
     expanded, onExpandedChange: setExpanded,
@@ -87,17 +86,6 @@ const Legend = forwardRef(function Legend({
   }, [route]);
 
   useEffect(() => {
-    if (!route?.coordinates?.length) { lastRouteSigRef.current = null; return; }
-    const start = route.coordinates[0];
-    const end = route.coordinates[route.coordinates.length - 1];
-    const sig = `${start.lat.toFixed(5)},${start.lng.toFixed(5)}-${end.lat.toFixed(5)},${end.lng.toFixed(5)}`;
-    if (lastRouteSigRef.current !== sig) {
-      setExpanded(false);
-      lastRouteSigRef.current = sig;
-    }
-  }, [route]);
-
-  useEffect(() => {
     if (hasRoute && !prevHasRouteRef.current && visible) setExpanded(true);
     prevHasRouteRef.current = hasRoute;
   }, [hasRoute, visible]);
@@ -110,11 +98,11 @@ const Legend = forwardRef(function Legend({
     if (autoCollapse && expanded) {
       wasExpandedBeforeCollapse.current = true;
       setExpanded(false);
-    } else if (!autoCollapse && wasExpandedBeforeCollapse.current && !expanded) {
+    } else if (!autoCollapse && wasExpandedBeforeCollapse.current && !expanded && hasRoute) {
       setExpanded(true);
       wasExpandedBeforeCollapse.current = false;
     }
-  }, [autoCollapse]);
+  }, [autoCollapse, hasRoute, expanded]);
 
   useEffect(() => {
     if (!currentLocation || !route?.coordinates?.length || directions.length === 0) return;
