@@ -83,7 +83,10 @@ export default function RegisterPage({ onSwitchToLogin }) {
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: registeredEmail
+        email: registeredEmail,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
       });
       
       if (error) {

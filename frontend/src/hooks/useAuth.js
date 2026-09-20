@@ -154,7 +154,8 @@ const syncUserWithBackend = useCallback(async (supabaseUser, accessToken) => {
           data: {
             username: username,
             username_display: username
-          }
+          },
+          emailRedirectTo: window.location.origin
         }
       });
 
