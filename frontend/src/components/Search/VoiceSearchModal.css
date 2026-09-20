@@ -40,6 +40,29 @@
   to   { transform: translateY(0); }
 }
 
+/* ── Desktop: centered dialog instead of bottom sheet ─────────────── */
+
+@media (min-width: 1024px) {
+  .voice-modal-overlay {
+    align-items: center;
+  }
+
+  .voice-modal {
+    border-radius: 22px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    animation: voiceDialogIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .ug-root.dark .voice-modal {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@keyframes voiceDialogIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)  scale(1); }
+}
+
 /* ── Header ──────────────────────────────────────────────────────── */
 
 .voice-modal-header {
