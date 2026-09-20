@@ -5,7 +5,7 @@ const getApiUrl = () => {
   // Production (deployed on Render)
   if (import.meta.env.PROD) {
     // Use environment variable if set, otherwise fallback to Render URL
-    const productionUrl = import.meta.env.VITE_API_URL || 'https://api-ug-navigator.onrender.com';
+    const productionUrl = import.meta.env.VITE_API_URL || 'https://api-transit-guide.onrender.com';
     console.log('[Config] Production mode, API URL:', productionUrl);
     return productionUrl;
   }

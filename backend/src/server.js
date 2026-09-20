@@ -518,7 +518,7 @@ const server = await startServer();
 
 // ─── Keep-alive ping (prevents Render free tier cold starts) ─────────────────
 if (process.env.NODE_ENV === 'production') {
-  const PING_URL = process.env.RENDER_EXTERNAL_URL || 'https://api-ug-navigator.onrender.com';
+  const PING_URL = process.env.RENDER_EXTERNAL_URL || 'https://api-transit-guide.onrender.com';
   setInterval(async () => {
     try {
       await fetch(`${PING_URL}/health`);
