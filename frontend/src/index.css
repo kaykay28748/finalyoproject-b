@@ -186,6 +186,7 @@ html, body, #root {
   --shadow-zoom:     0 4px 16px rgba(0, 0, 0, 0.08);
   --disabled-bg:     #e2e0d8;
   --disabled-color:  #a3a3a3;
+  --ug-legend-width: 440px;
 }
 
 /* ─── CSS variables — dark mode ──────────────────────────────────────────────*/

@@ -1022,7 +1022,7 @@
     top: 0;
     bottom: 0;
     left: auto;
-    width: 380px;
+    width: var(--ug-legend-width, 440px);
     padding: 0;
     align-items: stretch;
     justify-content: stretch;

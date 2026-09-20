@@ -247,7 +247,7 @@ export default function NavPanel({
       )}
 
       <div
-        className={`nav-panel ${isExpanded ? "nav-panel--expanded" : "nav-panel--pill"}`}
+        className={`nav-panel ${isExpanded ? "nav-panel--expanded" : "nav-panel--pill"}${markersVisible ? " nav-panel--with-legend" : ""}`}
       >
         {!isExpanded ? (
           markersVisible && startText && destText ? (
