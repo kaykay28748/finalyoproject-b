@@ -1,6 +1,10 @@
 // backend/src/db/migrate-pg.js
 // PostgreSQL migration script for Supabase (production only).
 // Requires DATABASE_URL. Do NOT use for local SQLite — use migrate.js instead.
+//
+// The schema lives in postgres-schema.sql (full DDL + indexes + RLS policies).
+// It is safe to run multiple times (IF NOT EXISTS everywhere).
+// The backend connects with the service_role key, which bypasses RLS.
 
 import pkg from 'pg';
 const { Pool } = pkg;
@@ -26,98 +30,21 @@ const pool = new Pool({
 
 async function runMigration() {
   console.log('[Migration] Starting PostgreSQL migration...');
-  
+
+  const schemaPath = path.join(__dirname, 'postgres-schema.sql');
+  if (!fs.existsSync(schemaPath)) {
+    console.error('❌ postgres-schema.sql not found:', schemaPath);
+    process.exit(1);
+  }
+
+  const schema = fs.readFileSync(schemaPath, 'utf8');
+
   try {
-    // Create route_feedback with PG syntax BEFORE schema.sql runs
-    // (schema.sql uses SQLite AUTOINCREMENT which would crash in PG)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS route_feedback (
-        id             SERIAL PRIMARY KEY,
-        user_id        UUID,
-        profile_key    TEXT NOT NULL DEFAULT 'standard',
-        rating         INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-        comment        TEXT,
-        created_at     TIMESTAMPTZ DEFAULT NOW(),
-        FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
-      )
-    `);
-    console.log('[Migration] ✓ route_feedback table ready');
-
-    // Read schema.sql
-    const schemaPath = path.join(__dirname, 'schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    
-    // Split into individual statements
-    const statements = schema
-      .split(';')
-      .filter(stmt => stmt.trim().length > 0)
-      .filter(stmt => !stmt.trim().startsWith('--'));
-    
-    console.log(`[Migration] Found ${statements.length} statements to execute`);
-    
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
-      try {
-        await pool.query(statement);
-        console.log(`[Migration] ✓ Statement ${i + 1} executed`);
-      } catch (err) {
-        if (err.message.includes('already exists')) {
-          console.log(`[Migration] ℹ Table already exists, skipping`);
-        } else {
-          throw err;
-        }
-      }
-    }
-    
-    console.log('[Migration] ✅ Database schema created successfully');
-    
-    // Add is_admin column if missing
-    await pool.query(`
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                       WHERE table_name = 'users' AND column_name = 'is_admin') THEN
-          ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0;
-        END IF;
-      END $$;
-    `);
-    
-    console.log('[Migration] ✓ Ensured is_admin column exists');
-
-    // Ensure report_confirmations table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS report_confirmations (
-        id           SERIAL PRIMARY KEY,
-        report_id    INTEGER NOT NULL,
-        user_id      UUID NOT NULL,
-        created_at   TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(report_id, user_id),
-        FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-      )
-    `);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id ON report_confirmations(report_id)`);
-    console.log('[Migration] ✓ report_confirmations table ready');
-
-    // Ensure report_messages table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS report_messages (
-        id             SERIAL PRIMARY KEY,
-        report_id      INTEGER NOT NULL,
-        sender_id      UUID NOT NULL,
-        message        TEXT NOT NULL,
-        read_at        TIMESTAMPTZ,
-        created_at     TIMESTAMPTZ DEFAULT NOW(),
-        FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
-        FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE
-      )
-    `);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_report_messages_sender_id ON report_messages(sender_id)`);
-    console.log('[Migration] ✓ report_messages table ready');
-    
+    await pool.query(schema);
+    console.log('[Migration] ✅ Database schema created successfully (tables, indexes, RLS policies)');
   } catch (error) {
     console.error('[Migration] ❌ Failed:', error.message);
+    process.exitCode = 1;
   } finally {
     await pool.end();
   }
