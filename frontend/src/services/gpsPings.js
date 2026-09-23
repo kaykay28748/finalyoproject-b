@@ -29,7 +29,7 @@ async function flush() {
   const dayOfWeek = now.getDay();
 
   try {
-    await fetch(`${API_URL}/analytics/ping`, {
+    await fetch(`${API_URL}/analytics/heatmap/ping`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pings: batch, hour, dayOfWeek }),
