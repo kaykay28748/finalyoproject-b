@@ -83,6 +83,21 @@ export default function RouteLayer({
   const { trigger } = useHaptics();
   const focus = useFocus();
 
+  // Live-GPS progress must only split the route (completed/remaining) when the
+  // device is actually on/near the route. A fix from far away (e.g. home while
+  // demoing with campus points) must leave the full bold route drawn instead of
+  // turning it into a faint "completed" line. Mirrors NAV_ACTIVE_RADIUS_METERS.
+  const GPS_PROGRESS_RADIUS_METERS = 500;
+  const isGpsNearRoute = useMemo(() => {
+    if (!currentLocation || !route?.coordinates?.length) return false;
+    const { distanceToRoute } = findClosestPointOnRoute(
+      currentLocation.lat,
+      currentLocation.lng,
+      route.coordinates
+    );
+    return distanceToRoute <= GPS_PROGRESS_RADIUS_METERS;
+  }, [currentLocation, route?.coordinates]);
+
   // Use smooth position hook
   const { position: smoothPosition, index: smoothIndex, progressRatio } = useSmoothRoutePosition(
     route?.coordinates,
@@ -136,6 +151,10 @@ export default function RouteLayer({
     // Once animation is complete, switch to the split segment view
     if (!isAnimationComplete) return;
 
+    // Skip the completed/remaining split entirely when the live GPS is far from
+    // the route — the full bold line stays drawn instead.
+    if (!isGpsNearRoute) return;
+
     // Senior Fix: Temporarily cap progress at 0 after a swap to allow the line to draw.
     // This prevents the route from immediately appearing "completed" if currentLocation
     // is near the new destination.
@@ -162,7 +181,7 @@ export default function RouteLayer({
     // if the system falls back to it during transitions
     setDisplayedCoords(coords);
 
-  }, [smoothIndex, route, visible, showProgress, isAnimationComplete]);
+  }, [smoothIndex, route, visible, showProgress, isAnimationComplete, isGpsNearRoute]);
 
   // Calculate route direction from smooth position for arrow
   useEffect(() => {
@@ -284,8 +303,8 @@ export default function RouteLayer({
     if (animationRef.current_sig === routeSignature) {
       const coords = route.coordinates.map((c) => [c.lat, c.lng]);
       const idx = Math.max(0, lastCompletedIndexRef.current);
-      setCompletedCoords(coords.slice(0, idx + 1));
-      setRemainingCoords(coords.slice(idx));
+      setCompletedCoords(isGpsNearRoute ? coords.slice(0, idx + 1) : []);
+      setRemainingCoords(isGpsNearRoute ? coords.slice(idx) : []);
       setDisplayedCoords(coords);
       setIsAnimationComplete(true);
       return;
@@ -356,7 +375,7 @@ export default function RouteLayer({
   const isRouteFocused = focus.isFocused('route', route?.id);
   const routeFocusClass = `${isRouteFocused ? 'route--focused' : (focus.hasFocus ? 'route--blurred' : '')} ${isRecalculating ? 'route--recalculating' : ''}`;
 
-  if (showProgress && isAnimationComplete && (completedCoords.length > 0 || remainingCoords.length > 0)) {
+  if (showProgress && isAnimationComplete && isGpsNearRoute && (completedCoords.length > 0 || remainingCoords.length > 0)) {
     return (
       <div style={{ '--profile-color': mainColor }}>
         {completedCoords.length >= 2 && (

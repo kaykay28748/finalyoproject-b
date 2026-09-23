@@ -324,6 +324,12 @@ export default function MapView({
     Math.abs(primaryRoute.coordinates[0].lat - currentLocation.lat) < 0.0001 &&
     Math.abs(primaryRoute.coordinates[0].lng - currentLocation.lng) < 0.0001;
 
+  // Only auto-center on the live GPS when the fix is actually within the campus
+  // area (UG_MAX_BOUNDS). A fix from kilometres away (e.g. demos from home)
+  // must NOT hijack the campus view.
+  const isGpsOnCampus = !!currentLocation &&
+    UG_MAX_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
+
   // Track map bounds for heatmap controls (2D only)
   useEffect(() => {
     if (is3DMode) return;
@@ -480,7 +486,7 @@ export default function MapView({
           <MapDragGuard />
           <TileLayerSwitcher layer={mapLayer} />
           <SmoothFly target={flyTarget} />
-          <InitialFly location={currentLocation} />
+          <InitialFly location={isGpsOnCampus ? currentLocation : null} />
           <SmartFitBounds
             startPoint={displayStartPoint}
             destPoint={destPoint}
