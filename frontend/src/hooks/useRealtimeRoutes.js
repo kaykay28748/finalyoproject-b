@@ -7,6 +7,10 @@ import { resetHeatmapSession } from "../services/heatmapAnalytics";
 import { useVoiceGuidance } from "./useVoiceGuidance";
 
 const DEVIATION_THRESHOLD_METERS  = 45;
+// Only treat the live GPS as "actively navigating" when it is within this
+// distance of the route. A fix far beyond it (e.g. user set a manual campus
+// start while physically elsewhere) must NOT trigger reroute/voice churn.
+const NAV_ACTIVE_RADIUS_METERS    = 500;
 const REROUTE_DEBOUNCE_MS         = 2000;
 const MIN_POSITION_CHANGE_METERS  = 8;
 const PROGRESS_UPDATE_INTERVAL_MS = 1000;
@@ -197,6 +201,11 @@ export function useRealtimeRoutes({
     lastPositionRef.current = { lat, lng };
 
     const distanceToRoute = getDistanceToRoute(lat, lng, activeRoute.coordinates);
+
+    // Live-GPS navigation guard: if the fix is far beyond the route, the user
+    // has a manual start elsewhere (e.g. on-campus while physically at home)
+    // and is NOT actively navigating — skip deviation handling entirely.
+    if (distanceToRoute > NAV_ACTIVE_RADIUS_METERS) return;
 
     if (distanceToRoute > DEVIATION_THRESHOLD_METERS) {
       if (!deviationDetected) setDeviationDetected(true);

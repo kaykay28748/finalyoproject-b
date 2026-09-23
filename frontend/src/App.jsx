@@ -241,14 +241,14 @@ export default function App() {
 
   const warnings = primaryRoute?.context?.warnings || [];
 
-  // ── Auto-fill FROM with GPS ───────────────────────────────────────────────
+  // ── Auto-fill FROM with GPS (only when GPS can actually snap to the graph) ──
   useEffect(() => {
-    if (currentLocation && !hasAutoFilled && !useCustomLocation && !startPoint) {
+    if (currentLocation && !hasAutoFilled && !useCustomLocation && !startPoint && getNodeId(currentLocation)) {
       setStartPoint(currentLocation);
       setStartText("My current location");
       setHasAutoFilled(true);
     }
-  }, [currentLocation, hasAutoFilled, useCustomLocation, startPoint]);
+  }, [currentLocation, hasAutoFilled, useCustomLocation, startPoint, getNodeId]);
 
   // ── Lock route when active ────────────────────────────────────────────────
   useEffect(() => {
