@@ -78,10 +78,10 @@ function ReportMarkers() {
         ]);
         if (cancelled) return;
         const verdicts = {};
-        (feed?.reports ?? []).forEach((d) => { verdicts[d.id] = d.verdict; });
+        (feed?.reports ?? []).forEach((d) => { verdicts[d.id] = d; });
         const merged = (approved?.reports ?? [])
           .filter((r) => r.deleted_at == null)
-          .map((r) => ({ ...r, verdict: verdicts[r.id] || null }));
+          .map((r) => ({ ...r, decision: verdicts[r.id] || null, verdict: verdicts[r.id]?.verdict || null }));
         if (approved?.success || feed?.success) setReports(merged);
       } catch (err) {
         console.warn("[ReportMarkers] Failed to load reports:", err.message);
@@ -117,6 +117,12 @@ function ReportMarkers() {
                 {report.verdict && VERDICT_CONFIG[report.verdict] && (
                   <div style={{ fontSize: 12, color: VERDICT_CONFIG[report.verdict].color, fontWeight: 700, marginBottom: 4 }}>
                     {VERDICT_CONFIG[report.verdict].label}
+                  </div>
+                )}
+                {report.decision && (
+                  <div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>
+                    Confidence {Math.round(report.decision.confidence * 100)}% · {report.decision.confirmers} confirmation{report.decision.confirmers === 1 ? "" : "s"}
+                    {typeof report.decision.reputation === "number" && <> · reporter rep {report.decision.reputation}</>}
                   </div>
                 )}
                 {report.custom_description && (

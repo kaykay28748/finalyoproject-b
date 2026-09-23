@@ -222,6 +222,7 @@ export default function AdminDashboard() {
     try {
       const data = await getReports('pending', 100);
       setReports(data.reports || []);
+      setPendingCount((data.reports || []).length);
     } catch (err) {
       console.error('[Admin] Fetch reports error:', err);
     }
@@ -298,11 +299,23 @@ export default function AdminDashboard() {
   }, [showSettings]);
 
   // ── Initial load + 30s poll ───────────────────────────────────────────────────
+  // Refreshes stats every 30s; on the Reports tab it also refreshes the pending
+  // list + clusters so new submissions appear without manual reloads.
+  const refreshActiveTab = useCallback(async () => {
+    await fetchData();
+    if (activeTab === 'reports') {
+      await Promise.all([fetchReports(), fetchClusters()]);
+    }
+  }, [activeTab, fetchData, fetchReports, fetchClusters]);
+
   useEffect(() => {
     fetchData();
-    intervalRef.current = setInterval(fetchData, 30_000);
+  }, [fetchData]);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(refreshActiveTab, 30_000);
     return () => clearInterval(intervalRef.current);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshActiveTab]);
 
   // ── Load reports + clusters on Reports tab ─────────────────────────────────────
   useEffect(() => {
@@ -326,6 +339,7 @@ export default function AdminDashboard() {
       })));
       addToast('success', `Report #${reportId} ${status}`);
       await fetchReports();
+      await fetchClusters();
     } catch (err) {
       const msg = err.message || `Failed to ${status} report`;
       setError(msg);
@@ -333,7 +347,7 @@ export default function AdminDashboard() {
     } finally {
       setProcessingReport(null);
     }
-  }, [adminNotes, fetchReports, addToast]);
+  }, [adminNotes, fetchReports, fetchClusters, addToast]);
 
   const handleApproveReport = (id) => handleUpdateReport(id, 'approved');
   const handleRejectReport  = (id) => handleUpdateReport(id, 'rejected');
@@ -348,6 +362,7 @@ export default function AdminDashboard() {
       setClusterNotes(prev => ({ ...prev, [cluster.id]: '' }));
       addToast('success', `${cluster.reports.length} report(s) ${status}`);
       await fetchClusters();
+      await fetchReports();
     } catch (err) {
       const msg = err.message || `Failed to ${status} cluster`;
       setError(msg);
@@ -355,7 +370,7 @@ export default function AdminDashboard() {
     } finally {
       setClusterProcessing(null);
     }
-  }, [clusterNotes, fetchClusters, addToast]);
+  }, [clusterNotes, fetchClusters, fetchReports, addToast]);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -372,6 +387,9 @@ export default function AdminDashboard() {
     users:    'User Management',
     activity: 'Activity Log',
   }[activeTab] ?? 'Dashboard';
+
+  // Only clusters that still need admin action (pending, or approved awaiting resolution)
+  const actionableClusters = clusters.filter(c => c.open_count > 0 || c.approved_count > 0);
 
   return (
     <div className="admin-dashboard">
@@ -455,7 +473,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-            <button onClick={() => { trigger(10); if (!isRefreshing) fetchData(); }} className="admin-topbar-btn" disabled={isRefreshing}>
+            <button onClick={() => { trigger(10); if (!isRefreshing) refreshActiveTab(); }} className="admin-topbar-btn" disabled={isRefreshing}>
               <span className={isRefreshing ? 'spin-icon' : ''}><Icons.Refresh /></span>
               {isRefreshing ? 'Loading…' : 'Refresh'}
             </button>
@@ -597,7 +615,7 @@ export default function AdminDashboard() {
               <div className="admin-table-header">
                 <h3>Pending Reports</h3>
                 <span className="admin-table-stats">
-                  {clusters.length} cluster{clusters.length !== 1 ? 's' : ''} · {reports.length} pending
+                  {actionableClusters.length} cluster{actionableClusters.length !== 1 ? 's' : ''} · {pendingCount} pending
                 </span>
               </div>
 
@@ -617,7 +635,7 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {clusters.length === 0 ? (
+              {actionableClusters.length === 0 ? (
                 <div className="admin-empty">
                   <div className="admin-empty-icon">&#10003;</div>
                   <p>No reports to review. All clear!</p>
@@ -625,11 +643,11 @@ export default function AdminDashboard() {
               ) : (
                 <div className="clusters-list">
                   {(searchReports
-                    ? clusters.filter(c =>
+                    ? actionableClusters.filter(c =>
                         (ISSUE_TYPE_LABELS[c.issue_type] || c.issue_type || '').toLowerCase().includes(searchReports.toLowerCase()) ||
                         (c.location_name || '').toLowerCase().includes(searchReports.toLowerCase())
                       )
-                    : clusters
+                    : actionableClusters
                   ).map((cluster) => {
                     const sev = SEVERITY_CONFIG[cluster.max_severity] || SEVERITY_CONFIG[2];
                     const isExpanded = expandedCluster === cluster.id;
