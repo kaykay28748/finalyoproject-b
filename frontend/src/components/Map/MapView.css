@@ -396,11 +396,11 @@
 }
 
 .route-line {
-  transition: stroke 0.1s ease;
+  /* no stroke transition — profile colour must swap instantly */
 }
 
 .leaflet-path {
-  transition: stroke 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 /* ============================================

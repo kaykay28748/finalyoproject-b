@@ -581,6 +581,7 @@ export default function MapView({
             primaryRoute={primaryRoute}
             alternativeRoutes={alternativeRoutes}
             markersVisible={markersVisible}
+            activeProfile={activeProfile}
             startPoint={displayStartPoint}
             destPoint={destPoint}
             darkMode={darkMode}

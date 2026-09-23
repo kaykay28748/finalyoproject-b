@@ -377,7 +377,7 @@ export default function RouteLayer({
 
   if (showProgress && isAnimationComplete && isGpsNearRoute && (completedCoords.length > 0 || remainingCoords.length > 0)) {
     return (
-      <div style={{ '--profile-color': mainColor }}>
+      <div key={profile} style={{ '--profile-color': mainColor }}>
         {completedCoords.length >= 2 && (
           <Polyline
             positions={completedCoords}
@@ -442,7 +442,7 @@ export default function RouteLayer({
   }
 
   return (
-    <div style={{ '--profile-color': mainColor }}>
+    <div key={profile} style={{ '--profile-color': mainColor }}>
       <Polyline
         positions={displayedCoords}
         color={mainColor}

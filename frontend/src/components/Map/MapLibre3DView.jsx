@@ -4,6 +4,8 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useHaptics } from "../../hooks/useHaptics";
 import { fetchHeatmapData } from "../../services/heatmapAnalytics";
+import { ROUTE_COLORS } from "../../function/utils/colors";
+import { UG_MAX_BOUNDS } from "../../function/utils/bounds";
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
 
@@ -152,6 +154,7 @@ export default function MapLibre3DView({
   primaryRoute,
   alternativeRoutes = [],
   markersVisible,
+  activeProfile = "standard",
   startPoint,
   destPoint,
   onMapClick,
@@ -519,7 +522,11 @@ export default function MapLibre3DView({
 
   const hasFlownRef = useRef(false);
   useEffect(() => {
-    if (!mapRef.current || !currentLocation || hasFlownRef.current) return;
+    // Only auto-center on the GPS when the fix is actually within the campus
+    // area. A fix from home (kilometres away) must not hijack the 3D view.
+    const onCampus = !!currentLocation &&
+      UG_MAX_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
+    if (!mapRef.current || !currentLocation || !onCampus || hasFlownRef.current) return;
     try {
       mapRef.current.flyTo({
         center: [currentLocation.lng, currentLocation.lat],
@@ -598,17 +605,19 @@ export default function MapLibre3DView({
       data: { type: "Feature", geometry: { type: "LineString", coordinates: coords } },
     });
 
+    const routeColor = ROUTE_COLORS[activeProfile] || ROUTE_COLORS.standard;
+
     map.addLayer({
       id: "primary-route-glow",
       type: "line", source: "primary-route",
-      paint: { "line-color": "#2563eb", "line-width": 10, "line-opacity": 0.25, "line-blur": 4 },
+      paint: { "line-color": routeColor, "line-width": 10, "line-opacity": 0.25, "line-blur": 4 },
       layout: { "line-cap": "round", "line-join": "round" },
     });
 
     map.addLayer({
       id: "primary-route-line",
       type: "line", source: "primary-route",
-      paint: { "line-color": "#3b82f6", "line-width": 6, "line-opacity": 1 },
+      paint: { "line-color": routeColor, "line-width": 6, "line-opacity": 1 },
       layout: { "line-cap": "round", "line-join": "round" },
     });
 
@@ -627,7 +636,7 @@ export default function MapLibre3DView({
         layout: { "line-cap": "round", "line-join": "round" },
       });
     }
-  }, [primaryRoute, alternativeRoutes, markersVisible, mapLoaded]);
+  }, [primaryRoute, alternativeRoutes, markersVisible, activeProfile, mapLoaded]);
 
   // ── heatmap toggle ────────────────────────────────────────────────────────
 
