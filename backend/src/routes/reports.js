@@ -180,7 +180,7 @@ router.get('/decision-feed', async (req, res) => {
        LEFT JOIN report_confirmations rc ON rc.report_id = ar.id
        LEFT JOIN users u ON u.id = ar.submitted_by AND u.deleted_at IS NULL
        WHERE ar.status = 'approved' AND ar.deleted_at IS NULL
-       GROUP BY ar.id
+       GROUP BY ar.id, u.reputation
        ORDER BY ar.created_at DESC`
     );
 
