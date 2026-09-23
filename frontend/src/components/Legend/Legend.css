@@ -682,6 +682,44 @@
 .ug-root.dark .alt-time,
 .ug-root.dark .alt-dist { color: #9ca3af; }
 
+/* ── Route decision chip (Part B) ────────────────────────────────────────── */
+.legend-decision-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 2px 0 8px;
+  padding: 7px 12px;
+  min-height: 34px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  transition: filter 0.2s ease;
+}
+.legend-decision-chip:hover { filter: brightness(0.97); }
+.legend-decision-chip--avoid { background: rgba(217, 119, 6, 0.12); color: #b45309; }
+.legend-decision-chip--block { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+.ug-root.dark .legend-decision-chip--avoid { background: rgba(217, 119, 6, 0.18); color: #fbbf24; }
+.ug-root.dark .legend-decision-chip--block { background: rgba(220, 38, 38, 0.2);  color: #f87171; }
+
+/* ── Alternative route verdict tag (Part B) ──────────────────────────────── */
+.alt-verdict {
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.alt-verdict--avoid { background: rgba(217, 119, 6, 0.14); color: #b45309; }
+.alt-verdict--block { background: rgba(220, 38, 38, 0.14); color: #b91c1c; }
+.ug-root.dark .alt-verdict--avoid { background: rgba(217, 119, 6, 0.22); color: #fbbf24; }
+.ug-root.dark .alt-verdict--block { background: rgba(220, 38, 38, 0.24); color: #f87171; }
+
 /* ── Share button ─────────────────────────────────────────────────────────── */
 .legend-share-btn {
   display: flex;

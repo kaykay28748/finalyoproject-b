@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   username    TEXT UNIQUE NOT NULL,
   password_hash TEXT,
   is_admin    INTEGER DEFAULT 0,
+  reputation  DOUBLE PRECISION DEFAULT 0,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW(),
   deleted_at  TIMESTAMPTZ
@@ -144,6 +145,9 @@ CREATE TABLE IF NOT EXISTS report_confirmations (
   id         BIGSERIAL PRIMARY KEY,
   report_id  INTEGER NOT NULL REFERENCES accessibility_reports(id) ON DELETE CASCADE,
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  lat        DOUBLE PRECISION,
+  lng        DOUBLE PRECISION,
+  accuracy   DOUBLE PRECISION,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(report_id, user_id)
 );
@@ -201,24 +205,38 @@ CREATE INDEX IF NOT EXISTS idx_report_messages_sender_id ON report_messages(send
 -- `users`: anon SELECT is required by the frontend duplicate-email
 -- precheck (supabase.from('users').select('email')). Authenticated users
 -- can only manage their own row.
+-- NOTE: policies are preceded by DROP POLICY IF EXISTS so the whole file
+-- can be re-run safely (CREATE POLICY has no IF NOT EXISTS).
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS users_select_anon ON users;
 CREATE POLICY users_select_anon ON users FOR SELECT USING (true);
+DROP POLICY IF EXISTS users_insert_own ON users;
 CREATE POLICY users_insert_own ON users FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS users_update_own ON users;
 CREATE POLICY users_update_own ON users FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS users_delete_own ON users;
 CREATE POLICY users_delete_own ON users FOR DELETE USING (auth.uid() = id);
 
 -- `user_preferences`: owner-only
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS user_preferences_select ON user_preferences;
 CREATE POLICY user_preferences_select ON user_preferences FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS user_preferences_insert ON user_preferences;
 CREATE POLICY user_preferences_insert ON user_preferences FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS user_preferences_update ON user_preferences;
 CREATE POLICY user_preferences_update ON user_preferences FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS user_preferences_delete ON user_preferences;
 CREATE POLICY user_preferences_delete ON user_preferences FOR DELETE USING (user_id = auth.uid());
 
 -- `refresh_tokens`: owner-only
 ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS refresh_tokens_select ON refresh_tokens;
 CREATE POLICY refresh_tokens_select ON refresh_tokens FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS refresh_tokens_insert ON refresh_tokens;
 CREATE POLICY refresh_tokens_insert ON refresh_tokens FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS refresh_tokens_update ON refresh_tokens;
 CREATE POLICY refresh_tokens_update ON refresh_tokens FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS refresh_tokens_delete ON refresh_tokens;
 CREATE POLICY refresh_tokens_delete ON refresh_tokens FOR DELETE USING (user_id = auth.uid());
 
 -- `audit_logs`: no direct client access (backend service-role only)
@@ -229,16 +247,24 @@ ALTER TABLE password_resets ENABLE ROW LEVEL SECURITY;
 
 -- `route_logs`: owner-only
 ALTER TABLE route_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS route_logs_select ON route_logs;
 CREATE POLICY route_logs_select ON route_logs FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS route_logs_insert ON route_logs;
 CREATE POLICY route_logs_insert ON route_logs FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS route_logs_update ON route_logs;
 CREATE POLICY route_logs_update ON route_logs FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS route_logs_delete ON route_logs;
 CREATE POLICY route_logs_delete ON route_logs FOR DELETE USING (user_id = auth.uid());
 
 -- `user_activity`: owner-only
 ALTER TABLE user_activity ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS user_activity_select ON user_activity;
 CREATE POLICY user_activity_select ON user_activity FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS user_activity_insert ON user_activity;
 CREATE POLICY user_activity_insert ON user_activity FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS user_activity_update ON user_activity;
 CREATE POLICY user_activity_update ON user_activity FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS user_activity_delete ON user_activity;
 CREATE POLICY user_activity_delete ON user_activity FOR DELETE USING (user_id = auth.uid());
 
 -- `route_segments`: heatmap served by backend API; no direct client access
@@ -247,26 +273,37 @@ ALTER TABLE route_segments ENABLE ROW LEVEL SECURITY;
 -- `accessibility_reports`: readable by everyone (community data),
 -- but only the authenticated submitter can insert/update their own.
 ALTER TABLE accessibility_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS accessibility_reports_select ON accessibility_reports;
 CREATE POLICY accessibility_reports_select ON accessibility_reports FOR SELECT USING (deleted_at IS NULL OR (submitted_by = auth.uid()));
+DROP POLICY IF EXISTS accessibility_reports_insert ON accessibility_reports;
 CREATE POLICY accessibility_reports_insert ON accessibility_reports FOR INSERT WITH CHECK (submitted_by = auth.uid());
+DROP POLICY IF EXISTS accessibility_reports_update ON accessibility_reports;
 CREATE POLICY accessibility_reports_update ON accessibility_reports FOR UPDATE USING (submitted_by = auth.uid());
 
 -- `report_confirmations`: owner-only
 ALTER TABLE report_confirmations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS report_confirmations_select ON report_confirmations;
 CREATE POLICY report_confirmations_select ON report_confirmations FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS report_confirmations_insert ON report_confirmations;
 CREATE POLICY report_confirmations_insert ON report_confirmations FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS report_confirmations_delete ON report_confirmations;
 CREATE POLICY report_confirmations_delete ON report_confirmations FOR DELETE USING (user_id = auth.uid());
 
 -- `route_feedback`: owner-only
 ALTER TABLE route_feedback ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS route_feedback_select ON route_feedback;
 CREATE POLICY route_feedback_select ON route_feedback FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS route_feedback_insert ON route_feedback;
 CREATE POLICY route_feedback_insert ON route_feedback FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS route_feedback_update ON route_feedback;
 CREATE POLICY route_feedback_update ON route_feedback FOR UPDATE USING (user_id = auth.uid());
+DROP POLICY IF EXISTS route_feedback_delete ON route_feedback;
 CREATE POLICY route_feedback_delete ON route_feedback FOR DELETE USING (user_id = auth.uid());
 
 -- `report_messages`: finder can see messages for reports they own;
 -- senders see messages they sent. Admins access through the backend.
 ALTER TABLE report_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS report_messages_select ON report_messages;
 CREATE POLICY report_messages_select ON report_messages FOR SELECT
   USING (
     sender_id = auth.uid()
@@ -275,4 +312,5 @@ CREATE POLICY report_messages_select ON report_messages FOR SELECT
       WHERE ar.id = report_messages.report_id AND ar.submitted_by = auth.uid()
     )
   );
+DROP POLICY IF EXISTS report_messages_insert ON report_messages;
 CREATE POLICY report_messages_insert ON report_messages FOR INSERT WITH CHECK (sender_id = auth.uid());

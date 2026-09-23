@@ -60,6 +60,7 @@ export async function runMigrations({ query, closePool, exitOnComplete = false }
     }
 
     console.log('[Migration] ✓ SQLite schema ready');
+    await ensureColumns(query);
     return true;
   } catch (error) {
     console.error('[Migration] ✗ Migration failed:', error.message);
@@ -68,6 +69,28 @@ export async function runMigrations({ query, closePool, exitOnComplete = false }
     if (exitOnComplete && ownsConnection && closePool) {
       await closePool();
       process.exit(0);
+    }
+  }
+}
+
+// Adds columns introduced after a table first shipped — CREATE TABLE IF NOT EXISTS
+// won't alter an existing table, so ALTER is guarded by a PRAGMA table_info check.
+async function ensureColumns(query) {
+  const additions = [
+    { table: 'users',                column: 'reputation', ddl: 'ALTER TABLE users ADD COLUMN reputation REAL NOT NULL DEFAULT 0' },
+    { table: 'report_confirmations', column: 'lat',        ddl: 'ALTER TABLE report_confirmations ADD COLUMN lat REAL' },
+    { table: 'report_confirmations', column: 'lng',        ddl: 'ALTER TABLE report_confirmations ADD COLUMN lng REAL' },
+    { table: 'report_confirmations', column: 'accuracy',   ddl: 'ALTER TABLE report_confirmations ADD COLUMN accuracy REAL' },
+  ];
+
+  for (const { table, column, ddl } of additions) {
+    try {
+      const info = await query(`SELECT name FROM pragma_table_info('${table}')`);
+      if (info.rows.some((r) => r.name === column)) continue;
+      await query(ddl);
+      console.log(`[Migration] ✓ Added column ${table}.${column}`);
+    } catch (err) {
+      console.error(`[Migration] ✗ Could not ensure ${table}.${column}:`, err.message);
     }
   }
 }

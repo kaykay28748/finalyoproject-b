@@ -185,6 +185,44 @@ export async function getApprovedReports() {
 }
 
 /**
+ * Get the routing decision feed (public — no auth required).
+ * Part B: verdicts (block/avoid + confidence/penalty/expiry) consumed by the
+ * routing engine. The client never reduces raw reports — it consumes verdicts.
+ * @returns {Promise<{ reports: Array, generated_at: string }>}
+ */
+export async function fetchDecisionFeed() {
+  const response = await fetch(`${API_URL}/api/reports/decision-feed`);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to fetch decisions');
+  }
+  return data;
+}
+
+/**
+ * Record a GPS-stamped community confirmation for a report (user only).
+ * @param {number} reportId - Report ID
+ * @param {{ lat: number, lng: number, accuracy?: number }} fix - Live GPS fix
+ * @returns {Promise<Object>} { alreadyConfirmed, confirmers }
+ */
+export async function confirmReport(reportId, fix) {
+  const token = sessionStorage.getItem('accessToken');
+  if (!token) throw new Error('You must be logged in to confirm a report');
+
+  const response = await fetch(`${API_URL}/api/reports/${reportId}/confirm`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(fix),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to confirm report');
+  return data;
+}
+
+/**
  * Get report clusters (admin only).
  * Groups nearby reports with same issue type.
  * @returns {Promise<Object>} Cluster list

@@ -182,6 +182,23 @@ const Legend = forwardRef(function Legend({
               <LegendEmptyState routeActive={routeActive} />
             ) : (
               <>
+                {route?.decisions && route.decisions.primary !== "clear" && (
+                  <button
+                    type="button"
+                    className={`legend-decision-chip legend-decision-chip--${route.decisions.primary}`}
+                    onClick={() => setExpanded(true)}
+                    title="Routing reason based on community reports"
+                  >
+                    {route.decisions.primary === "block" ? (
+                      <>Blocked area bypassed — route rerouted safely</>
+                    ) : (
+                      <>
+                        Route avoids {route.decisions.incidents.length} reported hazard
+                        {route.decisions.incidents.length === 1 ? "" : "s"}
+                      </>
+                    )}
+                  </button>
+                )}
                 <div className="legend-metrics-row">
                   <span className="legend-metrics-time">{metrics?.time || formatTravelTime(route?.totalDistance, vehicleMode)}</span>
                   <span className="legend-metrics-dist">{metrics?.distance || formatDistance(route?.totalDistance)}</span>

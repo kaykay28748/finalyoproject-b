@@ -140,10 +140,17 @@ export default function LegendDirectionsTab({
                 <div className="alt-info">
                   <span className="alt-name">{i === 0 ? "Recommended" : `Alternative ${i}`}</span>
                   <span className="alt-time">
-                    {i === 0 ? estimatedTime : formatDistance(alt.totalDistance)}
+                    {i === 0 ? estimatedTime : formatDistance(alt.route?.totalDistance ?? 0)}
                   </span>
+                  {alt.route?.decisions && alt.route.decisions.primary !== "clear" && (
+                    <span className={`alt-verdict alt-verdict--${alt.route.decisions.primary}`}>
+                      {alt.route.decisions.primary === "block"
+                        ? "Blocked"
+                        : `Avoids ${alt.route.decisions.incidents.length}`}
+                    </span>
+                  )}
                 </div>
-                <span className="alt-dist">{i === 0 ? "" : formatDistance(alt.totalDistance)}</span>
+                <span className="alt-dist">{i === 0 ? "" : formatDistance(alt.route?.totalDistance ?? 0)}</span>
               </div>
             ))}
           </div>

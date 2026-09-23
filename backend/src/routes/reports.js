@@ -114,6 +114,170 @@ router.get('/approved', async (req, res) => {
 });
 
 // =============================================
+// GET /api/reports/decision-feed - Public: verdicts consumed by routing.
+// Part B (REPORT_LIFECYCLE.md): the client consumes verdicts, never raw reports.
+// =============================================
+const VERDICT_SIGNALS = {
+  // Confidence per corroborating confirmation (cap prevents confirmation-sybil).
+  CONFIRMATION_CONFIDENCE: 0.15,
+  CONFIRMATION_CONFIDENCE_CAP: 0.75,
+  // Credit for a reporter's outcome history (B.6.7): reputation ∈ 0..1.
+  REPUTATION_CONFIDENCE: 0.2,
+  DECAY_WINDOW_DAYS: 30,
+};
+
+function computeReportVerdict(report, confirmers, reporterReputation = 1) {
+  const now = Date.now();
+  const created = new Date(report.created_at).getTime();
+  const expiresAt = new Date(created + VERDICT_SIGNALS.DECAY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+  // Admin approval short-circuits confidence to 1.0; corroborations + reputation
+  // add up to 0.95 without a human review (B.2 reference table).
+  const corroborationConfidence =
+    Math.min(confirmers * VERDICT_SIGNALS.CONFIRMATION_CONFIDENCE, VERDICT_SIGNALS.CONFIRMATION_CONFIDENCE_CAP);
+  const confidence = report.status === 'approved'
+    ? 1.0
+    : Math.min(1, corroborationConfidence + VERDICT_SIGNALS.REPUTATION_CONFIDENCE * (reporterReputation ?? 1));
+
+  const isConstructionBlock = report.issue_type === 'construction' && report.severity === 3;
+
+  let verdict = 'ignore';
+  let penalty = 1.0;
+  if (isConstructionBlock && confidence >= 0.7) {
+    verdict = 'block';
+    penalty = 9999;
+  } else if (report.severity >= 2 && confidence >= 0.4) {
+    verdict = 'avoid';
+    const maxMultiplier = report.severity === 3 ? 3.0 : 2.0;
+    penalty = 1 + (maxMultiplier - 1) * confidence;
+  }
+
+  return {
+    id: report.id,
+    issue_type: report.issue_type,
+    severity: report.severity,
+    lat: report.lat,
+    lng: report.lng,
+    location_name: report.location_name,
+    verdict,
+    confidence: Math.round(confidence * 100) / 100,
+    confirmers,
+    penalty: Math.round(penalty * 100) / 100,
+    reputation: reporterReputation ?? 1,
+    decided_at: report.reviewed_at || report.updated_at || report.created_at,
+    expires_at: expiresAt.toISOString(),
+  };
+}
+
+router.get('/decision-feed', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT ar.id, ar.issue_type, ar.severity, ar.status, ar.lat, ar.lng, ar.location_name,
+              ar.reviewed_at, ar.updated_at, ar.created_at,
+              u.reputation AS reporter_reputation,
+              COUNT(DISTINCT rc.user_id) AS confirmers
+       FROM accessibility_reports ar
+       LEFT JOIN report_confirmations rc ON rc.report_id = ar.id
+       LEFT JOIN users u ON u.id = ar.submitted_by AND u.deleted_at IS NULL
+       WHERE ar.status = 'approved' AND ar.deleted_at IS NULL
+       GROUP BY ar.id
+       ORDER BY ar.created_at DESC`
+    );
+
+    // Only verdicts that can change a route leave this feed ("ignore" is dropped).
+    const reports = result.rows
+      .map((r) => computeReportVerdict(r, r.confirmers, r.reporter_reputation))
+      .filter((r) => r.verdict !== 'ignore');
+
+    res.set('Cache-Control', 'public, max-age=30');
+    res.json({ success: true, reports, generated_at: new Date().toISOString() });
+
+  } catch (error) {
+    console.error('[Reports] Decision feed error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
+// POST /api/reports/:id/confirm - User: GPS-stamped community confirmation.
+// Part B (B.6.7): corroborating confirmations feed the confidence formula.
+// =============================================
+const CONFIRM_PROXIMITY_METERS = 80;
+
+router.post('/:id/confirm', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const reportId = parseInt(req.params.id, 10);
+
+    if (!userId || isNaN(reportId)) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+
+    const { lat, lng, accuracy } = req.body ?? {};
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return res.status(400).json({ error: 'GPS coordinates required to confirm' });
+    }
+
+    const reportResult = await query(
+      `SELECT id, lat, lng, status FROM accessibility_reports
+       WHERE id = ? AND deleted_at IS NULL`,
+      [reportId]
+    );
+    if (reportResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    const report = reportResult.rows[0];
+
+    // Physical-presence proof: a confirmation must come from near the report.
+    const R = 6371000;
+    const dLat = (report.lat - lat) * Math.PI / 180;
+    const dLng = (report.lng - lng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat * Math.PI / 180) * Math.cos(report.lat * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2;
+    const distMeters = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    if (distMeters > CONFIRM_PROXIMITY_METERS) {
+      return res.status(400).json({
+        error: `Confirmation must be within ${CONFIRM_PROXIMITY_METERS}m of the report`,
+      });
+    }
+
+    const existing = await query(
+      'SELECT id FROM report_confirmations WHERE report_id = ? AND user_id = ?',
+      [reportId, userId]
+    );
+    const alreadyConfirmed = existing.rows.length > 0;
+
+    if (!alreadyConfirmed) {
+      await query(
+        `INSERT INTO report_confirmations (report_id, user_id, lat, lng, accuracy)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(report_id, user_id) DO NOTHING`,
+        [reportId, userId, lat, lng, typeof accuracy === 'number' ? accuracy : null]
+      );
+    }
+
+    const count = await query(
+      'SELECT COUNT(*) AS confirmers FROM report_confirmations WHERE report_id = ?',
+      [reportId]
+    );
+
+    res.json({
+      success: true,
+      id: reportId,
+      alreadyConfirmed,
+      confirmers: count.rows[0]?.confirmers ?? 1,
+    });
+
+  } catch (error) {
+    console.error('[Reports] Confirm error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================
 // GET /api/reports/clusters - Admin: grouped reports by proximity + issue type
 // =============================================
 router.get('/clusters', verifyToken, async (req, res) => {
@@ -666,7 +830,21 @@ router.get('/:id', verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json({ success: true, report: result.rows[0] });
+    const report = result.rows[0];
+
+    // Part B: attach the current verdict + corroboration count so the reporter
+    // and admins see exactly how this report influences routing.
+    const extras = await query(
+      `SELECT
+         (SELECT COUNT(*) FROM report_confirmations WHERE report_id = ?) AS confirmers,
+         (SELECT reputation FROM users WHERE id = ? AND deleted_at IS NULL) AS reporter_reputation`,
+      [reportId, report.submitted_by]
+    );
+
+    const { confirmers, reporter_reputation } = extras.rows[0] ?? {};
+    const verdict = computeReportVerdict(report, confirmers ?? 0, reporter_reputation ?? 1);
+
+    res.json({ success: true, report: { ...report, verdict } });
 
   } catch (error) {
     console.error('[Reports] Fetch one error:', error);
@@ -706,9 +884,9 @@ router.patch('/:id', verifyToken, async (req, res) => {
     const originalReport = reportResult.rows[0];
     const oldStatus = originalReport.status;
 
-    // Determine permission:
-    //  - Admin can do anything
-    //  - Original reporter can resolve their own approved reports
+    // Determine permission: admin can do anything. The original reporter has
+    // NO self-serve status rights — resolution requires admin or (later)
+    // community consensus confirmations.
     let isAllowed = false;
 
     // Dev-mode bypass: mock tokens are treated as admin
@@ -722,11 +900,6 @@ router.patch('/:id', verifyToken, async (req, res) => {
       if (userCheck.rows[0]?.is_admin) {
         isAllowed = true;
       }
-    }
-
-    // Reporter self-resolution: original reporter can mark their own approved report as resolved
-    if (!isAllowed && originalReport.submitted_by === userId && status === 'resolved' && oldStatus === 'approved') {
-      isAllowed = true;
     }
 
     if (!isAllowed) {
@@ -757,6 +930,25 @@ router.patch('/:id', verifyToken, async (req, res) => {
          VALUES (?, ?, ?)`,
         [reportId, userId, admin_notes.trim()]
       );
+    }
+
+    // Part B (B.6.7): reward sound reports, penalise adjudicated-false ones.
+    // Outcome history becomes the reporter's reputation → decision confidence.
+    if (oldStatus !== status && originalReport.submitted_by) {
+      const REPUTATION_DELTAS = { approved: 0.15, rejected: -0.25, resolved: 0.1 };
+      const delta = REPUTATION_DELTAS[status];
+      if (delta) {
+        const rep = await query(
+          'SELECT reputation FROM users WHERE id = ? AND deleted_at IS NULL',
+          [originalReport.submitted_by]
+        );
+        const current = rep.rows[0]?.reputation ?? 0;
+        const next = Math.min(1, Math.max(0, current + delta));
+        await query(
+          'UPDATE users SET reputation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL',
+          [next, originalReport.submitted_by]
+        );
+      }
     }
 
     // EMAIL DISABLED - Render free tier blocks SMTP

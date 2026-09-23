@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT,
   is_admin INTEGER DEFAULT 0,
+  reputation REAL NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   deleted_at DATETIME NULL
@@ -125,6 +126,9 @@ CREATE TABLE IF NOT EXISTS report_confirmations (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id    INTEGER NOT NULL,
   user_id      TEXT NOT NULL,
+  lat          REAL,
+  lng          REAL,
+  accuracy     REAL,
   created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(report_id, user_id),
   FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,

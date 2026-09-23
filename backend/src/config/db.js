@@ -59,6 +59,9 @@ if (isProduction) {
           id           SERIAL PRIMARY KEY,
           report_id    INTEGER NOT NULL,
           user_id      UUID NOT NULL,
+          lat          DOUBLE PRECISION,
+          lng          DOUBLE PRECISION,
+          accuracy     DOUBLE PRECISION,
           created_at   TIMESTAMPTZ DEFAULT NOW(),
           UNIQUE(report_id, user_id),
           FOREIGN KEY (report_id) REFERENCES accessibility_reports(id) ON DELETE CASCADE,
@@ -69,6 +72,10 @@ if (isProduction) {
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id
         ON report_confirmations(report_id)
+      `);
+
+      await pool.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS reputation DOUBLE PRECISION DEFAULT 0
       `);
 
       console.log('[Migration] ✅ report_confirmations table ready');

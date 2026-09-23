@@ -6,6 +6,56 @@ import { calculateEdgeCost, buildRouteContext, getActiveWarnings, getBearing, PR
 import { distanceKm } from "../function/utils/distance";
 import { MinHeap }    from "../function/utils/MinHeap";
 
+const DECISION_PROXIMITY_METERS = 50;
+
+function decisionDistanceMeters(lat, lng, decision) {
+  const R = 6371000;
+  const dLat = (decision.lat - lat) * Math.PI / 180;
+  const dLng = (decision.lng - lng) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat * Math.PI / 180) * Math.cos(decision.lat * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function isDecisionSettled(decision) {
+  return Date.now() >= new Date(decision.expires_at).getTime();
+}
+
+/**
+ * Part B route guard. A candidate route that passes through a live "block"
+ * verdict is marked unusable; the routing engine falls back to the next best
+ * usable candidate. "avoid" verdicts just carry their penalty in cost.
+ */
+function assessRouteDecisions(route, decisions) {
+  if (!route?.coordinates?.length || !decisions?.length) {
+    return { primary: "clear", usable: true, incidents: 0 };
+  }
+
+  const near = [];
+  const seen = new Set();
+  for (let i = 0; i < route.coordinates.length - 1; i++) {
+    const a = route.coordinates[i];
+    const b = route.coordinates[i + 1];
+    const midLat = (a.lat + b.lat) / 2;
+    const midLng = (a.lng + b.lng) / 2;
+    for (const decision of decisions) {
+      if (decision.verdict === "ignore" || seen.has(decision.id)) continue;
+      if (decisionDistanceMeters(midLat, midLng, decision) <= DECISION_PROXIMITY_METERS) {
+        seen.add(decision.id);
+        near.push(decision);
+      }
+    }
+  }
+
+  const severe = near.some((d) => d.verdict === "block" && !isDecisionSettled(d));
+  return {
+    primary: severe ? "block" : near.length ? "avoid" : "clear",
+    usable: !severe,
+    incidents: near,
+  };
+}
+
 /**
  * Simplifies a coordinate array using the Ramer-Douglas-Peucker algorithm.
  * Keeps the path accurate to the given tolerance (in degrees).
@@ -80,7 +130,7 @@ export function findShortestPath(
   endNodeId,
   profileKey  = "standard",
   vehicleMode = "walk",
-  approvedReports = []
+  decisions = []
 ) {
   if (!graph?.nodes || !graph?.edges) {
     console.error("[Routing] Invalid graph");
@@ -212,7 +262,7 @@ export function findShortestPath(
         incomingBearing,
         goalBearing,
         undefined,
-        approvedReports
+        decisions
       );
 
       const tentativeG = currentG + edgeCost;
@@ -311,22 +361,23 @@ export function findShortestPath(
 
 /**
  * Calculates all four route variants.
+ * Part B: consumes routing decisions; each candidate carries a `decisions`
+ * assessment ({ primary, usable, incidents }) from the route guard.
  */
 export async function getAllRoutes(
   graph,
   startNodeId,
   endNodeId,
-  profileKey  = "standard",
   vehicleMode = "walk",
-  approvedReports = []
+  decisions = []
 ) {
   const startTime = performance.now();
 
   const [standard, fastest, accessible, night] = await Promise.all([
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, approvedReports)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, approvedReports)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, approvedReports)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, approvedReports)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, decisions)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, decisions)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, decisions)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, decisions)),
   ]);
 
   const elapsed = performance.now() - startTime;
@@ -336,6 +387,10 @@ export async function getAllRoutes(
   if (fastest?.context)    fastest.context.warnings     = getActiveWarnings(fastest.context,    "fastest",    vehicleMode);
   if (accessible?.context) accessible.context.warnings  = getActiveWarnings(accessible.context, "accessible", vehicleMode);
   if (night?.context)      night.context.warnings       = getActiveWarnings(night.context,      "night",      vehicleMode);
+
+  [standard, fastest, accessible, night].forEach((route) => {
+    if (route) route.decisions = assessRouteDecisions(route, decisions);
+  });
 
   return { standard, fastest, accessible, night, timestamp: Date.now() };
 }

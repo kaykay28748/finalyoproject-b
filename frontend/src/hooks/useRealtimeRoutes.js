@@ -1,6 +1,7 @@
 // hooks/useRealtimeRoutes.js
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getAllRoutes, findNearestNode } from "../services/routing";
+import { fetchDecisionFeed } from "../services/reportService";
 import { getDistanceToRoute, distanceBetween, findClosestPointOnRoute } from "../function/utils/geometry";
 import { resetHeatmapSession } from "../services/heatmapAnalytics";
 import { useVoiceGuidance } from "./useVoiceGuidance";
@@ -47,6 +48,7 @@ export function useRealtimeRoutes({
   const [isLoading,         setIsLoading]         = useState(false);
   const [isRerouting,       setIsRerouting]       = useState(false);
   const [deviationDetected, setDeviationDetected] = useState(false);
+  const [decisionFeed,      setDecisionFeed]      = useState([]);
   const [routeProgress,     setRouteProgress]     = useState({
     completedDistance: 0, remainingDistance: 0, percentage: 0, closestPointIndex: -1,
   });
@@ -100,8 +102,12 @@ export function useRealtimeRoutes({
     if (reason === "initial") resetHeatmapSession();
 
     try {
+      // Part B: consume verdicts, never raw reports. Feed is server-cached 30s.
+      const feed = await fetchDecisionFeed().catch(() => null);
+      setDecisionFeed(feed?.reports ?? []);
+
       // Fetch all profiles in parallel (handled by services/routing)
-      const allRoutes = await getAllRoutes(graph, fromNodeId, endNodeId, activeProfile, vehicleMode);
+      const allRoutes = await getAllRoutes(graph, fromNodeId, endNodeId, vehicleMode, feed?.reports ?? []);
       
       setRoutes({ ...allRoutes, lastUpdated: now });
       setDeviationDetected(false);
@@ -171,6 +177,7 @@ export function useRealtimeRoutes({
       setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
       setRouteProgress({ completedDistance: 0, remainingDistance: 0, percentage: 0, closestPointIndex: -1 });
       setDeviationDetected(false);
+      setDecisionFeed([]);
     }
   }, [isActive]);
 
@@ -227,7 +234,13 @@ export function useRealtimeRoutes({
   }, [currentLocation, routes, activeProfile, graph, endNodeId, calculateRoutes, deviationDetected, isActive, speakDeviation]);
 
   const getPrimaryRoute = useCallback(() => {
-    return routes[activeProfile];
+    // Route guard (Part B): never present an unusable route as primary.
+    const requested = routes[activeProfile];
+    if (requested?.usable !== false) return requested ?? null;
+    for (const profile of ["standard", "fastest", "accessible", "night"]) {
+      if (routes[profile]?.usable !== false) return routes[profile];
+    }
+    return requested ?? null;
   }, [routes, activeProfile]);
   
   const getAlternativeRoutes = useCallback(() => {
@@ -246,6 +259,7 @@ export function useRealtimeRoutes({
 
   return {
     routes,
+    decisionFeed,
     primaryRoute:       getPrimaryRoute(),
     alternativeRoutes:  getAlternativeRoutes(),
     isLoading,

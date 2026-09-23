@@ -13,6 +13,12 @@ const SEVERITY_CONFIG = {
   3: { color: "#ef4444", label: "Severe",   emoji: "🛑" },
 };
 
+// Part B verdict styling — a report's routing verdict overrides its severity colour.
+const VERDICT_CONFIG = {
+  block: { color: "#dc2626", glyph: "×", label: "Blocked for routing" },
+  avoid: { color: "#d97706", glyph: "!", label: "Avoid in routing" },
+};
+
 const ISSUE_LABELS = {
   broken_surface:   "Broken Surface",
   blocked_ramp:     "Blocked Ramp",
@@ -22,7 +28,7 @@ const ISSUE_LABELS = {
   other:            "Other Issue",
 };
 
-function createReportIcon(severity) {
+function createSeverityIcon(severity) {
   const cfg = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG[2];
   return L.divIcon({
     className: "",
@@ -38,6 +44,25 @@ function createReportIcon(severity) {
   });
 }
 
+function createReportIcon(verdict, severity) {
+  if (verdict && VERDICT_CONFIG[verdict]) {
+    const cfg = VERDICT_CONFIG[verdict];
+    return L.divIcon({
+      className: "",
+      html: `<div style="
+        width:24px;height:24px;border-radius:50%;
+        background:${cfg.color};border:2.5px solid #fff;
+        box-shadow:0 1px 6px rgba(0,0,0,0.35);
+        display:flex;align-items:center;justify-content:center;
+        font-size:13px;color:#fff;font-weight:800;line-height:1;
+      ">${cfg.glyph}</div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  }
+  return createSeverityIcon(severity);
+}
+
 function ReportMarkers() {
   const [reports, setReports] = useState([]);
 
@@ -46,12 +71,18 @@ function ReportMarkers() {
 
     async function fetchReports() {
       try {
-        const res = await fetch(`${API_URL}/api/reports/approved`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data.success && Array.isArray(data.reports)) {
-          setReports(data.reports);
-        }
+        // Raw reports (popup details) + routing verdicts (marker styling).
+        const [approved, feed] = await Promise.all([
+          fetch(`${API_URL}/api/reports/approved`).then((r) => r.json()),
+          fetch(`${API_URL}/api/reports/decision-feed`).then((r) => r.json()),
+        ]);
+        if (cancelled) return;
+        const verdicts = {};
+        (feed?.reports ?? []).forEach((d) => { verdicts[d.id] = d.verdict; });
+        const merged = (approved?.reports ?? [])
+          .filter((r) => r.deleted_at == null)
+          .map((r) => ({ ...r, verdict: verdicts[r.id] || null }));
+        if (approved?.success || feed?.success) setReports(merged);
       } catch (err) {
         console.warn("[ReportMarkers] Failed to load reports:", err.message);
       }
@@ -72,7 +103,7 @@ function ReportMarkers() {
           <Marker
             key={report.id}
             position={[report.lat, report.lng]}
-            icon={createReportIcon(report.severity)}
+            icon={createReportIcon(report.verdict, report.severity)}
           >
             <Popup>
               <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 220, lineHeight: 1.4 }}>
@@ -83,6 +114,11 @@ function ReportMarkers() {
                   <span style={{ color: cfg.color, fontWeight: 600 }}>{cfg.label}</span>
                   {report.location_name && <> · {report.location_name}</>}
                 </div>
+                {report.verdict && VERDICT_CONFIG[report.verdict] && (
+                  <div style={{ fontSize: 12, color: VERDICT_CONFIG[report.verdict].color, fontWeight: 700, marginBottom: 4 }}>
+                    {VERDICT_CONFIG[report.verdict].label}
+                  </div>
+                )}
                 {report.custom_description && (
                   <div style={{ fontSize: 12, color: "#475569", fontStyle: "italic", marginTop: 2 }}>
                     "{report.custom_description}"
