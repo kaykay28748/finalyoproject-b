@@ -573,70 +573,106 @@ export default function MapLibre3DView({
 
   // ── routes ────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapLoaded) return;
+  // Draws (or clears) the 3D route layers. key is only recorded AFTER the layers
+  // are created successfully, so a transient failure (style/tile not ready,
+  // layer conflict) is retried on the next change instead of being skipped.
+  const drawRoutes = useCallback((map) => {
+    try {
+      if (!map) return;
 
-    if (!markersVisible || !primaryRoute?.coordinates?.length) {
+      if (!markersVisible || !primaryRoute?.coordinates?.length) {
+        ["primary-route-glow", "primary-route-line", "alt-route-line"].forEach((id) => {
+          try { if (map.getLayer(id)) map.removeLayer(id); } catch (_) {}
+        });
+        ["primary-route", "alt-routes"].forEach((id) => {
+          try { if (map.getSource(id)) map.removeSource(id); } catch (_) {}
+        });
+        lastRouteKeyRef.current = '';
+        return;
+      }
+
+      const routeKey = `${primaryRoute.totalDistance}-${primaryRoute.coordinates?.length}-${alternativeRoutes?.length}`;
+      if (routeKey === lastRouteKeyRef.current) {
+        // Route already drawn — still refresh colour (profile may have changed).
+        syncRouteColor(map);
+        return;
+      }
+
       ["primary-route-glow", "primary-route-line", "alt-route-line"].forEach((id) => {
         try { if (map.getLayer(id)) map.removeLayer(id); } catch (_) {}
       });
       ["primary-route", "alt-routes"].forEach((id) => {
         try { if (map.getSource(id)) map.removeSource(id); } catch (_) {}
       });
-      lastRouteKeyRef.current = '';
-      return;
-    }
 
-    const routeKey = `${primaryRoute.totalDistance}-${primaryRoute.coordinates?.length}-${alternativeRoutes?.length}`;
-    if (routeKey === lastRouteKeyRef.current) return;
-    lastRouteKeyRef.current = routeKey;
+      const coords = primaryRoute.coordinates.map((c) => [c.lng, c.lat]);
+      map.addSource("primary-route", {
+        type: "geojson",
+        data: { type: "Feature", geometry: { type: "LineString", coordinates: coords } },
+      });
 
-    ["primary-route-glow", "primary-route-line", "alt-route-line"].forEach((id) => {
-      try { if (map.getLayer(id)) map.removeLayer(id); } catch (_) {}
-    });
-    ["primary-route", "alt-routes"].forEach((id) => {
-      try { if (map.getSource(id)) map.removeSource(id); } catch (_) {}
-    });
+      const routeColor = ROUTE_COLORS[activeProfile] || ROUTE_COLORS.standard;
 
-    const coords = primaryRoute.coordinates.map((c) => [c.lng, c.lat]);
-    map.addSource("primary-route", {
-      type: "geojson",
-      data: { type: "Feature", geometry: { type: "LineString", coordinates: coords } },
-    });
-
-    const routeColor = ROUTE_COLORS[activeProfile] || ROUTE_COLORS.standard;
-
-    map.addLayer({
-      id: "primary-route-glow",
-      type: "line", source: "primary-route",
-      paint: { "line-color": routeColor, "line-width": 10, "line-opacity": 0.25, "line-blur": 4 },
-      layout: { "line-cap": "round", "line-join": "round" },
-    });
-
-    map.addLayer({
-      id: "primary-route-line",
-      type: "line", source: "primary-route",
-      paint: { "line-color": routeColor, "line-width": 6, "line-opacity": 1 },
-      layout: { "line-cap": "round", "line-join": "round" },
-    });
-
-    const altFeatures = (alternativeRoutes ?? [])
-      .filter((a) => a.route?.coordinates?.length)
-      .map((a) => ({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: a.route.coordinates.map((c) => [c.lng, c.lat]) },
-      }));
-
-    if (altFeatures.length) {
-      map.addSource("alt-routes", { type: "geojson", data: { type: "FeatureCollection", features: altFeatures } });
       map.addLayer({
-        id: "alt-route-line", type: "line", source: "alt-routes",
-        paint: { "line-color": "#ffffff", "line-width": 4, "line-opacity": 0.5, "line-dasharray": [4, 6] },
+        id: "primary-route-glow",
+        type: "line", source: "primary-route",
+        paint: { "line-color": routeColor, "line-width": 10, "line-opacity": 0.25, "line-blur": 4 },
         layout: { "line-cap": "round", "line-join": "round" },
       });
+
+      map.addLayer({
+        id: "primary-route-line",
+        type: "line", source: "primary-route",
+        paint: { "line-color": routeColor, "line-width": 6, "line-opacity": 1 },
+        layout: { "line-cap": "round", "line-join": "round" },
+      });
+
+      const altFeatures = (alternativeRoutes ?? [])
+        .filter((a) => a.route?.coordinates?.length)
+        .map((a) => ({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: a.route.coordinates.map((c) => [c.lng, c.lat]) },
+        }));
+
+      if (altFeatures.length) {
+        map.addSource("alt-routes", { type: "geojson", data: { type: "FeatureCollection", features: altFeatures } });
+        map.addLayer({
+          id: "alt-route-line", type: "line", source: "alt-routes",
+          paint: { "line-color": "#ffffff", "line-width": 4, "line-opacity": 0.5, "line-dasharray": [4, 6] },
+          layout: { "line-cap": "round", "line-join": "round" },
+        });
+      }
+
+      // Only mark as drawn after everything succeeded.
+      lastRouteKeyRef.current = routeKey;
+    } catch (err) {
+      lastRouteKeyRef.current = '';
+      console.warn("[MapLibre3D] Route draw failed, will retry:", err?.message || err);
     }
-  }, [primaryRoute, alternativeRoutes, markersVisible, activeProfile, mapLoaded]);
+  }, [markersVisible, primaryRoute, alternativeRoutes, activeProfile]);
+
+  // Re-applies the active profile colour to an already-drawn route without
+  // reconstructing layers.
+  const syncRouteColor = useCallback((map) => {
+    try {
+      const routeColor = ROUTE_COLORS[activeProfile] || ROUTE_COLORS.standard;
+      if (map.getLayer("primary-route-line")) map.setPaintProperty("primary-route-line", "line-color", routeColor);
+      if (map.getLayer("primary-route-glow")) map.setPaintProperty("primary-route-glow", "line-color", routeColor);
+    } catch (_) {}
+  }, [activeProfile]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    drawRoutes(map);
+  }, [mapLoaded, drawRoutes]);
+
+  // Explicit colour sync — profile switch on an existing route.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    syncRouteColor(map);
+  }, [activeProfile, mapLoaded, syncRouteColor]);
 
   // ── heatmap toggle ────────────────────────────────────────────────────────
 
