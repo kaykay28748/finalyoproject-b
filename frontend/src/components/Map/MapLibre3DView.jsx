@@ -2,10 +2,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useHaptics } from "../../hooks/useHaptics";
 import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 import { ROUTE_COLORS } from "../../function/utils/colors";
 import { UG_MAX_BOUNDS } from "../../function/utils/bounds";
+
+// Vite dev server cannot resolve maplibre-gl's own worker URL ("/assets/maplibre-gl-worker.mjs"
+// 404s and the SPA fallback replies with text/html, so the worker never loads and GeoJSON
+// line layers silently don't render in 3D). Explicitly hand the packaged worker asset to
+// maplibre — it works identically in dev and production builds.
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
 
@@ -173,6 +180,9 @@ export default function MapLibre3DView({
   const heatmapLayerIdRef = useRef(null);
   const heatmapDebounceRef = useRef(null);
   const lastRouteKeyRef = useRef('');
+  // Holds the latest drawRoutes so the map's own 'load' handler (declared once
+  // with empty deps) always calls the CURRENT draw function.
+  const drawRoutesRef = useRef(null);
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach((m) => m.remove());
@@ -332,6 +342,9 @@ export default function MapLibre3DView({
           dimWater(map);
           stripHeavyLayers(map);
           lastRouteKeyRef.current = '';
+          // Draw directly on the canonical style-loaded event — immune to any
+          // prop/state race that could leave the route effect un-triggered.
+          try { drawRoutesRef.current?.(map); } catch (e) { console.warn("[MapLibre3D] load-time route draw failed:", e); }
           setMapLoaded(true);
         });
 
@@ -581,6 +594,8 @@ export default function MapLibre3DView({
       if (!map) return;
 
       if (!markersVisible || !primaryRoute?.coordinates?.length) {
+        console.log("[MapLibre3D] clear route layers (markersVisible=", markersVisible,
+          ", routePts=", primaryRoute?.coordinates?.length, ")");
         ["primary-route-glow", "primary-route-line", "alt-route-line"].forEach((id) => {
           try { if (map.getLayer(id)) map.removeLayer(id); } catch (_) {}
         });
