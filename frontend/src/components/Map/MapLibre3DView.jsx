@@ -662,11 +662,14 @@ export default function MapLibre3DView({
 
       // Only mark as drawn after everything succeeded.
       lastRouteKeyRef.current = routeKey;
+      console.log("[MapLibre3D] Route layers drawn (routeKey=", routeKey, ")");
     } catch (err) {
       lastRouteKeyRef.current = '';
       console.warn("[MapLibre3D] Route draw failed, will retry:", err?.message || err);
     }
   }, [markersVisible, primaryRoute, alternativeRoutes, activeProfile]);
+
+  drawRoutesRef.current = drawRoutes;
 
   // Re-applies the active profile colour to an already-drawn route without
   // reconstructing layers.
