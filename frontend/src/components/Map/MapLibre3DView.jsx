@@ -2,16 +2,18 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&format=es&url";
 import { useHaptics } from "../../hooks/useHaptics";
 import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 import { ROUTE_COLORS } from "../../function/utils/colors";
 import { UG_MAX_BOUNDS } from "../../function/utils/bounds";
 
-// Vite dev server cannot resolve maplibre-gl's own worker URL ("/assets/maplibre-gl-worker.mjs"
-// 404s and the SPA fallback replies with text/html, so the worker never loads and GeoJSON
-// line layers silently don't render in 3D). Explicitly hand the packaged worker asset to
-// maplibre — it works identically in dev and production builds.
+// Vite's dev server cannot serve maplibre-gl's sibling ESM files: "?url" pulls in
+// the raw worker while its "import ./maplibre-gl-shared.mjs" 404s to the SPA
+// fallback (text/html), so Strict-MIME checks kill the worker and GeoJSON line
+// layers never render in 3D under dev. Bundling the worker through Vite
+// ('?worker&format=es&url') inlines the shared module into ONE self-contained
+// script that both dev and the production build serve with the right MIME.
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
