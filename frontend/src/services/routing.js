@@ -122,6 +122,31 @@ export function findNearestNode(graph, lat, lng, maxDistanceDegrees = 0.01) {
 }
 
 /**
+ * Same search as findNearestNode, but reports how far the point was snapped.
+ * A point can be pulled up to ~1.1km to the nearest graph node; the user should
+ * be told when that happens rather than silently routed from elsewhere.
+ */
+export function findNearestNodeWithSnap(graph, lat, lng, maxDistanceDegrees = 0.01) {
+  if (!graph?.nodes) return { nodeId: null, distanceMeters: null };
+
+  let minDist   = Infinity;
+  let nearestId = null;
+
+  for (const [nodeId, node] of Object.entries(graph.nodes)) {
+    const dist = Math.hypot(node.lat - lat, node.lng - lng);
+    if (dist < minDist && dist < maxDistanceDegrees) {
+      minDist   = dist;
+      nearestId = nodeId;
+    }
+  }
+
+  return {
+    nodeId:         nearestId,
+    distanceMeters: nearestId ? Math.round(minDist * 111320) : null,
+  };
+}
+
+/**
  * Finds the optimal path between two nodes using A* with turn penalties.
  */
 export function findShortestPath(
@@ -130,7 +155,8 @@ export function findShortestPath(
   endNodeId,
   profileKey  = "standard",
   vehicleMode = "walk",
-  decisions = []
+  decisions = [],
+  weatherMultipliers = undefined
 ) {
   if (!graph?.nodes || !graph?.edges) {
     console.error("[Routing] Invalid graph");
@@ -158,7 +184,7 @@ export function findShortestPath(
     };
   }
 
-  const context = buildRouteContext();
+  const context = buildRouteContext(weatherMultipliers);
   const profile = PROFILES[profileKey] || PROFILES.standard;
 
   // Build edge lookup map once — O(E), then O(1) per lookup during traversal.
@@ -261,7 +287,7 @@ export function findShortestPath(
         vehicleMode,
         incomingBearing,
         goalBearing,
-        undefined,
+        context.weatherMultipliers,
         decisions
       );
 
@@ -369,15 +395,16 @@ export async function getAllRoutes(
   startNodeId,
   endNodeId,
   vehicleMode = "walk",
-  decisions = []
+  decisions = [],
+  weatherMultipliers = undefined
 ) {
   const startTime = performance.now();
 
   const [standard, fastest, accessible, night] = await Promise.all([
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, decisions)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, decisions)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, decisions)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, decisions)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, decisions, weatherMultipliers)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, decisions, weatherMultipliers)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, decisions, weatherMultipliers)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, decisions, weatherMultipliers)),
   ]);
 
   const elapsed = performance.now() - startTime;

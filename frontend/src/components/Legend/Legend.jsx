@@ -14,6 +14,7 @@ import LegendDirectionsTab from "./LegendDirectionsTab";
 import LegendEmptyState from "./LegendEmptyState";
 import LegendProfileBar from "./LegendProfileBar";
 import WeatherBanner from "./WeatherBanner";
+import RouteProvenance from "./RouteProvenance";
 import "./Legend.css";
 
 const Legend = forwardRef(function Legend({
@@ -22,6 +23,7 @@ const Legend = forwardRef(function Legend({
   onSelectAlternative, activeAlternativeIndex = 0, currentLocation,
   onExpandedChange, onProfileChange, onVehicleModeChange,
   autoCollapse = false, disableDrag = false, onNavPanelClose, onDragProgress,
+  routeProvenance = null,
 }, ref) {
   const [expanded, setExpanded] = useState(false);
   const [directions, setDirections] = useState([]);
@@ -210,6 +212,7 @@ const Legend = forwardRef(function Legend({
                   </span>
                 </div>
                 <WeatherBanner />
+                <RouteProvenance provenance={routeProvenance} />
                 <LegendDirectionsTab
                   directions={directions}
                   currentStepIndex={currentStepIndex}

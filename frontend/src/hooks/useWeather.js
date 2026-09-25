@@ -50,7 +50,9 @@ export function useWeather() {
     };
   }, [weather]);
 
-  // Null-guarded: weather can be null during initial load or after an error
+  // Null-guarded: weather can be null during initial load or after an error.
+  // Night is excluded on purpose — it is a profile concern, not a weather one,
+  // and getWeatherMultipliers no longer derives a message from it.
   const hasWeatherImpact = useCallback(() => {
     if (!weather || weather.isFallback) return false;
     const code    = weather.weatherCode;
@@ -58,9 +60,8 @@ export function useWeather() {
     const isStorm = [95, 96, 99].includes(code);
     const isSnow  = [71, 73, 75, 77, 85, 86].includes(code);
     const isHeat  = (weather.temperature ?? 0) >= 30;
-    const isNight = !weather.isDay;
     const isFog   = [45, 48].includes(code);
-    return isRain || isStorm || isSnow || isHeat || isNight || isFog;
+    return isRain || isStorm || isSnow || isHeat || isFog;
   }, [weather]);
 
   const refreshWeather = useCallback(async () => {

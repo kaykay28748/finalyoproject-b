@@ -20,7 +20,7 @@ export const PROFILE_CONFIG = {
   accessible: { label: "Accessible",   color: "#8b5cf6", icon: IconAccessibility,
                 description: "Avoids steps, steep slopes & uneven surfaces." },
   night:      { label: "Night Safety", color: "#f59e0b", icon: IconMoon,
-                description: "Prefers lit, busier routes after dark." },
+                description: "Prefers lit and well-used routes after dark. Lighting data is incomplete, so busy roads are used as a proxy." },
   fastest:    { label: "Fastest",      color: "#22c55e", icon: IconBolt,
                 description: "Shortest travel time for your mode." },
 };

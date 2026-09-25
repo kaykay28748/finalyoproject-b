@@ -116,13 +116,13 @@ export const PROFILES = {
     label: "Night Safety",
     icon: "🌙",
     color: "#f59e0b",
-    description: "Prioritises well-lit, busy roads for safer night navigation",
+    description: "Prefers well-lit and well-used roads. Lighting data is incomplete, so busyness acts as a proxy",
     weights: {
       surface:   1.2,
       incline:   1.5,
       sidewalk:  1.5,
       lighting:  3.0,
-      traffic:   0.8,
+      traffic:   1.8,
       gate:      1.0,
     },
   },
@@ -136,7 +136,7 @@ export const PROFILES = {
       incline:   1.0,
       sidewalk:  1.0,
       lighting:  1.0,
-      traffic:   1.0,
+      traffic:   0.0,
       gate:      1.0,
     },
   },
@@ -168,6 +168,13 @@ const INCLINE_PENALTIES = {
   steep:      2.5,
   very_steep: 3.5,
 };
+
+// How much of the full lighting penalty an untagged road receives.
+// `lit` is a boolean with patchy OSM coverage, so a missing tag means UNKNOWN,
+// not dark. Scoring unknown at 1.0 made every untagged road look like an
+// unlit alley and drowned out the busyness signal that night routing actually
+// relies on. Only an explicit lit=no is treated as a confirmed dark road.
+const UNKNOWN_LIT_PENALTY_RATIO = 0.4;
 
 // ─── Highway base costs ───────────────────────────────────────────────────────
 const HIGHWAY_BASE_COST_WALK = {
@@ -341,6 +348,16 @@ function getTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeigh
 
   let baseMultiplier = 1.0;
 
+  if (timePeriod === "night") {
+    // At night the risk runs the opposite way to daytime. Congestion is not the
+    // hazard — an empty minor road is. So a night-safety profile should prefer
+    // inhabited main roads, and the sign inverts relative to the daytime branch.
+    // Without this the whole term collapses to 1.0 for every profile, because
+    // 1 + (1.0 - 1) * weight === 1.0.
+    const isIsolated = !isHighTrafficRoad && !isBusyArea;
+    return isIsolated ? 1 + 0.6 * trafficWeight : 1.0;
+  }
+
   if (weekend) {
     baseMultiplier = sunday ? 1.0 : 1.1;
   } else {
@@ -511,13 +528,18 @@ export function calculateEdgeCost(
   const sidewalkCost = noSidewalk ? 1 + (0.4 * w.sidewalk) : 1.0;
 
   // ── Lighting ──────────────────────────────────────────────────────────────
+  // Tri-state: known-lit scores nothing, known-dark takes the full penalty, and
+  // untagged takes a partial one. See UNKNOWN_LIT_PENALTY_RATIO.
   let lightingCost = 1.0;
   if (timePeriod === "dusk" || timePeriod === "night") {
-    const litTag    = tags.lit?.toLowerCase();
-    const isUnlit   = litTag === "no" || litTag === undefined;
-    if (isUnlit) {
-      const nightMultiplier = timePeriod === "night" ? 1.0 : 0.5;
-      lightingCost = 1 + (1.0 * w.lighting * nightMultiplier);
+    const litTag       = tags.lit?.toLowerCase();
+    const periodWeight = timePeriod === "night" ? 1.0 : 0.5;
+    const isKnownDark  = litTag === "no";
+    const isUnknown    = litTag === undefined || litTag === null || litTag === "";
+    if (isKnownDark) {
+      lightingCost = 1 + (1.0 * w.lighting * periodWeight);
+    } else if (isUnknown) {
+      lightingCost = 1 + (UNKNOWN_LIT_PENALTY_RATIO * w.lighting * periodWeight);
     }
   }
 
@@ -648,13 +670,14 @@ function isEdgeNearGate(edge) {
   return null;
 }
 
-export function buildRouteContext() {
+export function buildRouteContext(weatherMultipliers = undefined) {
   const now = new Date();
   return {
     timePeriod:        getTimePeriod(),
     vehicleRestricted: isVehicleRestrictedNow(),
     currentHour:       now.getHours(),
     timestamp:         now.toISOString(),
+    weatherMultipliers,
   };
 }
 
@@ -664,7 +687,7 @@ export function getActiveWarnings(context, profileKey, vehicleMode = "walk") {
   const isWeekday = day >= 1 && day <= 5;
 
   if (context.timePeriod === "night") {
-    warnings.push({ type: "danger", icon: "🌑", message: "Night mode active — poorly lit routes are avoided" });
+    warnings.push({ type: "danger", icon: "🌑", message: "Night mode active — unlit and quiet roads are avoided where possible" });
   } else if (context.timePeriod === "dusk") {
     warnings.push({ type: "warn",   icon: "🌆", message: "Dusk mode active — lighting penalties applied" });
   }

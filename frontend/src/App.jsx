@@ -1,10 +1,10 @@
 // frontend/src/App.jsx - Simplified (no auth guards, no admin route)
-import { useState, useCallback, lazy, Suspense, useEffect, useRef } from "react";
+import { useState, useCallback, lazy, Suspense, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useRealtimeRoutes } from "./hooks/useRealtimeRoutes";
 import { geocode, reverseGeocode } from "./services/geocoding";
-import { findNearestNode } from "./services/routing";
+import { findNearestNode, findNearestNodeWithSnap } from "./services/routing";
 import { buildGraph } from "./services/graphBuilder";
 import { loadPreferences, savePreferences, loadRouteState, saveRouteState, clearRouteState } from "./services/preferencesStore";
 import { logRouteCalculated, logSearch, logLogin } from "./services/analyticsLogger";
@@ -12,6 +12,7 @@ import { useGpsPings } from "./hooks/useGpsPings";
 import NavPanel from "./components/Panel/NavPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import OfflineIndicator from "./components/OfflineIndicator";
+import SafetyNotice from "./components/SafetyNotice";
 import { useAuthContext } from "./context/AuthContext";
 import { FocusProvider } from "./context/FocusContext";
 import ReportModal from './components/Map/ReportModal';
@@ -194,6 +195,22 @@ export default function App() {
     return findNearestNode(graph, point.lat, point.lng);
   }, [graph]);
 
+  // A point can be pulled a long way to the nearest routable node. Beyond this
+  // threshold the user is no longer starting where they think they are, so say so.
+  const SNAP_WARN_METERS = 100;
+  const snapWarning = useMemo(() => {
+    if (!graph || !markersVisible) return null;
+    const check = (point, label) => {
+      if (!point || point.nodeId) return null;
+      const { distanceMeters } = findNearestNodeWithSnap(graph, point.lat, point.lng);
+      if (distanceMeters != null && distanceMeters > SNAP_WARN_METERS) {
+        return `${label} moved ${Math.round(distanceMeters)} m to the nearest mapped path`;
+      }
+      return null;
+    };
+    return check(effectiveStartPoint, "Start") || check(finalDestPoint, "Destination");
+  }, [graph, markersVisible, effectiveStartPoint, finalDestPoint]);
+
   const startNodeId = effectiveStartPoint ? getNodeId(effectiveStartPoint) : null;
   const destNodeId  = finalDestPoint       ? getNodeId(finalDestPoint)      : null;
 
@@ -204,6 +221,9 @@ export default function App() {
     isRerouting,
     deviationDetected,
     routes,
+    weatherBasis,
+    hazardFeedState,
+    decisionFeed,
   } = useRealtimeRoutes({
     graph,
     startNodeId,
@@ -240,6 +260,20 @@ export default function App() {
   }, [markersVisible, primaryRoute, effectiveStartPoint, destPoint, activeProfile, vehicleMode]);
 
   const warnings = primaryRoute?.context?.warnings || [];
+
+  if (snapWarning) {
+    warnings.push({ type: "warn", icon: "📍", message: snapWarning });
+  }
+
+  // What this route is actually based on. Surfaced in the UI so the user is
+  // told the real inputs rather than a generic "use at your own risk".
+  const routeProvenance = useMemo(() => ({
+    graphSource:  graph?._provenance?.source ?? null,
+    graphAgeMs:   graph?._provenance?.ageMs ?? null,
+    hazardCount:  Array.isArray(decisionFeed) ? decisionFeed.length : 0,
+    hazardFeed:   hazardFeedState,
+    weatherBasis,
+  }), [graph, decisionFeed, hazardFeedState, weatherBasis]);
 
   // ── Auto-fill FROM with GPS (only when GPS can actually snap to the graph) ──
   useEffect(() => {
@@ -522,6 +556,7 @@ export default function App() {
     <FocusProvider>
       <ErrorBoundary>
         <OfflineIndicator />
+        <SafetyNotice />
         <div className={`ug-root${darkMode ? " dark" : ""}`}>
         <NavPanel
           startText={effectiveStartText}
@@ -567,6 +602,7 @@ export default function App() {
             isRerouting={isRerouting}
             deviationDetected={deviationDetected}
             warnings={warnings}
+            routeProvenance={routeProvenance}
             activeProfile={activeProfile}
             vehicleMode={vehicleMode}
             useCustomLocation={useCustomLocation}

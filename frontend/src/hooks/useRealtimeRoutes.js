@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getAllRoutes, findNearestNode } from "../services/routing";
 import { fetchDecisionFeed } from "../services/reportService";
+import { fetchWeather, getWeatherMultipliers } from "../services/weatherService";
 import { getDistanceToRoute, distanceBetween, findClosestPointOnRoute } from "../function/utils/geometry";
 import { resetHeatmapSession } from "../services/heatmapAnalytics";
 import { useVoiceGuidance } from "./useVoiceGuidance";
@@ -20,7 +21,7 @@ export const ROUTE_PROFILES = {
   standard:   { key: "standard",   label: "Standard",     icon: "🗺️", color: "#2563eb", description: "Balanced route — shortest with basic safety" },
   fastest:    { key: "fastest",    label: "Fastest",      icon: "⚡", color: "#22c55e", description: "Pure shortest path — ignores comfort factors" },
   accessible: { key: "accessible", label: "Accessible",   icon: "♿", color: "#8b5cf6", description: "Avoids steep inclines and unpaved surfaces" },
-  night:      { key: "night",      label: "Night Safety", icon: "🌙", color: "#f59e0b", description: "Prioritises well-lit, busy roads" },
+  night:      { key: "night",      label: "Night Safety", icon: "🌙", color: "#f59e0b", description: "Prefers lit and well-used routes after dark" },
 };
 
 function formatDistanceForVoice(meters) {
@@ -53,6 +54,8 @@ export function useRealtimeRoutes({
   const [isRerouting,       setIsRerouting]       = useState(false);
   const [deviationDetected, setDeviationDetected] = useState(false);
   const [decisionFeed,      setDecisionFeed]      = useState([]);
+  const [weatherBasis,      setWeatherBasis]      = useState(null);
+  const [hazardFeedState,   setHazardFeedState]   = useState("unknown");
   const [routeProgress,     setRouteProgress]     = useState({
     completedDistance: 0, remainingDistance: 0, percentage: 0, closestPointIndex: -1,
   });
@@ -107,11 +110,25 @@ export function useRealtimeRoutes({
 
     try {
       // Part B: consume verdicts, never raw reports. Feed is server-cached 30s.
+      // A failure must not silently drop every hazard penalty while the UI still
+      // advertises a hazard-aware profile — record it so the route can disclose it.
       const feed = await fetchDecisionFeed().catch(() => null);
       setDecisionFeed(feed?.reports ?? []);
+      setHazardFeedState(feed ? "live" : "unavailable");
+
+      // Weather participates in the cost function. Shares the 10-min localStorage
+      // cache with the banner, so the claim shown and the route computed agree.
+      // A failure here must never block routing — fall back to no adjustment.
+      const weather = await fetchWeather().catch(() => null);
+      const weatherMultipliers = getWeatherMultipliers(weather);
+      setWeatherBasis({
+        applied:  weatherMultipliers.message !== null,
+        fallback: Boolean(weather?.isFallback),
+        message:  weatherMultipliers.message,
+      });
 
       // Fetch all profiles in parallel (handled by services/routing)
-      const allRoutes = await getAllRoutes(graph, fromNodeId, endNodeId, vehicleMode, feed?.reports ?? []);
+      const allRoutes = await getAllRoutes(graph, fromNodeId, endNodeId, vehicleMode, feed?.reports ?? [], weatherMultipliers);
       
       setRoutes({ ...allRoutes, lastUpdated: now });
       setDeviationDetected(false);
@@ -269,6 +286,8 @@ export function useRealtimeRoutes({
   return {
     routes,
     decisionFeed,
+    weatherBasis,
+    hazardFeedState,
     primaryRoute:       getPrimaryRoute(),
     alternativeRoutes:  getAlternativeRoutes(),
     isLoading,

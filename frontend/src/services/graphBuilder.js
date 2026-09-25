@@ -3,7 +3,7 @@
 
 import { UG_BOUNDS } from "../function/utils/bounds";
 import { distanceKm } from "../function/utils/distance";
-import { getCachedGraph, cacheGraph } from "./cacheStore";
+import { getCachedGraphWithAge, cacheGraph } from "./cacheStore";
 import { API_URL } from "../config";
 import { UG_GATES } from "./gateSchedule";
 import { setGateNodeIds } from "./costFunction";
@@ -71,11 +71,13 @@ async function fetchWithRetry(url, query, retries = 5) {
 
 export async function buildGraph() {
   try {
-    const cached = await getCachedGraph();
+    const cached = await getCachedGraphWithAge();
     if (cached) {
       console.log("[GraphBuilder] Using cached graph from IndexedDB");
-      registerGateNodes(cached);
-      return cached;
+      registerGateNodes(cached.graph);
+      // Record provenance on the graph so the UI can disclose data age.
+      cached.graph._provenance = { source: "cache", cachedAt: cached.cachedAt, ageMs: cached.ageMs };
+      return cached.graph;
     }
 
     console.log("[GraphBuilder] Fetching OSM data for Legon...");
@@ -117,6 +119,7 @@ export async function buildGraph() {
 
     await cacheGraph(graph);
     registerGateNodes(graph);
+    graph._provenance = { source: "live", cachedAt: Date.now(), ageMs: 0 };
     return graph;
 
   } catch (error) {

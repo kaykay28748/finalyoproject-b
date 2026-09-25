@@ -98,6 +98,44 @@ export async function getCachedGraph() {
 }
 
 /**
+ * Load graph from IndexedDB cache, preserving its age.
+ * Same contract as getCachedGraph, but returns { graph, cachedAt, ageMs } so
+ * callers can disclose data freshness instead of only logging it.
+ */
+export async function getCachedGraphWithAge() {
+  try {
+    const db = await initDB();
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.get(CACHE_KEY);
+
+      request.onerror = () => resolve(null);
+      request.onsuccess = () => {
+        const data = request.result;
+        if (!data) {
+          resolve(null);
+          return;
+        }
+
+        const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+        const ageMs = Date.now() - data.timestamp;
+
+        if (ageMs < CACHE_DURATION_MS) {
+          resolve({ graph: data.graph, cachedAt: data.timestamp, ageMs });
+        } else {
+          resolve(null);
+        }
+      };
+    });
+  } catch (error) {
+    console.warn('[CacheStore] Could not read from IndexedDB:', error.message);
+    return null;
+  }
+}
+
+/**
  * Clear cache (for testing/debugging)
  */
 export async function clearCache() {

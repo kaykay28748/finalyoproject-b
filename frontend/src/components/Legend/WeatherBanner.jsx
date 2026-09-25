@@ -154,6 +154,7 @@ export default function WeatherBanner() {
     weather,
     getWeatherDisplay,
     hasWeatherImpact,
+    getMultipliers,
     refreshWeather,
     isLoading,
   } = useWeather();
@@ -193,8 +194,9 @@ export default function WeatherBanner() {
   const toggleForecast = useCallback(() => setForecastOpen(o => !o), []);
   const closeForecast  = useCallback(() => setForecastOpen(false), []);
 
-  const display   = getWeatherDisplay();
-  const hasImpact = hasWeatherImpact();
+  const display     = getWeatherDisplay();
+  const hasImpact   = hasWeatherImpact();
+  const multipliers = getMultipliers();
 
   if (!weather) {
     return (
@@ -243,10 +245,18 @@ export default function WeatherBanner() {
         </div>
 
         <div className="weather-impact-badge">
-          {hasImpact ? (
-            <span className="impact-active">🌧️ Routing adjusted for conditions</span>
+          {weather.isFallback ? (
+            <span className="impact-normal" title="Live weather source unavailable — showing estimated conditions. Routing was not adjusted.">
+              ⚠️ Estimated conditions — routing not adjusted
+            </span>
+          ) : multipliers.message ? (
+            <span className="impact-active" title="These conditions are factored into route cost">
+              {multipliers.message}
+            </span>
           ) : (
-            <span className="impact-normal">✅ Clear conditions — normal routing</span>
+            <span className="impact-normal" title="No weather factor changes route cost right now">
+              ✅ No weather adjustment needed
+            </span>
           )}
         </div>
       </div>

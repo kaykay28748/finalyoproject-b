@@ -262,6 +262,7 @@ export default function MapView({
   isRerouting = false,
   deviationDetected = false,
   warnings = [],
+  routeProvenance = null,
   activeProfile = "standard",
   vehicleMode = "walk",
   flyTarget,
@@ -746,6 +747,7 @@ export default function MapView({
         vehicleMode={vehicleMode}
         currentLocation={currentLocation}
         warnings={warnings}
+        routeProvenance={routeProvenance}
         onProfileChange={onProfileChange}
         onVehicleModeChange={onVehicleModeChange}
         isExpanded={isLegendExpanded}

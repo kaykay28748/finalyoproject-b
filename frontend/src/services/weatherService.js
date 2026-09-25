@@ -197,7 +197,6 @@ export function getWeatherMultipliers(weather) {
   }
 
   const code        = weather.weatherCode;
-  const isNight     = !weather.isDay;
   const isHeavyRain = [65, 67, 82].includes(code);
   const isLightRain = [51, 53, 55, 61, 63, 80, 81].includes(code);
   const isHeat      = weather.temperature >= 30;
@@ -240,10 +239,10 @@ export function getWeatherMultipliers(weather) {
     message = '🔥 Heat advisory — preferring shaded routes';
   }
 
-  if (isNight) {
-    lightingMultiplier = 2.5;
-    message = message ? `${message} · 🌙 Night time` : '🌙 Night time — prioritizing lit paths';
-  }
+  // Night is deliberately NOT handled here. calculateEdgeCost already applies
+  // night lighting through the active profile's lighting weight, so adding a
+  // weather night multiplier would double-count it (up to 10x on Night Safety).
+  // Lighting here means weather degrading visibility, e.g. fog.
 
   return { unpavedMultiplier, lightingMultiplier, exposedMultiplier, shadeBonus, speedReduction, message };
 }

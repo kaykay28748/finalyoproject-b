@@ -1,0 +1,64 @@
+/* Persistent safety notice */
+.safety-notice {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  max-width: 340px;
+  z-index: 1000;
+  font-size: 13px;
+}
+
+.safety-notice-toggle {
+  background: rgba(15, 23, 42, 0.82);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.safety-notice-toggle:hover {
+  color: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.safety-notice-body {
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.safety-notice-body p {
+  margin: 0 0 10px;
+}
+
+.safety-notice-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.safety-notice-body li {
+  margin-bottom: 6px;
+}
+
+.safety-notice-body li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .safety-notice {
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
+}
