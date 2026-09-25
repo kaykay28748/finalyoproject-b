@@ -161,20 +161,61 @@ const SURFACE_PENALTIES = {
 };
 
 // ─── Incline penalties ────────────────────────────────────────────────────────
+// Grounded in Meeder, Aebi & Weidmann (2017), "The influence of slope on walking
+// activity and the pedestrian modal share", Transportation Research Procedia 27:
+// 141-147. Their logit model, fitted to live pedestrian counts on a steep street,
+// found that a 1% increase in slope makes a walk roughly 10% LESS attractive —
+// i.e. a multiplicative cost of 1 + 0.10 x slopePercent.
+//
+// The previous values (1.2 / 1.5 / 2.5 / 3.5) were ungrounded. These are the
+// coefficient applied to the upper bound of each band that getInclineCategory
+// assigns, so flat <=2% -> 1.0-1.2, gentle <=5% -> 1.5, moderate <=10% -> 2.0,
+// steep <=15% -> 2.5, very_steep >15% -> 3.0.
+//
+// KNOWN LIMITATION: Meeder et al. fitted a single population-wide coefficient.
+// The mode-specific multipliers applied later for bicycle/jogging (1.5x/2.0x on
+// top of this) and the Accessible profile's 3.0 weight are NOT from this source
+// and remain reasoned rather than measured. Papers that segment route choice by
+// age and mobility (Lieu & Guhathakurta 2025; Borst et al. 2009 for elderly
+// walkers) find materially different slope tolerances per group, so a single
+// global slope cost is a known approximation.
+//
+// The table also flattens above 15%: the source formula (1 + 0.10 x pct) would
+// keep rising, reaching 3.5x at a 25% gradient, whereas every gradient over 15%
+// collapses to 3.0x here. That is a deliberate conservative cap — a 25% gradient
+// is barely walkable, and letting the cost grow without bound distorts A* — but
+// it does mean this table under-penalises extreme slopes relative to the paper.
+// Bands exist because getInclineCategory must also handle the bare strings
+// "steep"/"very_steep", which carry no percentage to compute from.
 const INCLINE_PENALTIES = {
   flat:       1.0,
-  gentle:     1.2,
-  moderate:   1.5,
+  gentle:     1.5,
+  moderate:   2.0,
   steep:      2.5,
-  very_steep: 3.5,
+  very_steep: 3.0,
 };
 
 // How much of the full lighting penalty an untagged road receives.
-// `lit` is a boolean with patchy OSM coverage, so a missing tag means UNKNOWN,
-// not dark. Scoring unknown at 1.0 made every untagged road look like an
-// unlit alley and drowned out the busyness signal that night routing actually
-// relies on. Only an explicit lit=no is treated as a confirmed dark road.
-const UNKNOWN_LIT_PENALTY_RATIO = 0.4;
+//
+// WHY NOT 1.0 (the previous behaviour, which conflated "untagged" with "dark"):
+// the OSM wiki on key:lit is explicit that absence is not a negative claim —
+// Trail Router's own docs warn that "unlit" ways "might simply have no data", and
+// lit=yes is routinely applied to a footway lit only by a nearby billboard or
+// motorway, so neither value reliably measures what a walker experiences.
+//
+// WHY NOT 0.0: Portnov et al. (2020, PLOS ONE 15(11):e0242172) measured the
+// relationship between perceived illumination and feeling unsafe in Tel Aviv,
+// Haifa and Beersheba: 20-35% probability of feeling unsafe when illumination is
+// perceived low, falling below 1% when perceived high. The response is steep, so
+// lighting carries most of the variance in after-dark safety and uncertainty
+// about it cannot be scored as harmless.
+//
+// WHY 0.5 specifically: this is the weakest number in the file. It is a reasoned
+// compromise between a steep lighting-safety response and unreliable tag
+// coverage, NOT a measured value. The defensible statement is the reasoning and
+// the citations, not the 0.5. Replace it with a surveyed campus figure if one
+// ever exists.
+const UNKNOWN_LIT_PENALTY_RATIO = 0.5;
 
 // ─── Highway base costs ───────────────────────────────────────────────────────
 const HIGHWAY_BASE_COST_WALK = {
@@ -282,6 +323,13 @@ const PERIMETER_ROADS = [
 ];
 
 // ─── Turn penalty ─────────────────────────────────────────────────────────────
+// The uturn value is well supported: Lieu & Guhathakurta (2025), "Exploring
+// pedestrian route choice preferences by demographic groups", Transportation
+// Research Part A 181:104437, fitted a path-size logit to smartphone GPS
+// trajectories in Chicago and found each additional turn associated with a loss
+// of route utility equivalent to roughly 50 m of distance. Pedestrians there
+// "avoid those with many turns". The intermediate values below are an assumed
+// shape between that anchor and zero for a straight continuation, not measured.
 const TURN_PENALTIES_METRES = {
   slight:    0,
   moderate:  5,
@@ -316,8 +364,41 @@ export function calculateDirectionPenalty(goalBearing, edgeBearing) {
   return MAX_DIRECTION_PENALTY_METRES * (1 - Math.cos(diff * Math.PI / 180)) / 2;
 }
 
+// Proxy for "somebody is around". Sevtsuk et al. (2021), "A big data approach to
+// understanding pedestrian route choice preferences: Evidence from San
+// Francisco", Cities (MIT dspace 1721.1/139842), analysed anonymised GPS walking
+// trajectories and found the presence of VACANT land significantly decreased the
+// likelihood of choosing a route AT NIGHT, while mixed/residential land use was
+// preferred. Related qualitative work (Journal of Urban Design, 10.1057/s41289-
+// 020-00134-6) identifies "presence of others" as a core after-dark perceived-
+// safety theme, noting pedestrian presence is self-reinforcing.
+//
+// This list is a coarse stand-in for that land-use signal, which we do not have.
+// "residential" is the weakest member: a quiet residential street is not
+// necessarily well-used after dark. Narrowing this list is preferable to tuning
+// the night coefficient, if better data ever becomes available.
 const BUSY_AREA_TYPES = ["footway", "pedestrian", "residential"];
 const PEAK_HOURS = [8, 9, 12, 13, 16, 17];
+
+// How strongly an isolated road is penalised after dark, before the profile's
+// own traffic weight is applied.
+//
+// THIS IS NOT A MEASURED VALUE AND NO LITERATURE CAN MAKE IT ONE. It encodes
+// how much a given user prefers a lit, populated detour over a shorter unlit
+// one — a risk appetite, not a physical fact. The literature establishes only
+// the direction of the effect, never its magnitude, and the same literature
+// shows the magnitude is heterogeneous: Lieu & Guhathakurta (2025) segment by
+// gender/age/income, and women report feeling unsafe walking at night at
+// markedly higher rates than men, with knock-on reductions in nighttime
+// physical activity (Lighting Engineering & Society, par.nsf.gov/servlets/
+// purl/10635625).
+//
+// Treating this as a constant bakes one person's risk appetite into the
+// product for every user. It is the strongest argument for exposing it as a
+// user-facing "how much detour will you accept for a better-lit route"
+// preference, defaulting to this value. Until then, 0.6 is a product decision
+// and should be reviewed as one.
+const NIGHT_ISOLATION_PENALTY = 0.6;
 
 function isWeekend()  { const d = new Date().getDay(); return d === 0 || d === 6; }
 function isSunday()   { return new Date().getDay() === 0; }
@@ -354,8 +435,14 @@ function getTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeigh
     // inhabited main roads, and the sign inverts relative to the daytime branch.
     // Without this the whole term collapses to 1.0 for every profile, because
     // 1 + (1.0 - 1) * weight === 1.0.
+    //
+    // The DIRECTION is literature-supported: vacant land deters night walking
+    // (Sevtsuk et al. 2021) and "presence of others" drives after-dark route
+    // choice (J. Urban Design 2020). The 0.6 coefficient is NOT — it sets how
+    // strongly isolation is avoided, which is a risk-appetite decision, not an
+    // empirical finding. See the note on NIGHT_ISOLATION_PENALTY below.
     const isIsolated = !isHighTrafficRoad && !isBusyArea;
-    return isIsolated ? 1 + 0.6 * trafficWeight : 1.0;
+    return isIsolated ? 1 + NIGHT_ISOLATION_PENALTY * trafficWeight : 1.0;
   }
 
   if (weekend) {
@@ -528,18 +615,33 @@ export function calculateEdgeCost(
   const sidewalkCost = noSidewalk ? 1 + (0.4 * w.sidewalk) : 1.0;
 
   // ── Lighting ──────────────────────────────────────────────────────────────
-  // Tri-state: known-lit scores nothing, known-dark takes the full penalty, and
-  // untagged takes a partial one. See UNKNOWN_LIT_PENALTY_RATIO.
+  // key:lit has more values than yes/no, and the extra ones are safety-relevant.
+  // Per the OSM wiki: lit=disused means "lights installed, but broken or out of
+  // use in the long-term", lit=limited means "not always on during the night",
+  // lit=automatic means "only turns on when something passes by". Treating any of
+  // those as fully lit is the dangerous direction — a walker relying on a broken
+  // lamp has less usable light and a false sense of security. Full penalty for
+  // disused, three-quarters for the intermittent/part-night values, half for
+  // untagged, none for yes and 24/7.
   let lightingCost = 1.0;
   if (timePeriod === "dusk" || timePeriod === "night") {
     const litTag       = tags.lit?.toLowerCase();
     const periodWeight = timePeriod === "night" ? 1.0 : 0.5;
-    const isKnownDark  = litTag === "no";
     const isUnknown    = litTag === undefined || litTag === null || litTag === "";
-    if (isKnownDark) {
-      lightingCost = 1 + (1.0 * w.lighting * periodWeight);
+
+    // Multiplier applied to the profile's lighting weight, 1.0 = full penalty.
+    let severity = null;
+    if (litTag === "no" || litTag === "disused") {
+      severity = 1.0;
+    } else if (litTag === "limited" || litTag === "automatic") {
+      severity = 0.75;
     } else if (isUnknown) {
-      lightingCost = 1 + (UNKNOWN_LIT_PENALTY_RATIO * w.lighting * periodWeight);
+      severity = UNKNOWN_LIT_PENALTY_RATIO;
+    }
+    // lit=yes and lit=24/7 stay at 1.0 (no penalty).
+
+    if (severity !== null) {
+      lightingCost = 1 + (severity * w.lighting * periodWeight);
     }
   }
 
