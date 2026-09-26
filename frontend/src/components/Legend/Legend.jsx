@@ -16,6 +16,7 @@ import LegendProfileBar from "./LegendProfileBar";
 import WeatherBanner from "./WeatherBanner";
 import RouteProvenance from "./RouteProvenance";
 import SafetyNotice from "../SafetyNotice";
+import useMediaQuery, { DESKTOP_QUERY } from "../../hooks/useMediaQuery";
 import "./Legend.css";
 
 const Legend = forwardRef(function Legend({
@@ -42,6 +43,10 @@ const Legend = forwardRef(function Legend({
   const lastAnnouncedRouteIdRef = useRef(null);
   const prevHasRouteRef = useRef(hasRoute);
   const wasExpandedBeforeCollapse = useRef(false);
+
+  // Desktop renders the safety notice as a map overlay from App.jsx; here we only
+  // own the mobile / PWA in-flow placement.
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
 
   const { sheetRef, handleDragStart, toggleExpanded, initPosition } = useDragSheet({
     expanded, onExpandedChange: setExpanded,
@@ -234,10 +239,12 @@ const Legend = forwardRef(function Legend({
           </LegendBody>
         )}
 
-        {/* Sits between the scrolling body and the profile bar, in normal flow.
-            Being inside the sheet is what guarantees it can never cover the
-            profile buttons on mobile. */}
-        <SafetyNotice />
+        {/* Mobile / PWA placement. Sits in normal flow between the scrolling
+            body and the profile bar, so it can never cover the profile buttons.
+            Desktop renders the map-overlay variant from App.jsx instead — the
+            two are mutually exclusive so the notice is never duplicated for
+            assistive tech. */}
+        {!isDesktop && <SafetyNotice variant="inline" />}
       </div>
 
       <LegendProfileBar activeProfile={activeProfile} onProfileChange={onProfileChange} />

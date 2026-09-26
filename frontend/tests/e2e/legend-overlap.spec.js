@@ -1,73 +1,74 @@
 import { test, expect } from "@playwright/test";
 import { signIn, delay } from "./helpers.js";
 
-// Regression guard for the reported mobile bug.
+// Regression guards for the safety-notice placement.
 //
-// The safety notice used to be a `position: fixed` overlay pinned to the bottom
-// of the viewport at z-index 1000. The route profile bar is *also* pinned to
-// the bottom of the viewport, so on a phone the notice sat directly on top of
-// it and swallowed every tap on Standard / Accessible / Night Safety / Fastest.
+// The notice used to be a `position: fixed` overlay pinned to the bottom of the
+// viewport at z-index 1000, mounted outside .ug-root with hard-coded dark
+// colours. On phones the route profile bar is *also* pinned to the bottom and
+// spans the full width, so the notice sat on top of it and swallowed every tap on
+// Standard / Accessible / Night Safety / Fastest.
 //
-// Playwright's configured viewport is 390x844, i.e. the phone case that broke.
+// It now has two placements:
+//   mobile  — in normal flow inside the legend sheet, above the profile bar
+//   desktop — a map overlay bottom-left, clear of the 440px side panel
 //
-// The assertions deliberately use elementFromPoint rather than comparing
-// bounding boxes: that tests what is actually painted and clickable at the
-// button's centre, so it catches ANY overlay covering the control, not just
-// this one.
-test.describe("legend chrome / mobile layout", () => {
-  const PROFILES = ["standard", "accessible", "night", "fastest"];
+// The assertions use elementFromPoint rather than comparing bounding boxes, so
+// they test what is genuinely painted and clickable at the button's centre —
+// that catches ANY overlay covering the control, not just this one.
 
-  /** What element is actually painted at the centre of `locator`? */
-  async function topElementAt(locator) {
-    return locator.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      const top = document.elementFromPoint(cx, cy);
-      return {
-        reachable: top === el || el.contains(top),
-        blocker: top ? `${top.tagName.toLowerCase()}.${String(top.className || "")}` : "none",
-        cx,
-        cy,
-      };
-    });
+const PROFILES = ["standard", "accessible", "night", "fastest"];
+
+/** What element is actually painted at the centre of `locator`? */
+async function topElementAt(locator) {
+  return locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const top = document.elementFromPoint(cx, cy);
+    return {
+      reachable: top === el || el.contains(top),
+      blocker: top ? `${top.tagName.toLowerCase()}.${String(top.className || "")}` : "none",
+      cx,
+      cy,
+    };
+  });
+}
+
+async function expectProfilesClickable(page, state) {
+  for (const key of PROFILES) {
+    const btn = page.locator(`.legend-profile-btn[data-profile="${key}"]`);
+    await expect(btn, `${key} should be visible (${state})`).toBeVisible();
+    const hit = await topElementAt(btn);
+    expect(
+      hit.reachable,
+      `[${state}] "${key}" is not clickable — covered by ${hit.blocker} at (${Math.round(hit.cx)}, ${Math.round(hit.cy)})`,
+    ).toBe(true);
   }
+}
 
-  test("safety guidance never covers the route profile buttons", async ({ page }) => {
+test.describe("mobile / PWA — safety guidance is inline in the legend", () => {
+  test("never covers the route profile buttons", async ({ page }) => {
     await signIn(page);
     await page.waitForSelector(".legend-profiles-bar-inline", { timeout: 20000 });
     await page.waitForSelector(".safety-notice", { timeout: 20000 });
     await delay(500);
 
-    // 1. The notice must be in normal flow inside the legend sheet, not a
-    //    viewport-pinned overlay. This is the structural fix.
+    // The structural fix: in normal flow, not a viewport-pinned overlay.
+    await expect(page.locator(".safety-notice")).toHaveClass(/safety-notice--inline/);
     const position = await page
       .locator(".safety-notice")
       .evaluate((el) => getComputedStyle(el).position);
-    expect(position, "safety notice must not be a fixed overlay").not.toBe("fixed");
+    expect(position, "mobile safety notice must not be fixed").not.toBe("fixed");
 
-    // 2. Every profile button must be the topmost element at its own centre,
-    //    both collapsed and expanded.
-    for (const state of ["collapsed", "expanded"]) {
-      if (state === "expanded") {
-        await page.locator(".safety-notice-toggle").click();
-        await delay(350);
-      }
+    await expectProfilesClickable(page, "collapsed");
 
-      for (const key of PROFILES) {
-        const btn = page.locator(`.legend-profile-btn[data-profile="${key}"]`);
-        await expect(btn, `${key} button should be visible (${state})`).toBeVisible();
-
-        const hit = await topElementAt(btn);
-        expect(
-          hit.reachable,
-          `[${state}] "${key}" profile button is not clickable — covered by ${hit.blocker} at (${Math.round(hit.cx)}, ${Math.round(hit.cy)})`,
-        ).toBe(true);
-      }
-    }
+    await page.locator(".safety-notice-toggle").click();
+    await delay(350);
+    await expectProfilesClickable(page, "expanded");
   });
 
-  test("expanding safety guidance does not push the profile bar off-screen", async ({ page }) => {
+  test("expanding it does not push the profile bar off-screen", async ({ page }) => {
     await signIn(page);
     await page.waitForSelector(".legend-profiles-bar-inline", { timeout: 20000 });
     await page.waitForSelector(".safety-notice-toggle", { timeout: 20000 });
@@ -76,17 +77,49 @@ test.describe("legend chrome / mobile layout", () => {
     await page.locator(".safety-notice-toggle").click();
     await delay(400);
 
-    const bar = page.locator(".legend-profiles-bar-inline");
-    const box = await bar.boundingBox();
+    const box = await page.locator(".legend-profiles-bar-inline").boundingBox();
     const viewport = page.viewportSize();
 
     expect(box, "profile bar should still be laid out").not.toBeNull();
-    expect(box.y + box.height, "profile bar extends past the bottom of the viewport")
+    expect(box.y + box.height, "profile bar extends past the viewport bottom")
       .toBeLessThanOrEqual(viewport.height + 1);
     expect(box.y, "profile bar was pushed above the viewport top").toBeGreaterThanOrEqual(-1);
 
-    // And the notice itself must not be taller than the space it shares.
     const noticeBox = await page.locator(".safety-notice").boundingBox();
     expect(noticeBox.y, "safety notice starts above the viewport").toBeGreaterThanOrEqual(-1);
+  });
+});
+
+test.describe("desktop — safety guidance floats on the map", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("renders bottom-left and stays clear of the profile bar", async ({ page }) => {
+    await signIn(page);
+    await page.waitForSelector(".legend-profiles-bar-inline", { timeout: 20000 });
+    await page.waitForSelector(".safety-notice", { timeout: 20000 });
+    await delay(500);
+
+    await expect(page.locator(".safety-notice")).toHaveClass(/safety-notice--map/);
+
+    // Bottom-left of the map...
+    const notice = await page.locator(".safety-notice").boundingBox();
+    const viewport = page.viewportSize();
+    expect(notice.x, "map notice should hug the left edge").toBeLessThan(40);
+    expect(notice.y + notice.height, "map notice should hug the bottom edge")
+      .toBeGreaterThan(viewport.height - 60);
+
+    // ...and clear of the profile bar, which lives in the right-hand panel.
+    const bar = await page.locator(".legend-profiles-bar-inline").boundingBox();
+    const overlaps =
+      notice.x < bar.x + bar.width &&
+      notice.x + notice.width > bar.x &&
+      notice.y < bar.y + bar.height &&
+      notice.y + notice.height > bar.y;
+    expect(overlaps, "map notice overlaps the desktop profile bar").toBe(false);
+
+    // Expanding must not break that either.
+    await page.locator(".safety-notice-toggle").click();
+    await delay(350);
+    await expectProfilesClickable(page, "desktop expanded");
   });
 });

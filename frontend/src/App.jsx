@@ -12,6 +12,8 @@ import { useGpsPings } from "./hooks/useGpsPings";
 import NavPanel from "./components/Panel/NavPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import OfflineIndicator from "./components/OfflineIndicator";
+import SafetyNotice from "./components/SafetyNotice";
+import useMediaQuery, { DESKTOP_QUERY } from "./hooks/useMediaQuery";
 import { useAuthContext } from "./context/AuthContext";
 import { FocusProvider } from "./context/FocusContext";
 import ReportModal from './components/Map/ReportModal';
@@ -551,6 +553,10 @@ export default function App() {
   // Senior Fix: Keep map in focus during legend interaction. Only blur for search.
   const isMapBlurred = isNavExpanded;
 
+  // Desktop shows the safety notice as a map overlay; mobile/PWA shows it inline
+  // in the legend. Only one is ever mounted.
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+
   return (
     <FocusProvider>
       <ErrorBoundary>
@@ -637,6 +643,14 @@ export default function App() {
           defaultLocation={reportLocation}
           user={user}
         />
+
+        {/* Desktop placement: floats over the map at the bottom-left, clear of
+            the 440px side panel that holds the profile bar on the right.
+            Rendered inside .ug-root so it inherits the light/dark theme tokens
+            (it used to be mounted outside .ug-root with hard-coded dark
+            colours, which is why it looked out of place in light mode).
+            Mobile / PWA renders the in-legend variant from Legend.jsx instead. */}
+        {isDesktop && <SafetyNotice variant="map" />}
       </div>
     </ErrorBoundary>
     </FocusProvider>

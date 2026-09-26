@@ -1,18 +1,23 @@
-/* Persistent safety notice.
+/* Persistent safety notice — two placements, one per layout.
  *
- * Deliberately NOT `position: fixed`. It used to be a viewport-pinned overlay at
- * z-index 1000, which on phones landed on top of the bottom-pinned route profile
- * bar and blocked every profile button. Sitting in normal flow inside the legend
- * sheet — between the scrolling body and the profile bar — makes that overlap
- * structurally impossible, and keeps it inside .ug-root so it picks up the
- * light/dark theme tokens instead of hard-coded dark colours.
+ *   .safety-notice--inline  mobile / PWA. In normal flow inside the legend
+ *                           sheet, between the scrolling body and the profile
+ *                           bar. The profile bar is viewport-pinned and
+ *                           full-width on phones, so a floating overlay used to
+ *                           land on top of it and block every profile tap.
+ *
+ *   .safety-notice--map     desktop. Floats over the map at the bottom-left,
+ *                           clear of the 440px side panel that holds the
+ *                           profile bar on the right.
+ *
+ * Both are rendered inside .ug-root, so both pick up the light/dark theme
+ * tokens. The original version was mounted outside .ug-root and hard-coded dark
+ * colours, which is why it read as a foreign object in light mode.
  */
 
 .safety-notice {
-  flex-shrink: 0;
   font-family: var(--font-sans);
-  border-top: 1px solid var(--border);
-  background: var(--card);
+  color: var(--text);
 }
 
 .safety-notice-toggle {
@@ -20,32 +25,28 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 44px;
-  padding: 10px 20px;
   background: transparent;
   border: 0;
   color: var(--sub);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.safety-notice-toggle:hover {
-  color: var(--text);
-  background: var(--hover-row);
-}
-
-.safety-notice-icon {
+.safety-notice-icon,
+.safety-notice-chevron {
   flex-shrink: 0;
   color: var(--sub);
+  transition: color 0.15s ease;
 }
 
-.safety-notice-toggle:hover .safety-notice-icon,
-.safety-notice-toggle[aria-expanded="true"] .safety-notice-icon {
-  color: var(--text);
+.safety-notice-chevron {
+  transition: transform 0.2s ease;
+}
+
+.safety-notice-chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .safety-notice-label {
@@ -54,38 +55,24 @@
   white-space: nowrap;
 }
 
-.safety-notice-hint {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--text-xs);
-  font-weight: 400;
-  color: var(--sub);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.safety-notice-toggle:hover,
+.safety-notice-toggle[aria-expanded="true"] {
+  color: var(--text);
 }
 
-.safety-notice-chevron {
-  flex-shrink: 0;
-  color: var(--sub);
-  transition: transform 0.2s ease;
+.safety-notice-toggle:hover .safety-notice-icon,
+.safety-notice-toggle[aria-expanded="true"] .safety-notice-icon,
+.safety-notice-toggle:hover .safety-notice-chevron,
+.safety-notice-toggle[aria-expanded="true"] .safety-notice-chevron {
+  color: var(--text);
 }
 
-.safety-notice-chevron.is-open {
-  transform: rotate(180deg);
-}
+/* ─── Body ─────────────────────────────────────────────────────────────────── */
 
-/* Body */
 .safety-notice-body {
-  padding: 2px 20px 14px;
   font-size: var(--text-sm);
   line-height: 1.55;
   color: var(--sub);
-  /* Cap the height so an expanded notice can never squeeze the map or push the
-     profile bar out of the sheet on a short screen. */
-  max-height: 38vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .safety-notice-body p {
@@ -106,14 +93,96 @@
   margin-bottom: 0;
 }
 
-/* Desktop: the notice sits in a 440px side panel, so drop the roomy mobile
-   gutters and let the label sit closer to the content above it. */
-@media (min-width: 1024px) {
-  .safety-notice-toggle {
-    padding: 10px 20px;
-  }
+/* ─── Variant: inline (mobile / PWA) ───────────────────────────────────────── */
 
-  .safety-notice-body {
-    padding: 2px 20px 16px;
+.safety-notice--inline {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.safety-notice--inline .safety-notice-toggle {
+  min-height: 44px; /* comfortable touch target */
+  padding: 10px 20px;
+  font-size: var(--text-sm);
+  transition: background-color 0.15s ease;
+}
+
+.safety-notice--inline .safety-notice-toggle:hover {
+  background: var(--hover-row);
+}
+
+.safety-notice--inline .safety-notice-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.safety-notice--inline .safety-notice-body {
+  padding: 2px 20px 14px;
+  /* Cap the height so an expanded notice can never squeeze the map or push the
+     profile bar out of the sheet on a short screen. */
+  max-height: 38vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Variant: map (desktop) ────────────────────────────────────────────────── */
+
+.safety-notice--map {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  /* Above the map and its controls, below the legend panel (999) and modals. */
+  z-index: 900;
+  font-size: var(--text-md);
+}
+
+.safety-notice--map .safety-notice-toggle {
+  padding: 8px 14px;
+  font-size: var(--text-sm);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.safety-notice--map .safety-notice-toggle:hover {
+  background: var(--card);
+  border-color: var(--sub);
+}
+
+/* Push the chevron to the far right of the pill. */
+.safety-notice--map .safety-notice-chevron {
+  margin-left: auto;
+}
+
+.safety-notice--map .safety-notice-body {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .safety-notice-chevron,
+  .safety-notice-icon {
+    transition: none;
   }
 }

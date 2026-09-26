@@ -816,7 +816,12 @@
 
 /* ── Route provenance ──────────────────────────────────────────────────────── */
 .legend-provenance {
-  margin-top: 10px;
+  /* Siblings in the legend body run on a 12px-top / 8px-bottom rhythm
+     (.weather-banner, .legend-directions-section, .legend-decision-chip).
+     This rule previously had a top margin but no bottom margin, which left
+     exactly 0px between the provenance box and the voice guidance button
+     directly beneath it — the two read as colliding. */
+  margin: 12px 0;
   border: 0.5px solid rgba(100, 116, 139, 0.25);
   border-radius: 12px;
   background: rgba(100, 116, 139, 0.06);

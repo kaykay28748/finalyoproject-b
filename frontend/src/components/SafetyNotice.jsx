@@ -9,22 +9,32 @@ import './SafetyNotice.css';
  * so it is present offline (the service worker bypasses all /api traffic, so a
  * server-pushed notice would never reach an offline user).
  *
- * PLACEMENT — this used to be a `position: fixed` overlay pinned to the bottom
- * of the viewport. On phones the profile bar (Standard/Bicycle/Jogging/Night)
- * is also pinned to the bottom of the viewport, so the notice sat directly on
- * top of it at a higher z-index and swallowed every tap on those buttons. It now
- * lives in normal flow inside the legend sheet, between the scrolling body and
- * the profile bar, which makes overlap structurally impossible.
+ * PLACEMENT — two variants, because the available space differs by layout:
  *
- * It is rendered inside the sheet rather than portaled to the body so it
- * inherits the .ug-root theme tokens and needs no light/dark special-casing.
+ *   variant="map"    Desktop. Floats over the map at the bottom-left. The
+ *                    profile bar on desktop lives inside the 440px side panel
+ *                    on the right, so a bottom-left overlay never collides with
+ *                    it and the map has room to spare.
+ *
+ *   variant="inline" Mobile / PWA. Renders in normal flow inside the legend
+ *                    sheet, between the scrolling body and the profile bar.
+ *                    This variant exists because on phones the profile bar is
+ *                    pinned to the bottom of the viewport and spans the full
+ *                    width — a viewport-pinned overlay sat directly on top of it
+ *                    at a higher z-index and swallowed every tap on the
+ *                    Standard / Accessible / Night Safety / Fastest buttons.
+ *                    Being in flow makes that overlap structurally impossible.
+ *
+ * Exactly one variant is mounted at a time (see useMediaQuery in the callers) so
+ * assistive tech never encounters the notice twice.
  */
-export default function SafetyNotice() {
+export default function SafetyNotice({ variant = "inline" }) {
   const [open, setOpen] = useState(false);
   const bodyId = useId();
+  const isMap = variant === "map";
 
   return (
-    <div className="safety-notice">
+    <div className={`safety-notice safety-notice--${variant}`}>
       <button
         type="button"
         className="safety-notice-toggle"
@@ -49,9 +59,11 @@ export default function SafetyNotice() {
 
         <span className="safety-notice-label">Safety guidance</span>
 
-        <span className="safety-notice-hint">
-          {open ? "Hide" : "Estimates, not verified conditions"}
-        </span>
+        {!isMap && (
+          <span className="safety-notice-hint">
+            {open ? "Hide" : "Estimates, not verified conditions"}
+          </span>
+        )}
 
         <svg
           className={`safety-notice-chevron${open ? " is-open" : ""}`}
