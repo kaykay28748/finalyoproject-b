@@ -12,7 +12,6 @@ import { useGpsPings } from "./hooks/useGpsPings";
 import NavPanel from "./components/Panel/NavPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import OfflineIndicator from "./components/OfflineIndicator";
-import SafetyNotice from "./components/SafetyNotice";
 import { useAuthContext } from "./context/AuthContext";
 import { FocusProvider } from "./context/FocusContext";
 import ReportModal from './components/Map/ReportModal';
@@ -556,7 +555,6 @@ export default function App() {
     <FocusProvider>
       <ErrorBoundary>
         <OfflineIndicator />
-        <SafetyNotice />
         <div className={`ug-root${darkMode ? " dark" : ""}`}>
         <NavPanel
           startText={effectiveStartText}

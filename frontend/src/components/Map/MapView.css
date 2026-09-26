@@ -47,7 +47,7 @@
   transition: transform 0.15s, background 0.2s;
   backdrop-filter: blur(8px);
   color: var(--text-primary);
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .map-zoom-btn:hover {
@@ -269,7 +269,7 @@
   border-radius: 50px;
   padding: 8px 20px;
   font-size: 12px;
-  font-family: "Outfit", sans-serif;
+  font-family: var(--font-sans);
   font-weight: 600;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   z-index: 999;

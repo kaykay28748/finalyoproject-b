@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+/* Outfit is loaded once via <link> in index.html - no @import needed here.
+   Importing it again duplicated the request and delayed first paint. */
 
 .admin-dashboard {
   --a-bg:             #0a0a0a;
@@ -36,7 +37,7 @@
   display: flex;
   min-height: 100vh;
   background: var(--a-bg);
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   color: var(--a-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -102,7 +103,7 @@
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: #666;
   cursor: pointer;
   transition: all var(--a-transition);
@@ -206,7 +207,7 @@
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: #ef4444;
   cursor: pointer;
   transition: all var(--a-transition);
@@ -288,7 +289,7 @@
   border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: #888;
   cursor: pointer;
   transition: all var(--a-transition);
@@ -368,7 +369,7 @@
   border-radius: 7px;
   font-size: 13px;
   font-weight: 500;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: #aaa;
   cursor: pointer;
   transition: all var(--a-transition);
@@ -422,7 +423,7 @@
   background: rgba(255,255,255,0.02);
   color: var(--a-text);
   font-size: 13px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   transition: all var(--a-transition);
 }
 
@@ -482,7 +483,7 @@
 .admin-card h3 {
   font-size: 14px;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   margin: 0 0 20px 0;
   color: var(--a-text);
   letter-spacing: -0.01em;
@@ -578,7 +579,7 @@
 .stat-card-value {
   font-size: 28px;
   font-weight: 700;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--a-text);
   display: block;
   line-height: 1.2;
@@ -989,7 +990,7 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   padding: 7px 16px;
   border-radius: 8px;
   border: 1px solid transparent;
@@ -1085,7 +1086,7 @@
   background: rgba(255,255,255,0.02);
   color: var(--a-text);
   font-size: 12px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   resize: vertical;
   margin-bottom: 10px;
   transition: all var(--a-transition);
@@ -1198,7 +1199,7 @@
   background: rgba(255,255,255,0.02);
   color: var(--a-text);
   font-size: 12px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   resize: vertical;
   margin-bottom: 8px;
   transition: all var(--a-transition);
@@ -1262,7 +1263,7 @@
   border-radius: 8px;
   font-size: 13px;
   font-weight: 400;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   background: rgba(20, 20, 20, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

@@ -23,7 +23,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: "Outfit", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .legend-profile-btn:hover {

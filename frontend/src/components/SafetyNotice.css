@@ -1,44 +1,96 @@
-/* Persistent safety notice */
+/* Persistent safety notice.
+ *
+ * Deliberately NOT `position: fixed`. It used to be a viewport-pinned overlay at
+ * z-index 1000, which on phones landed on top of the bottom-pinned route profile
+ * bar and blocked every profile button. Sitting in normal flow inside the legend
+ * sheet — between the scrolling body and the profile bar — makes that overlap
+ * structurally impossible, and keeps it inside .ug-root so it picks up the
+ * light/dark theme tokens instead of hard-coded dark colours.
+ */
+
 .safety-notice {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  max-width: 340px;
-  z-index: 1000;
-  font-size: 13px;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  border-top: 1px solid var(--border);
+  background: var(--card);
 }
 
 .safety-notice-toggle {
-  background: rgba(15, 23, 42, 0.82);
-  color: #cbd5e1;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 0;
+  color: var(--sub);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   font-weight: 500;
+  text-align: left;
   cursor: pointer;
-  backdrop-filter: blur(6px);
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .safety-notice-toggle:hover {
-  color: #f1f5f9;
-  border-color: rgba(148, 163, 184, 0.5);
+  color: var(--text);
+  background: var(--hover-row);
 }
 
+.safety-notice-icon {
+  flex-shrink: 0;
+  color: var(--sub);
+}
+
+.safety-notice-toggle:hover .safety-notice-icon,
+.safety-notice-toggle[aria-expanded="true"] .safety-notice-icon {
+  color: var(--text);
+}
+
+.safety-notice-label {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.safety-notice-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.safety-notice-chevron {
+  flex-shrink: 0;
+  color: var(--sub);
+  transition: transform 0.2s ease;
+}
+
+.safety-notice-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* Body */
 .safety-notice-body {
-  margin-top: 8px;
-  padding: 14px 16px;
-  background: rgba(15, 23, 42, 0.94);
-  color: #cbd5e1;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 8px;
+  padding: 2px 20px 14px;
+  font-size: var(--text-sm);
   line-height: 1.55;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
+  color: var(--sub);
+  /* Cap the height so an expanded notice can never squeeze the map or push the
+     profile bar out of the sheet on a short screen. */
+  max-height: 38vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .safety-notice-body p {
   margin: 0 0 10px;
+  color: var(--text);
 }
 
 .safety-notice-body ul {
@@ -54,11 +106,14 @@
   margin-bottom: 0;
 }
 
-@media (max-width: 640px) {
-  .safety-notice {
-    bottom: 10px;
-    left: 10px;
-    right: 10px;
-    max-width: none;
+/* Desktop: the notice sits in a 440px side panel, so drop the roomy mobile
+   gutters and let the label sit closer to the content above it. */
+@media (min-width: 1024px) {
+  .safety-notice-toggle {
+    padding: 10px 20px;
+  }
+
+  .safety-notice-body {
+    padding: 2px 20px 16px;
   }
 }

@@ -2,6 +2,48 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 input::placeholder { opacity: 0.5; }
 
+/* ─── Typography ─────────────────────────────────────────────────────────────
+   One family across the whole product.
+
+   `Outfit` is the ONLY webfont we load (see index.html). The stylesheets used
+   to ask for 'Inter', 'Syne', 'DM Sans' and 'SF Pro Text' in ~50 rules, none of
+   which were ever fetched — so each one silently fell back to whatever generic
+   sans-serif the OS resolved, and that varied per rule. That mismatch is what
+   made the UI look typographically inconsistent. Declare the stack once and
+   reference the token everywhere else.
+
+   Tokens sit on :root rather than .ug-root so the portaled forecast popup and
+   the auth / admin / profile routes — all of which render outside .ug-root —
+   inherit the same stack as the map.
+───────────────────────────────────────────────────────────────────────────*/
+:root {
+  --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* Type scale — prefer these over ad-hoc px values in new/edited UI so
+     vertical rhythm stays consistent across breakpoints. */
+  --text-2xs:  10px;
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-md:   13px;
+  --text-base: 14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  20px;
+  --text-3xl:  24px;
+}
+
+/* Global baseline: anything without an explicit font-family — the portaled
+   forecast popup, the auth/admin/profile routes — still renders in the product
+   typeface instead of the browser default. */
+html, body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Ensure full height layout */
 html, body, #root {
   height: 100%;
@@ -113,7 +155,7 @@ html, body, #root {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  font-family: "Outfit", sans-serif;
+  font-family: var(--font-sans);
   overflow: hidden;
   background: var(--bg);
   box-sizing: border-box;
@@ -250,7 +292,7 @@ html, body, #root {
   gap: 14px;
   background: #f0f6ff;
   color: #64748b;
-  font-family: "Outfit", sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
   z-index: 9999;

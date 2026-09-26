@@ -1082,9 +1082,15 @@
   .legend-sheet {
     border-radius: 20px 20px 0 0;
     max-height: 70vh;
+    /* The profile bar sits below the sheet and already applies the bottom
+       safe-area inset, so the sheet must not add its own — that left a dead
+       strip between the safety notice and the bar. */
+    padding-bottom: 0;
   }
 
-  .legend-body { padding: 8px 14px max(20px, env(safe-area-inset-bottom, 20px)); }
+  /* Likewise the body no longer needs a safe-area inset at the end of its
+     scroll; a fixed gap is enough and reclaims vertical space on notches. */
+  .legend-body { padding: 8px 14px 14px; }
 
   .legend-mode-btn { padding: 6px 8px 8px; }
   .legend-mode-btn svg { width: 22px; height: 22px; }

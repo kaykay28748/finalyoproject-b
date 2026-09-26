@@ -106,7 +106,7 @@
   background: transparent;
   font-size: 13px;
   font-weight: 510;
-  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  font-family: var(--font-sans);
   color: rgba(0, 0, 0, 0.75);
   transition:
     background 0.15s ease,

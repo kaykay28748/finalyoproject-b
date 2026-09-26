@@ -15,6 +15,7 @@ import LegendEmptyState from "./LegendEmptyState";
 import LegendProfileBar from "./LegendProfileBar";
 import WeatherBanner from "./WeatherBanner";
 import RouteProvenance from "./RouteProvenance";
+import SafetyNotice from "../SafetyNotice";
 import "./Legend.css";
 
 const Legend = forwardRef(function Legend({
@@ -233,6 +234,10 @@ const Legend = forwardRef(function Legend({
           </LegendBody>
         )}
 
+        {/* Sits between the scrolling body and the profile bar, in normal flow.
+            Being inside the sheet is what guarantees it can never cover the
+            profile buttons on mobile. */}
+        <SafetyNotice />
       </div>
 
       <LegendProfileBar activeProfile={activeProfile} onProfileChange={onProfileChange} />

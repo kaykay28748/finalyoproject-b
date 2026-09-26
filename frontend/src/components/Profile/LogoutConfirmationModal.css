@@ -52,14 +52,14 @@
 .logout-modal-content h3 {
   font-size: 20px;
   font-weight: 700;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin: 0 0 8px 0;
 }
 
 .logout-modal-content p {
   font-size: 14px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   color: var(--sub);
   margin: 0 0 24px 0;
 }
@@ -76,7 +76,7 @@
   border-radius: 40px;
   font-size: 14px;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;

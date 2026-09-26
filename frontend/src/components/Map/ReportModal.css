@@ -103,7 +103,7 @@
 }
 
 .report-modal-header h2 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 700;
   color: #111827;
@@ -193,7 +193,7 @@
   font-size: 13px;
   font-weight: 500;
   color: #111827;
-  font-family: 'SF Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 .ug-root.dark .report-location-coords {
@@ -374,7 +374,7 @@
   background: #ffffff;
   border: 1.5px solid #e5e7eb;
   border-radius: 12px;
-  font-family: 'Inter', ui-sans-serif, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   color: #111827;
   resize: vertical;
@@ -729,7 +729,7 @@
 }
 
 .report-success-popup h3 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 700;
   color: #111827;

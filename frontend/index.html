@@ -27,9 +27,17 @@
     <link rel="preconnect" href="https://overpass-api.de" />
     <link rel="preconnect" href="https://nominatim.openstreetmap.org" />
 
-    <!-- font-display=swap prevents font from blocking render -->
+    <!-- Single webfont for the whole product. Outfit is the only family loaded;
+         the stacks in src/index.css (--font-sans / --font-mono) are the single
+         source of truth. font-display=swap prevents it blocking render. The
+         800 weight backs the one display-heading rule that uses it. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
+      rel="preload"
+      as="style"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>

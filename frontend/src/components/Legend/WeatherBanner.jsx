@@ -244,21 +244,30 @@ export default function WeatherBanner() {
           </div>
         </div>
 
-        <div className="weather-impact-badge">
-          {weather.isFallback ? (
-            <span className="impact-normal" title="Live weather source unavailable — showing estimated conditions. Routing was not adjusted.">
-              ⚠️ Estimated conditions — routing not adjusted
+        {/* Surfaced only when the weather state actually bears on the route.
+            Silence is the correct signal for "nothing to report": the previous
+            version always rendered this row, including a green tick for the
+            absence of a problem, which added a divider and a line of noise to
+            every single legend render and buried the two cases that matter. */}
+        {(weather.isFallback || multipliers.message) && (
+          <div
+            className={`weather-impact-badge weather-impact-badge--${
+              weather.isFallback ? "warn" : "info"
+            }`}
+            title={
+              weather.isFallback
+                ? "Live weather source unavailable — showing estimated conditions. Routing was not adjusted."
+                : "These conditions are factored into route cost"
+            }
+          >
+            <span className="weather-impact-dot" aria-hidden="true" />
+            <span className="weather-impact-text">
+              {weather.isFallback
+                ? "Estimated conditions — routing not adjusted"
+                : multipliers.message}
             </span>
-          ) : multipliers.message ? (
-            <span className="impact-active" title="These conditions are factored into route cost">
-              {multipliers.message}
-            </span>
-          ) : (
-            <span className="impact-normal" title="No weather factor changes route cost right now">
-              ✅ No weather adjustment needed
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {forecastOpen && <ForecastPopup onClose={closeForecast} />}

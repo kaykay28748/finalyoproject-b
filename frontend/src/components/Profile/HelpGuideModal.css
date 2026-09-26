@@ -67,7 +67,7 @@
 }
 
 .helpguide-header h2 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 700;
   color: #111827;
@@ -142,7 +142,7 @@
 }
 
 .helpguide-section-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 700;
   color: #111827;
@@ -257,7 +257,7 @@
   font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .helpguide-step-body strong {

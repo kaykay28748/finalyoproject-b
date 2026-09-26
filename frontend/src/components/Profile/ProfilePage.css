@@ -50,7 +50,7 @@
   transition: all 0.2s ease;
   font-size: 14px;
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .profile-back-btn svg {
@@ -70,7 +70,7 @@
 .profile-header h1 {
   font-size: 24px;
   font-weight: 700;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin: 0;
 }
@@ -100,21 +100,21 @@
 .profile-avatar-section h2 {
   font-size: 24px;
   font-weight: 700;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin: 0 0 6px 0;
 }
 
 .profile-email {
   font-size: 14px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   color: var(--sub);
   margin: 0 0 10px 0;
 }
 
 .profile-member-since {
   font-size: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   color: var(--sub);
   opacity: 0.7;
 }
@@ -128,7 +128,7 @@
 .profile-section h3 {
   font-size: 15px;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin: 0 0 16px 0;
 }
@@ -203,14 +203,14 @@
   display: block;
   font-size: 15px;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin-bottom: 4px;
 }
 
 .profile-setting-info span {
   font-size: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   color: var(--sub);
 }
 
@@ -372,7 +372,7 @@
 }
 
 .profile-loading p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   color: var(--sub);
 }
@@ -392,7 +392,7 @@
 }
 
 .profile-error p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin-bottom: 20px;
 }
@@ -405,7 +405,7 @@
   border-radius: 40px;
   cursor: pointer;
   font-size: 14px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   transition: background 0.2s;
 }
 
@@ -550,7 +550,7 @@
     display: block;
     font-size: 15px;
     font-weight: 600;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-sans);
     color: var(--text);
     margin-bottom: 2px;
     white-space: nowrap;
@@ -560,7 +560,7 @@
 
   .profile-sidebar-user-info span {
     font-size: 12px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     color: var(--sub);
     white-space: nowrap;
     overflow: hidden;
@@ -587,7 +587,7 @@
     cursor: pointer;
     transition: all 0.15s ease;
     text-align: left;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 500;
     color: var(--sub);
@@ -666,7 +666,7 @@
   .profile-content-header h1 {
     font-size: 24px;
     font-weight: 700;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-sans);
     color: var(--text);
     margin: 0;
   }
@@ -756,7 +756,7 @@
   display: block;
   font-size: 15px;
   font-weight: 600;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   color: var(--text);
   margin-bottom: 4px;
   white-space: nowrap;
@@ -766,7 +766,7 @@
 
 .report-row-info span {
   font-size: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   color: var(--sub);
 }
 
@@ -871,7 +871,7 @@
   border: none;
   cursor: pointer;
   transition: all 0.15s;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .report-action-btn:disabled {
@@ -945,7 +945,7 @@
   background: none;
   color: #2563eb;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   transition: opacity 0.15s;
 }
 
@@ -1020,7 +1020,7 @@
   font-size: 13px;
   background: var(--panel);
   color: var(--text);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   transition: border-color 0.15s;
 }
 
@@ -1042,7 +1042,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   transition: background 0.15s;
 }
 

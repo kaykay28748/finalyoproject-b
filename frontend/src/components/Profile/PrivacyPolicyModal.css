@@ -67,7 +67,7 @@
 }
 
 .ppolicy-header h2 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 700;
   color: #111827;
@@ -142,7 +142,7 @@
 }
 
 .ppolicy-section-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 700;
   color: #111827;

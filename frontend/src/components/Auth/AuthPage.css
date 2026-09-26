@@ -2,7 +2,10 @@
 /* Refined edition — Sea Blue / University of Ghana, Coastal Legon inspiration */
 /* Senior redesign: same class names + same Syne/Inter fonts, elevated execution. */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Syne:wght@500;600;700;800&display=swap');
+/* The Inter + Syne @import that used to live here is gone: neither family
+   was referenced consistently across the app, so the page rendered in a mix of
+   whatever fallback the OS resolved. Everything now uses var(--font-sans)
+   (Outfit), loaded once via <link> in index.html. */
 
 /* ============================================
    DESIGN TOKENS
@@ -41,7 +44,7 @@
   --ring: 0 0 0 4px rgba(26, 109, 143, 0.18);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 * {
@@ -121,7 +124,7 @@
 /* Oversized watermark */
 .auth-hero-bg {
   position: absolute;
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: clamp(220px, 30vw, 340px);
   font-weight: 800;
   line-height: 0.8;
@@ -163,7 +166,7 @@
 .auth-hero h1 {
   position: relative;
   z-index: 1;
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: clamp(44px, 5vw, 60px);
   font-weight: 700;
   line-height: 1.04;
@@ -182,7 +185,7 @@
 .auth-hero p {
   position: relative;
   z-index: 1;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.82);
@@ -227,7 +230,7 @@
 }
 
 .auth-form-header h2 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-sans);
   font-size: clamp(30px, 3.4vw, 38px);
   font-weight: 700;
   line-height: 1.1;
@@ -238,7 +241,7 @@
 }
 
 .auth-form-header p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.5;
   color: var(--ink-soft);
@@ -263,7 +266,7 @@
   width: 100%;
   height: 58px;
   padding: 22px 16px 8px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   color: var(--ink);
   background: var(--field);
@@ -298,7 +301,7 @@
   position: absolute;
   left: 16px;
   top: 18px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   color: var(--ink-faint);
   pointer-events: none;
@@ -322,7 +325,7 @@
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.3px;
@@ -374,7 +377,7 @@
 }
 
 .strength-label-split {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 12.5px;
   color: var(--ink-soft);
 }
@@ -386,7 +389,7 @@
 /* Validation messages */
 .validation-messages {
   margin-top: 4px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 12.5px;
   line-height: 1.45;
   min-height: 20px;
@@ -418,7 +421,7 @@
   padding: 13px 16px;
   margin-bottom: 20px;
   border-radius: var(--radius-sm);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.45;
   animation: slideIn 0.28s var(--ease);
@@ -515,7 +518,7 @@
   padding: 16px 20px;
   background: var(--sea-500);
   color: #ffffff;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 15.5px;
   font-weight: 600;
   letter-spacing: 0.2px;
@@ -563,7 +566,7 @@
   background: transparent;
   border: 1.5px solid var(--line);
   border-radius: var(--radius-sm);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14.5px;
   font-weight: 600;
   color: var(--sea-500);
@@ -600,7 +603,7 @@
   border: none;
   padding: 12px 20px;
   border-radius: var(--radius-sm);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
@@ -659,7 +662,7 @@
   background: none;
   border: none;
   color: var(--sea-500);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

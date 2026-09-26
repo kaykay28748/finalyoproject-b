@@ -297,7 +297,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-family: "Outfit", sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
   color: #111827;
@@ -399,7 +399,7 @@
 .voice-btn {
   border: none;
   border-radius: 40px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
   padding: 9px 18px;
