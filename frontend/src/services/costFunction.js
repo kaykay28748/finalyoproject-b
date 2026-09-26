@@ -116,7 +116,7 @@ export const PROFILES = {
     label: "Night Safety",
     icon: "🌙",
     color: "#f59e0b",
-    description: "Prefers well-lit and well-used roads. Lighting data is incomplete, so busyness acts as a proxy",
+    description: "Prefers well-used main roads over empty minor ones after dark. Only 1.5% of paths here have verified lighting data, so road busyness - not lighting - does most of the work",
     weights: {
       surface:   1.2,
       incline:   1.5,
@@ -215,6 +215,23 @@ const INCLINE_PENALTIES = {
 // coverage, NOT a measured value. The defensible statement is the reasoning and
 // the citations, not the 0.5. Replace it with a surveyed campus figure if one
 // ever exists.
+//
+// MEASURED, 2026-09-26 (scripts/measure-lit-coverage.mjs, bbox 5.62,-0.21,
+// 5.672,-0.175, 1958 ways): `lit` appears on 2.3% of ways overall. Among the
+// 1904 ways a pedestrian can be routed along it is 1.5% positively lit, 0.4%
+// known dark, and 98.1% untagged. All 46 tagged ways use only yes/no — the
+// limited/automatic/disused branches below never fire in this area.
+//
+// That measurement is the argument against 0.5, and it is stronger than the
+// reasoning above. A midpoint between "lit" and "dark" is only a meaningful
+// interpolation when the population is actually split between them. Here the
+// untagged bucket is not a marginal uncertainty, it is the entire dataset, so
+// this coefficient mostly penalises MISSING DATA rather than darkness: at night
+// on this profile an untagged edge costs 2.5x while a lit=yes edge costs 1.0x,
+// so the model steers away from 98.1% of the network toward the 1.5% it has
+// evidence about. Whether that is the right trade is a product decision about
+// safety posture, not a tuning question — see ROUTING_SAFETY.md section 4.2,
+// which sets out the three options. Change this only alongside that decision.
 const UNKNOWN_LIT_PENALTY_RATIO = 0.5;
 
 // ─── Highway base costs ───────────────────────────────────────────────────────

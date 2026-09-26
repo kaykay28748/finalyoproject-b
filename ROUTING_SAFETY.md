@@ -302,15 +302,116 @@ as a user-facing preference — *"how much extra distance will you accept for a
 better-lit route?"* — defaulting to the current value. Until then, treat these
 numbers as a product decision and review them like one.
 
-### 4.2 `lit` coverage is asserted, not measured
+### 4.2 `lit` coverage: measured, and it changes the picture
 
-The claim that OSM `lit` tagging is too patchy to rely on is currently a
-qualitative assertion. It is measurable today: run the Overpass query in
-`graphBuilder.js`, count tagged vs untagged ways by highway class, and replace
-the assertion with a real coverage percentage. Note that
-`addManualPedestrianConnections()` injects 12 hand-written edges with fabricated
-`surface` tags and no `lit` at all, and `connectNearbyNodes()` creates synthetic
-edges with no tags — both skew any coverage measurement and must be excluded.
+This was previously an assertion ("OSM `lit` tagging is too patchy to rely on").
+It is now measured, by `frontend/scripts/measure-lit-coverage.mjs`, over the
+exact bbox and highway classes `graphBuilder.js` requests
+(`5.62,-0.21,5.672,-0.175`, 15 classes). 1958 ways returned:
+
+| Class | Ways | With `lit` | Coverage |
+|---|---:|---:|---:|
+| service | 954 | 2 | 0.2% |
+| residential | 469 | 16 | 3.4% |
+| path | 199 | 1 | 0.5% |
+| footway | 119 | 6 | 5.0% |
+| tertiary | 69 | 9 | 13.0% |
+| unclassified | 63 | 2 | 3.2% |
+| secondary | 46 | 9 | 19.6% |
+| track | 23 | 0 | 0.0% |
+| steps | 6 | 0 | 0.0% |
+| tertiary_link | 5 | 1 | 20.0% |
+| secondary_link, pedestrian | 4 | 0 | 0.0% |
+| **Total** | **1958** | **46** | **2.3%** |
+
+Restricted to the 1904 ways a pedestrian can actually be routed along:
+
+| | Count | Share |
+|---|---:|---:|
+| any `lit` tag | 36 | 1.9% |
+| positively lit (`yes` / `24/7`) | 29 | 1.5% |
+| known dark (`no`) | 7 | 0.4% |
+| **no `lit` tag at all** | **1868** | **98.1%** |
+
+Tag coverage across the same ways, for comparison:
+
+| Tag | Coverage | Consequence |
+|---|---:|---|
+| `highway` | 100% | the only fully-covered factor; road class is the model's real backbone |
+| `surface` | 33.7% | usable, but two-thirds untagged |
+| `lit` | 2.3% | effectively absent |
+| `sidewalk` | 2.3% | effectively absent |
+| `incline` | 0.3% (5 ways) | effectively absent |
+
+#### What this invalidates
+
+**The `disused` / `limited` / `automatic` handling added in §2.4 will never fire
+here.** All 46 tagged ways in the entire area use only `yes` (37) or `no` (9).
+The OSM semantics are implemented correctly, but for University of Ghana they
+are dead branches. They are worth keeping — the code is right, and other
+deployments will have them — but they should not be credited with improving
+routing *here*.
+
+**The slope table from §3 is also nearly inert.** `incline` appears on 5 of 1958
+ways. The Meeder-derived penalties are correct and will matter wherever incline
+is mapped; in this bbox they almost never apply.
+
+#### The consequence that actually matters
+
+With 98.1% of pedestrian-usable ways untagged, the lighting term is not
+discriminating between lit and unlit roads. It is applying one multiplier to
+almost the entire network:
+
+| `lit` value | Night-profile lighting cost | Ways |
+|---|---:|---:|
+| `yes` / `24/7` | 1.00× | 1.5% |
+| untagged | 2.50× | 98.1% |
+| `no` | 4.00× | 0.4% |
+
+Note the direction this points. Because `UNKNOWN_LIT_PENALTY_RATIO` is 0.5, an
+untagged road is penalised 2.5× while a `lit=yes` road is penalised not at all —
+so **the model actively steers away from 98.1% of the network in order to reach
+the 1.5% it has evidence about.** On a real street that is lit but untagged, the
+Night profile can prefer a long detour to reach one of 29 tagged ways.
+
+Whether that is correct is a genuine open question, and it cuts against a rule
+stated in §7 of this document: *"unknown is not negative."* Absence of a tag is
+a gap in the data, not an observation about the world — and at 98.1% coverage,
+the "unknown" bucket is not a marginal uncertainty, it is the dataset. The 0.5
+midpoint between lit and dark is only a meaningful interpolation if the
+population is split between the two, and here it is not: known-lit is 1.5% and
+known-dark is 0.4%.
+
+**This is not resolved here, deliberately.** Options and their trade-offs:
+
+- Keep 0.5. Safety-forward, but the term then mostly penalises *missing data*
+  rather than darkness, and 2.5× on 98% of edges is a large influence for
+  something that is usually uniform.
+- Lower it substantially (e.g. 0.15–0.25), so the term discriminates mainly
+  through the known-lit and known-dark minorities and treats the untagged mass
+  as close to neutral.
+- Drop the unknown penalty entirely and let the Night profile run on road class
+  plus the night-isolation term — the two factors with real coverage, and the
+  one the literature actually supports (vacant land, presence of others).
+
+All three change night routing behaviour, so the choice belongs to whoever owns
+the product's safety posture, not to a code cleanup. Whichever is chosen, the
+profile description should carry the real number rather than the word
+"incomplete".
+
+The 12 hand-written edges from `addManualPedestrianConnections()` and any
+synthetic edges from `connectNearbyNodes()` have no `lit` tag, so they sit on
+top of these totals as guaranteed-untagged.
+
+Re-measure with:
+
+```bash
+cd frontend
+node scripts/measure-lit-coverage.mjs
+```
+
+Coverage is a moving target — OSM tagging improves — so treat any number here as
+a dated observation, not a constant. Re-run before relying on it.
 
 ### 4.3 Other ungrounded numbers still in the file
 
@@ -417,3 +518,9 @@ calculateEdgeCost(edge, PROFILES.night, "night", false, 23, "walk", 0, 0, undefi
    multipliers are what break the A\* lower bound. If you add another, the floor
    in §2.6 may move and `scripts/verify-heuristic-admissibility.mjs` will fail
    until the scale is lowered to match.
+7. **A factor with no coverage is not a factor.** Before tuning a weight, check
+   how many ways in the deployment bbox actually carry the tag it reads. `lit`
+   is on 2.3% of ways and `incline` on 0.3% (§4.2), so both terms are close to
+   inert here no matter how they are tuned. Measure first with
+   `scripts/measure-lit-coverage.mjs`; a beautifully-sourced coefficient on a tag
+   nobody has mapped is decoration.
