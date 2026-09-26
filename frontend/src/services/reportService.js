@@ -201,6 +201,20 @@ export async function fetchDecisionFeed() {
 
 /**
  * Record a GPS-stamped community confirmation for a report (user only).
+ *
+ * NOT CALLED FROM THE UI. The backend endpoint is fully implemented
+ * (POST /api/reports/:id/confirm) and enforces physical presence within 80m of
+ * the report, so the server side is ready — there is simply no affordance
+ * offering it. Consequence: `confirmers` in /api/reports/decision-feed is
+ * always 0, so the corroboration branch of the report verdict weighting
+ * (VERDICT_SIGNALS.CONFIRMATION_CONFIDENCE) never contributes. Reports are
+ * effectively single-source right now, which matters because corroboration is
+ * the only signal in the system that distinguishes a genuine obstacle from one
+ * report's worth of noise.
+ *
+ * Wiring this up is a UI change, not a plumbing one, and it alters routing
+ * confidence, so it should be a deliberate product decision.
+ *
  * @param {number} reportId - Report ID
  * @param {{ lat: number, lng: number, accuracy?: number }} fix - Live GPS fix
  * @returns {Promise<Object>} { alreadyConfirmed, confirmers }

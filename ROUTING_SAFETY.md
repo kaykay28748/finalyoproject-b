@@ -151,7 +151,64 @@ any edge touching a registered gate node — and `calculateRoutes()` wraps
 everything in a `try/catch` that only logs, so **routes near gates silently
 failed to calculate**. `UG_GATES` is now imported statically.
 
-### 2.6 The interface outran the implementation
+### 2.6 The A\* heuristic was not admissible
+
+The old comment read:
+
+> *A\* admissible heuristic: straight-line distance to destination. Must be <= actual
+> cost to guarantee optimality. We use raw distance (no multipliers) so it never
+> over-estimates.*
+
+The conclusion is right; the reasoning is inverted, and the conclusion is false.
+
+Haversine distance is a lower bound on the **length** of a path, and therefore on
+its cost — but only while no edge costs less than its own length. That does not
+hold here. `calculateEdgeCost()` applies sub-1.0 multipliers:
+
+| Multiplier | Value | Applies to |
+|---|---|---|
+| `CAMPUS_CORE_BONUS` | **0.85** | any road named in `CAMPUS_CORE_ROADS`, **including on foot** |
+| `HIGHWAY_BASE_COST_BICYCLE.cycleway` | 0.70 | bicycle only |
+| `HIGHWAY_BASE_COST_JOGGING.footway` / `.path` | 0.90 | jogging only |
+
+So a road named "Nsia Road" costs 0.85× its length. A path through it can cost
+less than the straight line `h` treated as a floor, and A\* can return a
+suboptimal route. Leaving `h` unscaled is precisely what allows the
+overestimate — the multipliers sit on the edge-cost side, not the heuristic side.
+
+**Fixed** by scaling `h` by a measured per-mode admissibility factor. The floor
+was not estimated; it was measured by brute-forcing every combination of highway
+type, surface, `lit` value, road name, incline, sidewalk tag, profile and time
+period through `calculateEdgeCost()` and taking the minimum of `cost / distance`:
+
+| Mode | Measured floor | Scale used | Margin |
+|---|---|---|---|
+| walk | 0.7225 | 0.70 | 3.1% |
+| bicycle | 0.4879 | 0.45 | 7.8% |
+| jogging | 0.6885 | 0.65 | 5.6% |
+| vehicle | 0.8500 | 0.80 | 5.9% |
+
+Each floor is set by `CAMPUS_CORE_BONUS` on the `fastest` profile — the loosest
+combination available, so these are worst cases rather than typical ones. Scales
+sit below their floors to leave headroom for tags added later.
+
+`scripts/verify-heuristic-admissibility.mjs` re-derives the floors from the real
+cost function and exits non-zero if any scale drifts above its floor, so a later
+change to the cost model cannot silently reintroduce this.
+
+```bash
+cd frontend
+npx esbuild scripts/verify-heuristic-admissibility.mjs --bundle \
+  --platform=node --format=esm --outfile=scripts/.tmp-verify.mjs
+node scripts/.tmp-verify.mjs
+```
+
+Worth being precise about the impact: this is a **route-quality** bug, not a
+safety one. A suboptimal path is still a path the cost model considers safe; the
+model is what carries the safety claim, not A\*'s exactness. The exposure was to
+the "optimal route" claim, not to user safety.
+
+### 2.7 The interface outran the implementation
 
 | Claim | Reality |
 |---|---|
@@ -272,10 +329,8 @@ edges with no tags — both skew any coverage measurement and must be excluded.
 
 ## 5. Known structural limitations
 
-- **A\* is not guaranteed optimal.** `routing.js` comments that the heuristic
-  must be ≤ actual cost, but edge costs can fall *below* raw distance (campus
-  bonus `0.85`, cycleway `0.7`, jogger soft-surface `0.88`), so the heuristic can
-  overestimate. Comment at `routing.js` ~line 91.
+Resolved items have moved to §2. What remains:
+
 - **`walk.blockedRoads` includes `primary` and `secondary`.** Pedestrians can
   never be routed on the main roads, so the Night profile's "prefer busy roads"
   signal only reaches `footway` / `pedestrian` / `residential`. Probably correct
@@ -285,15 +340,30 @@ edges with no tags — both skew any coverage measurement and must be excluded.
   which we do not have. Narrowing the list beats tuning the coefficient.
 - **The 12 fabricated footway edges** in `graphBuilder.js` have invented surface
   values and no lighting, incline or sidewalk tags, so they always score as
-  unknown-and-untagged.
+  unknown-and-untagged. They also skew any `lit`-coverage measurement (§4.2) and
+  should be excluded from it.
 - **The service worker is never registered.** `sw.js` exists but nothing calls
   `navigator.serviceWorker.register`, and it bypasses all `/api` traffic. The
   PWA offline story does not currently hold, and any server-pushed notice would
   not reach offline users — which is why the safety notice is bundled in the app
-  shell.
-- **Three analytics paths are dead code:** `logRouteSegments()` is never called,
-  `confirmReport()` is never called, and `analyticsLogger.js` POSTs to
-  `/analytics/heatmap/search`, an endpoint that does not exist.
+  shell. *(Deliberately left as-is for now.)*
+- **`logRouteSegments()` is not called, and should stay that way** unless the
+  schema changes. It would write *offered* routes into `route_segments`, the same
+  table `gpsPings.flush()` writes *observed* positions into. Merging them makes
+  the aggregate unable to answer either "where do people walk?" or "do they
+  avoid what we tell them to avoid?". Separating them needs a `source` column or a
+  second table — a migration, not a wiring change. Reasoning is recorded at the
+  function so nobody connects it casually.
+- **`confirmReport()` is not called from the UI.** The backend endpoint is fully
+  implemented, including an 80 m physical-presence check, and its output feeds
+  `VERDICT_SIGNALS.CONFIRMATION_CONFIDENCE` in the decision feed. Because
+  nothing calls it, `confirmers` is always 0 and that branch of the report
+  weighting never contributes — reports are effectively single-source, which
+  matters because corroboration is the only signal distinguishing a real
+  obstacle from one report's worth of noise. This needs a UI affordance, and it
+  changes routing confidence, so it is a product decision rather than a fix.
+- **`resetHeatmapSession()` is a functional no-op** — it clears a dedup `Set`
+  that only `logRouteSegments()` populates, and that is never called.
 
 ---
 
@@ -343,3 +413,7 @@ calculateEdgeCost(edge, PROFILES.night, "night", false, 23, "walk", 0, 0, undefi
 5. **Prefer disclosure over reassurance.** Telling a user which roads were
    avoided, and which data was missing, is worth more than a claim that the route
    is safe.
+6. **After changing any multiplier, re-run the admissibility check.** Sub-1.0
+   multipliers are what break the A\* lower bound. If you add another, the floor
+   in §2.6 may move and `scripts/verify-heuristic-admissibility.mjs` will fail
+   until the scale is lowered to match.

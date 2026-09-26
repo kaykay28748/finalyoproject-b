@@ -65,6 +65,26 @@ function routeKey(coordinates) {
  * Logs a single route's sampled coordinates to the heatmap endpoint.
  * Fire-and-forget — errors are swallowed so they never affect routing UX.
  *
+ * DELIBERATELY NOT CALLED. Do not wire this up without reading this first.
+ *
+ * This writes the route the app *offered* into `route_segments` — the same
+ * table that `gpsPings.flush()` writes observed positions into via
+ * POST /analytics/heatmap/ping. Those are different quantities:
+ *
+ *   ping     = where a person actually went
+ *   segment  = where the app suggested they go
+ *
+ * Merging them makes the heatmap ambiguous and destroys the one comparison that
+ * would make the data useful. Right now the heatmap answers "where do people
+ * walk?", and the only way to learn "do they avoid what we tell them to avoid?"
+ * is to compare that against what was offered. Overwriting the distinction
+ * would leave an aggregate that cannot answer either question.
+ *
+ * If both are wanted, they need separate storage or a `source` discriminator on
+ * `route_segments` — which is a schema migration, not a wiring change. Note also
+ * that both writers share one 10-requests/IP/minute budget, so enabling this
+ * would start competing with the ping flush.
+ *
  * @param {Array<{lat, lng}>} coordinates - Full route coordinate array
  */
 export async function logRouteSegments(coordinates) {
