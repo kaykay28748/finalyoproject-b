@@ -61,7 +61,7 @@ export default function SafetyNotice({ variant = "inline" }) {
 
         {!isMap && (
           <span className="safety-notice-hint">
-            {open ? "Hide" : "Estimates, not verified conditions"}
+            {open ? "Hide" : "How routes are chosen"}
           </span>
         )}
 
@@ -83,29 +83,11 @@ export default function SafetyNotice({ variant = "inline" }) {
 
       <div id={bodyId} className="safety-notice-body" hidden={!open}>
         <p className="safety-notice-lead">
-          Your route isn&apos;t just the shortest path. It weighs live weather, road
-          lighting, surface conditions and community hazard reports, then picks the
-          route that best fits the profile you chose.
+          Your route weighs live weather, road lighting, surface conditions and
+          community hazard reports, then picks the best route for the profile you
+          chose. <strong>&ldquo;What this route is based on&rdquo;</strong> names the
+          specific data and signals behind it.
         </p>
-
-        <ul className="safety-notice-list">
-          <li>
-            <strong>Weather-aware</strong> — rain, fog and poor light change which
-            route wins.
-          </li>
-          <li>
-            <strong>Lighting &amp; surface aware</strong> — dark, unpaved and steep
-            edges cost more, so safer ones are preferred.
-          </li>
-          <li>
-            <strong>Hazard-aware</strong> — active community reports are routed
-            around automatically.
-          </li>
-          <li>
-            <strong>Purpose-built profiles</strong> — Accessible, Night Safety and
-            Fastest each optimise for something different.
-          </li>
-        </ul>
 
         <p className="safety-notice-note">
           Map data can lag what&apos;s actually on the ground. Spotted a hazard?

@@ -55,6 +55,11 @@ export default function RouteProvenance({ provenance }) {
           <ul className="legend-provenance-list">
             {items.map((item) => <li key={item}>{item}</li>)}
           </ul>
+          <p className="legend-provenance-how">
+            Not filters or detours — weather, lighting and reported hazards each
+            change the cost of the edges they touch, so the route is chosen
+            across all of them at once.
+          </p>
           <p className="legend-provenance-note">
             Lighting, surfaces and access can differ from the map — worth a quick look
             on the ground. Every hazard report you add makes the next route better for

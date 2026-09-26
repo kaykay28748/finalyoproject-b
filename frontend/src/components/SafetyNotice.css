@@ -84,20 +84,7 @@
   font-weight: 500;
 }
 
-.safety-notice-list {
-  margin: 0 0 10px;
-  padding-left: 18px;
-}
-
-.safety-notice-list li {
-  margin-bottom: 6px;
-}
-
-.safety-notice-list li:last-child {
-  margin-bottom: 0;
-}
-
-.safety-notice-list strong {
+.safety-notice-lead strong {
   color: var(--text);
   font-weight: 600;
 }

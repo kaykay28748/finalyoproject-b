@@ -860,6 +860,14 @@
   margin-bottom: 3px;
 }
 
+.legend-provenance-how {
+  margin: 0;
+  padding: 0 14px 9px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
 .legend-provenance-note {
   margin: 0;
   padding: 0 14px 12px 14px;
@@ -875,6 +883,8 @@
 
 .ug-root.dark .legend-provenance-toggle,
 .ug-root.dark .legend-provenance-list { color: #94a3b8; }
+
+.ug-root.dark .legend-provenance-how { color: #94a3b8; }
 
 .ug-root.dark .legend-provenance-note { color: #64748b; }
 
