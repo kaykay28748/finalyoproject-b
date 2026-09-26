@@ -1112,7 +1112,9 @@
   .direction-instruction { font-size: 12px; }
 
   .legend-share-btn { padding: 8px 12px; font-size: 12px; }
-  .legend-voice-btn { padding: 8px 14px; font-size: 11px; }
+  /* 44px minimum touch target — the desktop rule sets min-height: 36px, which
+     is fine for a mouse but too small for a thumb. */
+  .legend-voice-btn { min-height: 44px; padding: 8px 14px; font-size: 11px; }
 
   .legend-warning { padding: 8px 10px; font-size: 11px; }
   .warning-icon svg { width: 12px; height: 12px; }

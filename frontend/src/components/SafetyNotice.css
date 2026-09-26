@@ -75,22 +75,45 @@
   color: var(--sub);
 }
 
-.safety-notice-body p {
+/* Leads with what the product does, not with what it cannot promise. The
+   caveat sits underneath as a short, constructive note rather than framing the
+   whole panel. */
+.safety-notice-lead {
   margin: 0 0 10px;
   color: var(--text);
+  font-weight: 500;
 }
 
-.safety-notice-body ul {
-  margin: 0;
+.safety-notice-list {
+  margin: 0 0 10px;
   padding-left: 18px;
 }
 
-.safety-notice-body li {
+.safety-notice-list li {
   margin-bottom: 6px;
 }
 
-.safety-notice-body li:last-child {
+.safety-notice-list li:last-child {
   margin-bottom: 0;
+}
+
+.safety-notice-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.safety-notice-note {
+  margin: 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  color: var(--sub);
+}
+
+.safety-notice-foot {
+  margin: 8px 0 0;
+  font-size: var(--text-xs);
+  color: var(--sub);
+  opacity: 0.8;
 }
 
 /* ─── Variant: inline (mobile / PWA) ───────────────────────────────────────── */
@@ -135,11 +158,17 @@
 /* ─── Variant: map (desktop) ────────────────────────────────────────────────── */
 
 .safety-notice--map {
+  /* The collapsed pill is a fixed width so the expanded popover below can
+     align to its right edge without measuring anything at runtime. */
+  --sn-gutter: 20px;
+  --sn-pill-w: 200px;
+  --sn-popover-gap: 12px;
+
   position: fixed;
-  left: 20px;
+  left: var(--sn-gutter);
   bottom: 20px;
-  width: 340px;
-  max-width: calc(100vw - 40px);
+  width: var(--sn-pill-w);
+  max-width: calc(100vw - (2 * var(--sn-gutter)));
   /* Above the map and its controls, below the legend panel (999) and modals. */
   z-index: 900;
   font-size: var(--text-md);
@@ -167,17 +196,35 @@
   margin-left: auto;
 }
 
+/* Expanded: a popover to the RIGHT of the pill, bottom-aligned with it.
+ *
+ * The desktop map's left edge is already a control column — the floating button
+ * group is vertically centred at `left: 20px` (z-index 999) with the report
+ * button above it at `bottom: 120px`. A panel anchored bottom-left grows
+ * straight up into that column and the buttons paint over it. Offsetting the
+ * popover horizontally clears the column entirely, so the guidance can never be
+ * occluded *and* the map controls stay visible and clickable. Raising the
+ * z-index instead would only hide the buttons, which is the same failure mode
+ * as the original mobile bug.
+ *
+ * The width also subtracts the legend panel, so at the 1024px breakpoint — the
+ * narrowest desktop layout — the popover still closes short of the panel. */
 .safety-notice--map .safety-notice-body {
-  margin-top: 8px;
+  position: fixed;
+  left: calc(var(--sn-gutter) + var(--sn-pill-w) + var(--sn-popover-gap));
+  bottom: 20px;
+  width: min(360px, calc(100vw - var(--ug-legend-width, 440px) - 260px));
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  margin-top: 0;
+  z-index: 1001;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  max-height: 50vh;
-  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -56,8 +56,9 @@ export default function RouteProvenance({ provenance }) {
             {items.map((item) => <li key={item}>{item}</li>)}
           </ul>
           <p className="legend-provenance-note">
-            Estimates only. Verify conditions on the ground — lighting, surfaces and access
-            can differ from map data. This is navigation guidance, not a safety guarantee.
+            Lighting, surfaces and access can differ from the map — worth a quick look
+            on the ground. Every hazard report you add makes the next route better for
+            everyone.
           </p>
         </>
       )}

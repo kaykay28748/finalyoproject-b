@@ -122,4 +122,37 @@ test.describe("desktop — safety guidance floats on the map", () => {
     await delay(350);
     await expectProfilesClickable(page, "desktop expanded");
   });
+
+  test("expanded guidance is not covered by the floating map buttons", async ({ page }) => {
+    await signIn(page);
+    await page.waitForSelector(".floating-glass-container", { timeout: 20000 });
+    await page.waitForSelector(".safety-notice-toggle", { timeout: 20000 });
+    await delay(500);
+
+    await page.locator(".safety-notice-toggle").click();
+    await delay(400);
+
+    const notice = await page.locator(".safety-notice-body").boundingBox();
+    const floating = await page.locator(".floating-glass-container").boundingBox();
+
+    const overlaps =
+      notice.x < floating.x + floating.width &&
+      notice.x + notice.width > floating.x &&
+      notice.y < floating.y + floating.height &&
+      notice.y + notice.height > floating.y;
+    expect(overlaps, "expanded guidance overlaps the floating button group").toBe(false);
+
+    // The floating buttons must also remain genuinely clickable.
+    const firstBtn = page.locator(".floating-glass-container button").first();
+    await expect(firstBtn).toBeVisible();
+    const hit = await topElementAt(firstBtn);
+    expect(hit.reachable, `floating button covered by ${hit.blocker}`).toBe(true);
+
+    // And the popover must clear the legend panel on the right.
+    const panel = await page.locator(".legend-profiles-bar-inline").boundingBox();
+    expect(
+      notice.x + notice.width,
+      "expanded guidance runs under the legend panel",
+    ).toBeLessThanOrEqual(panel.x);
+  });
 });

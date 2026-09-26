@@ -82,17 +82,39 @@ export default function SafetyNotice({ variant = "inline" }) {
       </button>
 
       <div id={bodyId} className="safety-notice-body" hidden={!open}>
-        <p>
-          Routes are computed estimates, not verified instructions. Lighting, surfaces,
-          gate access and obstacles come from OpenStreetMap and community reports, which
-          may be incomplete or out of date.
+        <p className="safety-notice-lead">
+          Your route isn&apos;t just the shortest path. It weighs live weather, road
+          lighting, surface conditions and community hazard reports, then picks the
+          route that best fits the profile you chose.
         </p>
-        <ul>
-          <li>Check the actual conditions before you set off, especially in poor light or weather.</li>
-          <li>Use your own judgement — a computed route cannot account for breakdowns, closures or your own mobility.</li>
-          <li>Report hazards you find so routes improve for others.</li>
-          <li>In an emergency, contact campus security or local emergency services.</li>
+
+        <ul className="safety-notice-list">
+          <li>
+            <strong>Weather-aware</strong> — rain, fog and poor light change which
+            route wins.
+          </li>
+          <li>
+            <strong>Lighting &amp; surface aware</strong> — dark, unpaved and steep
+            edges cost more, so safer ones are preferred.
+          </li>
+          <li>
+            <strong>Hazard-aware</strong> — active community reports are routed
+            around automatically.
+          </li>
+          <li>
+            <strong>Purpose-built profiles</strong> — Accessible, Night Safety and
+            Fastest each optimise for something different.
+          </li>
         </ul>
+
+        <p className="safety-notice-note">
+          Map data can lag what&apos;s actually on the ground. Spotted a hazard?
+          Report it and the next route will go around it.
+        </p>
+
+        <p className="safety-notice-foot">
+          In an emergency, contact campus security or local emergency services.
+        </p>
       </div>
     </div>
   );
