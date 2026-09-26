@@ -7,6 +7,8 @@ A full-stack **Progressive Web App (PWA)** for context-aware navigation and rout
 > **Backend docs → [`BACKEND.md`](BACKEND.md)**
 >
 > **Report lifecycle → [`REPORT_LIFECYCLE.md`](REPORT_LIFECYCLE.md)**
+>
+> **Routing safety & cost calibration → [`ROUTING_SAFETY.md`](ROUTING_SAFETY.md)**
 
 ---
 
@@ -62,6 +64,7 @@ finalyoproject/
 ├── FRONTEND.md            # Frontend deep-dive (architecture, components, hooks, services)
 ├── BACKEND.md             # Backend deep-dive (schema, routes, middleware, security)
 ├── REPORT_LIFECYCLE.md    # Accessibility report approval → map/routing effect flow
+├── ROUTING_SAFETY.md      # Route cost model: what it weights, its evidence, and what is ungrounded
 │
 ├── frontend/              # React PWA
 │   ├── public/            # PWA manifest, icons, service worker

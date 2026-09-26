@@ -2,7 +2,7 @@
 // Calculates the contextual cost of travelling an edge
 // Used by A* instead of raw distance so routes reflect real-world conditions
 
-import { getTimePeriod, isVehicleRestrictedNow } from "./gateSchedule";
+import { getTimePeriod, isVehicleRestrictedNow, UG_GATES } from "./gateSchedule";
 
 // ─── Gate node IDs ────────────────────────────────────────────────────────────
 let gateNodeIds = {
@@ -386,12 +386,13 @@ const PEAK_HOURS = [8, 9, 12, 13, 16, 17];
 // THIS IS NOT A MEASURED VALUE AND NO LITERATURE CAN MAKE IT ONE. It encodes
 // how much a given user prefers a lit, populated detour over a shorter unlit
 // one — a risk appetite, not a physical fact. The literature establishes only
-// the direction of the effect, never its magnitude, and the same literature
-// shows the magnitude is heterogeneous: Lieu & Guhathakurta (2025) segment by
-// gender/age/income, and women report feeling unsafe walking at night at
-// markedly higher rates than men, with knock-on reductions in nighttime
-// physical activity (Lighting Engineering & Society, par.nsf.gov/servlets/
-// purl/10635625).
+// the direction of the effect, never its magnitude, and it indicates the
+// magnitude is not uniform across people: Breda et al. (2025), "NightLight"
+// (CHI, doi 10.1145/3706598.3714299) note that nighttime sidewalk illumination
+// has a "significant and unequal influence on where and whether pedestrians walk
+// at night", and demographic-stratified route-choice work (Lieu & Guhathakurta
+// 2025) reports differing preferences by group. Note that NightLight is a
+// 13-participant qualitative study and supports direction only, not a value.
 //
 // Treating this as a constant bakes one person's risk appetite into the
 // product for every user. It is the strongest argument for exposing it as a
@@ -765,7 +766,10 @@ function isEdgeNearGate(edge) {
   for (const [key, nodeId] of Object.entries(gateNodeIds)) {
     if (!nodeId) continue;
     if (edge.from === nodeId || edge.to === nodeId) {
-      const { UG_GATES } = require("./gateSchedule");
+      // Was `require("./gateSchedule")` here, which is undefined in an ESM
+      // bundle. That threw a ReferenceError for any edge touching a registered
+      // gate node, and calculateRoutes swallows it — so routes near gates
+      // silently failed to calculate. UG_GATES is now imported statically above.
       return UG_GATES[key];
     }
   }
