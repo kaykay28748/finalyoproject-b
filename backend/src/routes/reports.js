@@ -1,10 +1,61 @@
 // backend/src/routes/reports.js
 import express from 'express';
-import { query } from '../config/db.js';
+import { query, isPostgres } from '../config/db.js';
 import { verifyToken } from '../middleware/auth.js';
 // import { sendReportNotification, sendReportResolutionEmail } from '../services/emailService.js';
 
 const router = express.Router();
+
+// ── PostGIS geometry column ──────────────────────────────────────────────────
+//
+// PostgreSQL gets a real `geometry(Point, 4326)` column populated from the
+// submitted lat/lng, so reports become spatially queryable — radius searches,
+// "hazards near this route", and the campus geofence that follows.
+//
+// Which branch runs is decided by `isPostgres` from config/db.js, NOT by a fresh
+// NODE_ENV check here. That file also picks the database driver from that same
+// flag, so the two cannot disagree — which they would if this file re-derived
+// the condition, and a PostGIS query reaching the SQLite driver is a hard parse
+// error with no useful message.
+//
+// The dev branch omits the column AND the ST_* call rather than stubbing the
+// call. `sqliteCompat.js` can neutralise the function, but it cannot neutralise
+// the column, and a missing column is a different failure from an unknown
+// function. Omitting both keeps the dev schema and the dev query in agreement,
+// and leaves `lat`/`lng` as the local source of truth — which is what every read
+// path in this file already uses.
+//
+// Note the ST_* call uses `?` like the rest of the statement, not `$2`/`$1`.
+// config/db.js rewrites `?` to numbered `$n` for the pg driver; hand-writing
+// numbers here would be rewritten again and corrupt the parameter order.
+//
+// The column is created by postgres-schema.sql. A deployment predating that
+// migration would fail on an unknown column, so the error is caught and the
+// insert retried without geometry rather than rejecting the user's report.
+const GEOM_COLUMN  = 'geom';
+const HAS_GEOM_SQL = `
+      INSERT INTO accessibility_reports
+        (submitted_by, lat, lng, ${GEOM_COLUMN}, location_name, issue_type, custom_description, severity, status, created_at)
+      VALUES
+        (?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+      RETURNING id, submitted_by, lat, lng, location_name, issue_type,
+                custom_description, severity, status, created_at`;
+
+// Matches HAS_GEOM_SQL exactly, with the geometry column and its value removed.
+// Two placeholder-consuming expressions are dropped, so the base parameter list
+// is used unchanged for both shapes.
+const PLAIN_SQL = HAS_GEOM_SQL
+  .replace(`\n        (submitted_by, lat, lng, ${GEOM_COLUMN}, location_name`, '\n        (submitted_by, lat, lng, location_name')
+  .replace('ST_SetSRID(ST_MakePoint(?, ?), 4326), ', '');
+
+// Parameter order for HAS_GEOM_SQL.
+//
+// The geometry value consumes (lng, lat) — PostGIS is x-then-y. A swapped point
+// is a silent bug, not a crash: the row still inserts and still lands somewhere
+// plausible, so the mistake only surfaces as wrong map pins later. Keep lng first.
+function geomInsertParams(userId, lat, lng, locationName, issueType, description, severity) {
+  return [userId, lat, lng, lng, lat, locationName || null, issueType, description || null, severity];
+}
 
 // =============================================
 // POST /api/reports - Submit a new report
@@ -32,15 +83,30 @@ router.post('/', verifyToken, async (req, res) => {
     const parsedLng = parseFloat(lng);
     const parsedSeverity = parseInt(severity, 10);
 
-    const result = await query(
-      `INSERT INTO accessibility_reports
-         (submitted_by, lat, lng, location_name, issue_type, custom_description, severity, status, created_at)
-       VALUES
-         (?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
-       RETURNING id, submitted_by, lat, lng, location_name, issue_type,
-                 custom_description, severity, status, created_at`,
-      [userId, parsedLat, parsedLng, location_name || null, issue_type, custom_description || null, parsedSeverity]
-    );
+    // The user's report is the payload. A missing geom column is schema drift on
+    // our side, so it must never be the reason a hazard gets dropped — report
+    // first, backfill geometry later.
+    const baseParams = [userId, parsedLat, parsedLng, location_name || null, issue_type, custom_description || null, parsedSeverity];
+
+    let result;
+    if (isPostgres) {
+      result = await query(
+        HAS_GEOM_SQL,
+        geomInsertParams(userId, parsedLat, parsedLng, location_name, issue_type, custom_description, parsedSeverity)
+      ).catch(async (err) => {
+        // 42703 undefined_column, 42883 undefined_function (PostGIS not installed
+        // at all), 42P01 undefined_table. All mean "this database cannot store
+        // geometry", which is recoverable; anything else is a real failure and
+        // should surface rather than silently degrade the report.
+        if (err?.code === '42703' || err?.code === '42883' || err?.code === '42P01') {
+          console.warn('[Reports] PostGIS geometry unavailable, saving without geom:', err.message);
+          return query(PLAIN_SQL, baseParams);
+        }
+        throw err;
+      });
+    } else {
+      result = await query(PLAIN_SQL, baseParams);
+    }
 
     const newReport = result.rows[0];
 

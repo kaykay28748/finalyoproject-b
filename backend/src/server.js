@@ -14,6 +14,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import analyticsRoutes, { heatmapRouter } from './routes/analytics.js';
 import reportsRoutes from './routes/reports.js';
+import routingRoutes from './routes/routing.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -465,6 +466,13 @@ app.get('/api/weather/forecast', async (req, res) => {
 // REPORTS ROUTES
 // ============================================
 app.use('/api/reports', reportsRoutes);
+
+// ============================================
+// ROUTING CONTEXT ROUTES
+// ============================================
+// Mounted under /api/routing so the endpoint reads /api/routing/context.
+// Unauthenticated — the frontend needs the geofence verdict before login.
+app.use('/api/routing', routingRoutes);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/admin', adminRoutes);

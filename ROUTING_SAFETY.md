@@ -21,10 +21,10 @@ baseCost = distance
          × campusBonus
          × highwayCost          // road class
          × surfaceCost          // unpaved, mud, gravel…
-         × inclineCost          // gradient
-         × sidewalkCost         // no pavement
+         × inclineCost          // gradient, or of unknown gradient
+         × sidewalkCost         // no pavement, or no evidence of any
          × lightingCost         // dark, or of unknown lighting
-         × trafficCost          // busyness — sign flips at night
+         × trafficCost          // congestion (vehicles) / safety (pedestrians)
          × gateCost             // access restrictions
          × shadeCost            // heat
          × exposedCost          // storm / open ground
@@ -217,6 +217,9 @@ the "optimal route" claim, not to user safety.
 | "Prioritises well-lit, busy roads" | `traffic: 0.8` was lower than Standard's `1.3` — actively de-weighting the signal |
 | Community hazard markers | a failed feed silently dropped *every* penalty while the badge still said "Night Safety" |
 | Silent | start/destination snapped up to **1.1 km** to the nearest node, unmentioned |
+| Accessible: "avoids roads without sidewalks" | untagged `sidewalk` scored as *paved*; the profile could not avoid anything unless someone had explicitly tagged it |
+| Accessible: "avoids steep inclines" | untagged `incline` scored as `"flat"`; `incline` covers 0.3% of local ways, so ~100% of the network graded as a level footway |
+| Night: "prefers well-used roads" | during the *day*, a busy footway cost 1.281× an empty minor path — the model rewarded isolation, the opposite of the stated intent |
 
 A disclaimer does not cure a false statement. If the app says it adjusted for
 rain and it did not, a user who slips has a claim against the *statement*, not
@@ -355,6 +358,16 @@ routing *here*.
 **The slope table from §3 is also nearly inert.** `incline` appears on 5 of 1958
 ways. The Meeder-derived penalties are correct and will matter wherever incline
 is mapped; in this bbox they almost never apply.
+
+**Fixed 2026-09-28 — and the coverage table above is why the fix mattered.** The
+tag bands themselves stay almost unused, because the penalties are now driven by
+the *absence* of the tag. `getInclinePenalty()` returns `UNKNOWN_INCLINE` (1.6) for
+any untagged edge, sitting between `flat` (1.0) and `gentle`-plus, and
+`getSidewalkPenalty()` returns `SIDEWALK_UNKNOWN_PENALTY` (1.35) when a
+motor-traffic road carries no `sidewalk` tag. So 99.7% untagged incline and 97.7%
+untagged sidewalk are no longer silently scored as *the best possible case* — they
+now activate the penalty on their own. Coverage is no longer a reason to discount
+these factors; it is the reason they dominate.
 
 #### The consequence that actually matters
 

@@ -195,6 +195,39 @@ CREATE INDEX IF NOT EXISTS idx_route_segments_lng ON route_segments (lng_bucket)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_route_segments_unique ON route_segments (lat_bucket, lng_bucket, hour_of_day, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_accessibility_reports_status ON accessibility_reports(status);
 CREATE INDEX IF NOT EXISTS idx_accessibility_reports_submitted_by ON accessibility_reports(submitted_by);
+
+-- ============================================
+-- POSTGIS GEOMETRY (accessibility_reports)
+-- ============================================
+-- A derived column mirroring (lat, lng) as geometry(Point, 4326), so hazards are
+-- spatially queryable — radius search, "reports near this route", and the campus
+-- geofence. lat/lng stay as the source of truth: every existing read path uses
+-- them, and SQLite has no spatial type, so the column is PostgreSQL-only.
+--
+-- Wrapped in a DO block because the extension may not be installed on every
+-- database (self-hosted, or a project where PostGIS was never enabled). The
+-- whole block is skipped in that case rather than aborting the migration —
+-- losing report submission to a missing optional column would be a far worse
+-- outcome than not having the derived geometry. reports.js catches the same
+-- 42883/42703 and saves without geom, so both layers degrade independently.
+--
+-- ST_SetSRID(..., 4326) is explicit rather than relying on the default: SRID 0
+-- is what you get from ST_MakePoint alone, and a 4326 column silently accepting a
+-- 0-SRID value produces coordinates that are numerically fine and spatially wrong.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+    EXECUTE 'ALTER TABLE accessibility_reports
+             ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326)';
+
+    -- GIST is what makes ST_DWithin / ST_Contains index-assisted instead of a
+    -- sequential scan. Without it this column is write-only cost, no read benefit.
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_accessibility_reports_geom
+             ON accessibility_reports USING GIST (geom)';
+  ELSE
+    RAISE NOTICE 'postgis not installed — skipping accessibility_reports.geom (reports.js falls back to lat/lng)';
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id ON report_confirmations(report_id);
 CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id);
 CREATE INDEX IF NOT EXISTS idx_report_messages_sender_id ON report_messages(sender_id);

@@ -4,17 +4,48 @@ dotenv.config();
 
 import { adaptSqlForSqlite } from '../db/sqliteCompat.js';
 
-const isProduction = process.env.NODE_ENV === 'production';
+// ── Backend capability: PostgreSQL/PostGIS vs local SQLite ─────────────────────
+//
+// Single source of truth for "are we on PostgreSQL?". It drives the driver
+// selection below AND is exported for callers that need to vary their SQL
+// (e.g. the PostGIS geometry column in routes/reports.js).
+//
+// The two signals are both required, and the reasoning matters:
+//
+//   * NODE_ENV === 'production' — the only signal guaranteed to be set correctly
+//     on Render, where the deploy sets it explicitly.
+//   * DATABASE_URL containing 'supabase' — catches the real failure mode of a
+//     production build started without NODE_ENV set (a forgotten flag, a local
+//     `npm start` against the hosted DB). Without this, that combination loads
+//     the SQLite driver AND produces SQLite SQL, which fails as a confusing
+//     "no such table" rather than "you are pointed at the wrong database".
+//
+// Deriving the driver from the same expression is what keeps the two in step.
+// Checking NODE_ENV in one file and DATABASE_URL in another is how you get a
+// PostGIS query executed against SQLite.
+//
+// Note the asymmetry this creates, which is intentional: a PostgreSQL URL that
+// is NOT Supabase (self-hosted, or a local Postgres for testing) is treated as
+// dev and gets SQLite SQL. That is wrong for such a setup, but it is the safe
+// direction to fail — SQLite-shaped SQL is at least portable, whereas PostGIS
+// SQL against SQLite is a hard parse error. Set NODE_ENV=production to opt in.
+const isPostgres =
+  process.env.NODE_ENV === 'production' ||
+  Boolean(process.env.DATABASE_URL?.includes('supabase'));
+
+// Retained under its original name; existing imports and call sites are unchanged.
+const isProduction = isPostgres;
 let query, closePool, runDevMigrations;
 
-if (isProduction) {
+if (isPostgres) {
   // ── PostgreSQL (Supabase on Render) ────────────────────────────────────────
   const { default: pkg } = await import('pg');
   const { Pool } = pkg;
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    console.error('❌ DATABASE_URL is not defined in production');
+    console.error('❌ DATABASE_URL is not defined but a PostgreSQL connection was required');
+    console.error('   (NODE_ENV=production, or DATABASE_URL points at Supabase)');
     process.exit(1);
   }
 
@@ -26,7 +57,16 @@ if (isProduction) {
     family: 4, // force IPv4 — Render free tier blocks IPv6
   });
 
-  console.log('✅ Connected to Supabase PostgreSQL (Production)');
+  // The host is read from the URL rather than assumed, because isPostgres can now
+  // be true for any PostgreSQL target, not only Supabase.
+  let pgHost = 'unknown';
+  try {
+    pgHost = new URL(connectionString).hostname;
+  } catch {
+    // Non-URL connection strings (e.g. key=value DSNs) are legal for pg; the
+    // hostname is only used for this log line, so a parse failure is not fatal.
+  }
+  console.log(`✅ Connected to PostgreSQL (${pgHost})`);
 
   function convertPlaceholders(sql) {
     let i = 0;
@@ -159,6 +199,17 @@ if (isProduction) {
     driver:   sqlite3.default.Database,
   });
 
+  // Warn when the environment looks production-shaped but resolved to SQLite.
+  // The usual cause is a deploy that forgot NODE_ENV; report writes would go to a
+  // local file and appear to succeed, which is far harder to notice than a crash.
+  if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL?.includes('supabase')) {
+    console.warn(
+      '[DB] ⚠️  NODE_ENV=production but DATABASE_URL does not look like Supabase — ' +
+      'falling back to SQLite. Reports will be written to a local file, not the hosted database. ' +
+      'Set DATABASE_URL to your Supabase connection string.'
+    );
+  }
+
   console.log('✅ Connected to SQLite (Development)');
 
   query = async (sql, params = []) => {
@@ -194,4 +245,8 @@ if (isProduction) {
   };
 }
 
-export { query, closePool, runDevMigrations, isProduction };
+// isProduction is an alias of isPostgres, kept so existing call sites keep working.
+// New code that cares about SQL dialect should use isPostgres — it names what is
+// actually being decided, and avoids implying "production" is a reliable signal on
+// its own (see the derivation above).
+export { query, closePool, runDevMigrations, isProduction, isPostgres };
