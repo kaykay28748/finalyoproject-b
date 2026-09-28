@@ -18,8 +18,20 @@ function decisionDistanceMeters(lat, lng, decision) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/**
+ * A verdict is settled (no longer able to disqualify a route) once it has expired.
+ *
+ * The NaN case matters: an unparseable `expires_at` yields NaN, and `Date.now() >= NaN`
+ * is false, so the guard would treat it as live forever. The cost model
+ * (decayDecisionPenalty) deals with the same malformed input by starting a bounded
+ * fallback window; this must agree with that, or a route can be rejected by the guard
+ * for a verdict the cost model has already let decay away. Unusable data is therefore
+ * NOT treated as settled.
+ */
 function isDecisionSettled(decision) {
-  return Date.now() >= new Date(decision.expires_at).getTime();
+  const expiresAt = new Date(decision.expires_at).getTime();
+  if (!Number.isFinite(expiresAt)) return false;
+  return Date.now() >= expiresAt;
 }
 
 /**
@@ -43,12 +55,19 @@ function assessRouteDecisions(route, decisions) {
       if (decision.verdict === "ignore" || seen.has(decision.id)) continue;
       if (decisionDistanceMeters(midLat, midLng, decision) <= DECISION_PROXIMITY_METERS) {
         seen.add(decision.id);
+        // Skip settled verdicts entirely. Previously they still landed in `near`, so
+        // an expired block kept the route tagged "avoid" and kept appearing in
+        // `incidents` — i.e. the UI kept warning about a hazard the cost model had
+        // already decayed to 1.0, long after the road had been signed off. Only
+        // `severe` honoured isDecisionSettled; the label and the warning list did not.
+        if (isDecisionSettled(decision)) continue;
         near.push(decision);
       }
     }
   }
 
-  const severe = near.some((d) => d.verdict === "block" && !isDecisionSettled(d));
+  // Every surviving entry is live, so any `block` among them disqualifies the route.
+  const severe = near.some((d) => d.verdict === "block");
   return {
     primary: severe ? "block" : near.length ? "avoid" : "clear",
     usable: !severe,

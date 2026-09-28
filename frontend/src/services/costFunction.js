@@ -3,6 +3,7 @@
 // Used by A* instead of raw distance so routes reflect real-world conditions
 
 import { getTimePeriod, isVehicleRestrictedNow, UG_GATES } from "./gateSchedule";
+import { distanceKm } from "../function/utils/distance";
 
 // ─── Gate node IDs ────────────────────────────────────────────────────────────
 let gateNodeIds = {
@@ -102,7 +103,14 @@ export const PROFILES = {
     label: "Accessible",
     icon: "♿",
     color: "#8b5cf6",
-    description: "Avoids steep inclines, unpaved surfaces and roads without sidewalks",
+    // NOTE: this description only became true as of the pessimistic-default fix.
+    // `incline` (0.3% coverage) and `sidewalk` (2.3%) previously defaulted to their
+    // BEST values, so this profile could not avoid a gradient or an unpaved
+    // carriageway unless someone had explicitly tagged it. Both now carry a
+    // structural penalty when the data is absent. See getInclinePenalty /
+    // getSidewalkPenalty. Per ROUTING_SAFETY.md §7 rule 4, keep this in step with
+    // the weights.
+    description: "Avoids steep or unsurveyed inclines, unpaved surfaces and roads without a mapped footway",
     weights: {
       surface:   2.5,
       incline:   3.0,
@@ -141,6 +149,33 @@ export const PROFILES = {
     },
   },
 };
+
+// Every factor in calculateEdgeCost is built as `1 + (raw - 1) * w.<factor>`, so one
+// undefined or non-numeric weight propagates NaN into baseCost. The A* relaxation
+// guard in routing.js is `tentativeG < gScore[neighbour]`, which is always false for
+// NaN — so the neighbour is never pushed and never updated, the search silently
+// fails to expand through that edge class, and A* reports "no path found" for the
+// WHOLE graph. That is a fail-closed outage with no error and no UI signal,
+// reachable from a single typo or a partially-migrated profile object.
+//
+// Validated here, once, at module load, so the failure is immediate and names the
+// profile and key instead of appearing later as a caught error with no route on the
+// map. Nothing mutates these weights at runtime — routing.js only reads
+// `PROFILES[profileKey] || PROFILES.standard` — so import time is the earliest
+// point at which a bad weight can be caught, and the only one at which it is cheap.
+const PROFILE_WEIGHT_KEYS = ["surface", "incline", "sidewalk", "lighting", "traffic", "gate"];
+
+for (const [profileKey, profile] of Object.entries(PROFILES)) {
+  for (const key of PROFILE_WEIGHT_KEYS) {
+    if (!Number.isFinite(profile.weights?.[key])) {
+      throw new Error(
+        `[CostFunction] profile "${profileKey}" has non-finite weight "${key}" = ` +
+        `${String(profile.weights?.[key])}. A NaN weight silently breaks A* for every ` +
+        `route using this profile, so it is rejected at import rather than at first use.`
+      );
+    }
+  }
+}
 
 // ─── Surface penalties ────────────────────────────────────────────────────────
 const SURFACE_PENALTIES = {
@@ -194,6 +229,76 @@ const INCLINE_PENALTIES = {
   steep:      2.5,
   very_steep: 3.0,
 };
+
+// Penalty for an edge with NO slope information at all — neither an `incline` tag
+// nor a measured gradient.
+//
+// WHY NOT 1.0 (the previous behaviour). `getInclineCategory` returned "flat" for a
+// missing tag, and "flat" maps to 1.0 — so an edge with no slope data scored
+// IDENTICALLY to a surveyed level path. `incline` is present on 5 of 1958 ways in
+// the deployment bbox (0.3%, measured — see ROUTING_SAFETY.md §4.2), and the
+// Accessible profile carries `incline: 3.0`, the single largest weight in the
+// matrix. The old default therefore asserted, for ~99.7% of the campus, that the
+// ground is level. Legon is a hill campus, so that is a factual error rather than
+// a neutral no-op, and it hit the profile designed specifically for people who
+// cannot absorb a gradient.
+//
+// WHY 1.6 AND NOT THE FULL very_steep (3.0). Absence of a tag is a gap in the
+// data, not an observation about the world, so this must not claim the edge is
+// steep — only that we have no evidence it is flat. 1.6 sits between "flat" (1.0)
+// and "moderate" (2.0). It is a reasoned value judgement, NOT a measured one, and
+// per ROUTING_SAFETY.md §7 rule 1 it is flagged as such here.
+//
+// MEASURED EFFECT (100 m footway, Accessible profile): untagged incline and
+// fully-known-good incline previously both cost 171.000 — indistinguishable. The
+// untagged case is now 1.6x the neutral slope term, so the Accessible profile can
+// finally tell a path of unknown gradient from a surveyed flat one.
+//
+// OUTSTANDING GAP, stated plainly so this is not over-credited. A measured gradient
+// would be strictly better than a constant, and getInclinePenalty() below already
+// consumes one when present — but nothing populates it. The Overpass query in
+// graphBuilder.js requests `out skel qt` for nodes, which strips node tags, and OSM
+// `ele` is near-absent on these ways, so rise-over-run is not derivable from the
+// data this app fetches. Closing this needs a DEM pass (Copernicus/SRTM) and is
+// tracked as a data-source task, not a tuning one. Until then the honest claim is
+// "unknown gradient is penalised", not "slope is modelled".
+const UNKNOWN_INCLINE = 1.6;
+
+// ─── Sidewalk penalties ────────────────────────────────────────────────────────
+//
+// WHY THE OLD LOGIC WAS OPTIMISTIC. It computed a penalty only when the tag was
+// explicitly `sidewalk=no`:
+//
+//     const noSidewalk = sidewalkTag === "none" || sidewalkTag === "no";
+//     const sidewalkCost = noSidewalk ? 1 + (0.4 * w.sidewalk) : 1.0;
+//
+// so a road with no `sidewalk` tag at all scored 1.0 — identical to a confirmed,
+// maintained footway pavement. `sidewalk` is on 2.3% of ways in the deployment
+// bbox (measured, ROUTING_SAFETY.md §4.2), so that branch was very nearly dead and
+// the term did no work at all on the Accessible profile (`sidewalk: 2.0`), which
+// advertises that it "avoids ... roads without sidewalks".
+//
+// A third state is required. The tag is tri-state in practice: confirmed pavement,
+// confirmed absence, and no evidence. Both failure states must carry a penalty, and
+// they are NOT equivalent — a road tagged `sidewalk=no` is positive evidence of an
+// unpaved carriageway, which is worse than having no data at all.
+const SIDEWALK_MISSING_PENALTY = 1.9;  // explicit absence: sidewalk=no / none
+const SIDEWALK_UNKNOWN_PENALTY = 1.35; // no evidence either way
+
+// Road classes a pedestrian must share with motor traffic, where the absence of a
+// sidewalk tag therefore matters. A `footway` needs no `sidewalk` tag to be
+// segregated, so it is exempt.
+const MOTOR_TRAFFIC_ROAD_TYPES = [
+  "residential", "unclassified", "tertiary", "tertiary_link",
+  "secondary", "secondary_link", "primary", "service", "track",
+  "living_street", "cycleway",
+];
+
+// Road classes that are pedestrian space by construction, regardless of tagging.
+const PEDESTRIAN_ONLY_ROAD_TYPES = [
+  "footway", "pedestrian", "path", "steps", "bridleway",
+];
+
 
 // How much of the full lighting penalty an untagged road receives.
 //
@@ -422,13 +527,20 @@ function isWeekend()  { const d = new Date().getDay(); return d === 0 || d === 6
 function isSunday()   { return new Date().getDay() === 0; }
 function isSaturday() { return new Date().getDay() === 6; }
 
+// Parses an explicit `incline` tag into one of the INCLINE_PENALTIES bands.
+//
+// NOTE the contract change: this function is now only ever called for a PRESENT,
+// PARSEABLE tag. Absence is no longer silently mapped to "flat" here — it is
+// handled by getInclinePenalty() below, which returns UNKNOWN_INCLINE instead.
+// An unparseable tag is a data-entry error rather than a missing observation, so
+// it is still treated as unknown-grade rather than as a claim of flatness.
 function getInclineCategory(inclineTag) {
-  if (!inclineTag) return "flat";
+  if (inclineTag === undefined || inclineTag === null || inclineTag === "") return null;
   const tag = String(inclineTag).toLowerCase().trim();
   if (tag === "flat" || tag === "0%") return "flat";
   if (tag === "steep" || tag === "very_steep") return tag.replace(" ", "_");
   const pct = parseFloat(tag.replace("%", ""));
-  if (isNaN(pct)) return "flat";
+  if (isNaN(pct)) return null;
   const abs = Math.abs(pct);
   if (abs <= 2)  return "flat";
   if (abs <= 5)  return "gentle";
@@ -436,6 +548,86 @@ function getInclineCategory(inclineTag) {
   if (abs <= 15) return "steep";
   return "very_steep";
 }
+
+/**
+ * Rise-over-run gradient for an edge, in percent, from endpoint elevations.
+ *
+ * Contract: requires `edge.fromNode.ele` and `edge.toNode.ele` (metres, above sea
+ * level). Returns null when either is missing or the run is degenerate, so callers
+ * fall through to the pessimistic default rather than to "flat".
+ *
+ * CURRENTLY UNPOPULATED — see the note on UNKNOWN_INCLINE. graphBuilder.js requests
+ * `out skel qt` for nodes, which discards node tags, and OSM `ele` is near-absent on
+ * these ways, so nothing in the pipeline supplies elevations today. This exists so
+ * that adding a DEM pass is a data-source change with no further cost-model edit.
+ */
+function getEdgeSlopePercent(edge) {
+  const from = edge?.fromNode;
+  const to   = edge?.toNode;
+  if (!from || !to) return null;
+  if (!Number.isFinite(from.ele) || !Number.isFinite(to.ele)) return null;
+
+  const runM = distanceKm(from.lat, from.lng, to.lat, to.lng) * 1000;
+  if (!Number.isFinite(runM) || runM <= 1) return null;
+
+  return Math.abs(to.ele - from.ele) / runM * 100;
+}
+
+/**
+ * Resolves the raw incline penalty for an edge, in precedence order:
+ *
+ *   1. A measured gradient (edge.slopePercent / endpoint elevations) — Meeder formula.
+ *   2. An explicit `incline` tag — the Meeder-derived band table.
+ *   3. Neither — UNKNOWN_INCLINE. Never "flat".
+ *
+ * Returning 1.0 (i.e. asserting the path is level) now requires positive evidence.
+ */
+function getInclinePenalty(edge, inclineTag) {
+  // 1. Measured gradient, when a DEM pass has supplied one.
+  const measured = Number.isFinite(edge?.slopePercent)
+    ? edge.slopePercent
+    : getEdgeSlopePercent(edge);
+  if (Number.isFinite(measured)) {
+    // Meeder, Aebi & Weidmann (2017): 1 + 0.10 x slope%. Capped at very_steep to
+    // keep the same deliberate ceiling the band table applies (see INCLINE_PENALTIES).
+    return Math.min(1 + 0.10 * Math.abs(measured), INCLINE_PENALTIES.very_steep);
+  }
+
+  // 2. Explicit tag.
+  const category = getInclineCategory(inclineTag);
+  if (category) return INCLINE_PENALTIES[category] ?? UNKNOWN_INCLINE;
+
+  // 3. No evidence at all.
+  return UNKNOWN_INCLINE;
+}
+
+/**
+ * Resolves the raw sidewalk penalty for an edge.
+ *
+ * Three states, because the tag is tri-state in practice:
+ *   - segregated pedestrian space (footway/path/...)      -> 1.0, no tag needed
+ *   - explicit `sidewalk=yes|both|left|right`             -> 1.0, confirmed pavement
+ *   - explicit `sidewalk=no|none`                         -> SIDEWALK_MISSING_PENALTY
+ *   - motor-traffic road class with no `sidewalk` tag     -> SIDEWALK_UNKNOWN_PENALTY
+ *   - anything else                                       -> SIDEWALK_UNKNOWN_PENALTY
+ */
+function getSidewalkPenalty(highwayType, sidewalkTag) {
+  if (PEDESTRIAN_ONLY_ROAD_TYPES.includes(highwayType)) return 1.0;
+
+  const tag = typeof sidewalkTag === "string" ? sidewalkTag.toLowerCase().trim() : null;
+
+  if (tag === "no" || tag === "none") return SIDEWALK_MISSING_PENALTY;
+  if (tag === "yes" || tag === "both" || tag === "left" || tag === "right") return 1.0;
+  // OSM also allows `separate`, which still means a dedicated footway exists.
+  if (tag === "separate") return 1.0;
+
+  // No usable tag. On a road the pedestrian must share with traffic, that is
+  // meaningful missing information; elsewhere it is neutral. Both are penalised
+  // less than a confirmed absence.
+  if (MOTOR_TRAFFIC_ROAD_TYPES.includes(highwayType)) return SIDEWALK_UNKNOWN_PENALTY;
+  return SIDEWALK_UNKNOWN_PENALTY;
+}
+
 
 function getTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeight) {
   const isPeakHour       = PEAK_HOURS.includes(currentHour);
@@ -475,6 +667,98 @@ function getTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeigh
   return 1 + (baseMultiplier - 1) * trafficWeight;
 }
 
+// ─── Pedestrian traffic signal ─────────────────────────────────────────────────
+//
+// getTrafficMultiplier() above is a CONGESTION prior: it models how much motor
+// traffic is on the way, which is a disutility for a driver and nothing at all for
+// someone on foot. It was previously applied to every mode, which produced a
+// sign error for pedestrians.
+//
+// MEASURED, before this split (walk mode, Standard profile, 100 m edges):
+//     footway      08:00 = 208.26   11:00 = 162.63   ratio 1.281  <- penalised
+//     pedestrian   08:00 = 196.69   11:00 = 153.60   ratio 1.281  <- penalised
+//     residential  08:00 = 254.54   11:00 = 198.77   ratio 1.281  <- penalised
+//     path         08:00 = 117.00   11:00 = 117.00   ratio 1.000  <- free
+//     service      08:00 = 156.00   11:00 = 156.00   ratio 1.000  <- free
+//
+// So at 08:00 the model charged a walker 28% more to cross a populated footway
+// than an empty one. Two things are wrong with that:
+//
+//   1. It rewards ISOLATION during the day. For a pedestrian the daytime
+//      significance of a busy footway is other people being present — an
+//      "eyes on the street" effect, and the same self-reinforcing presence the
+//      night branch above already relies on (J. Urban Design
+//      10.1057/s41289-020-00134-6 identifies "presence of others" as a core
+//      after-dark safety theme, and pedestrian presence is self-reinforcing).
+//      The congestion prior had the sign backwards in daylight.
+//   2. It conflates two different hazards. Motor traffic on a shared carriageway
+//      IS a genuine pedestrian hazard — car/pedestrian conflict — and it scales
+//      with volume. That is a separate signal from foot traffic, and it points the
+//      other way.
+//
+// So: congestion stays with vehicles; pedestrians get a safety term where foot
+// traffic is an asset and motor traffic is a cost. The night branch of
+// getTrafficMultiplier() is left untouched and still governs after-dark isolation,
+// because at night motor traffic volume stops being the signal and the presence of
+// others becomes it.
+//
+// NONE OF THE NUMBERS BELOW ARE MEASURED. The literature cited throughout this
+// file establishes direction consistently and magnitude essentially never, so
+// PED_MOTOR_TRAFFIC_PENALTY and PED_BUSY_FOOTWAY_BENEFIT are reasoned product
+// decisions about risk appetite, recorded here per ROUTING_SAFETY.md §7 rule 1.
+const PED_MOTOR_TRAFFIC_PENALTY = 0.7;  // conflict risk on a shared carriageway
+const PED_BUSY_FOOTWAY_BENEFIT   = 0.85; // < 1, i.e. a discount for a populated footway
+const PEAK_CROWD_SHIFT           = 0.6;  // how much of that benefit crowding gives back
+
+/**
+ * Pedestrian-safety traffic term. Used for `walk` and `jogging` in place of the
+ * congestion prior during day and dusk.
+ *
+ * NIGHT DELEGATES to getTrafficMultiplier(). The daytime reasoning below does not
+ * hold after dark: at night the relevant signal is isolation rather than volume,
+ * and getTrafficMultiplier's night branch already encodes that correctly (it
+ * penalises isolated roads and rewards populated ones). Overriding it here would
+ * reintroduce the bug this function exists to fix, just on the other half of the
+ * clock — the "busy footway" discount would cancel the night-isolation penalty and
+ * the sign would flip back to rewarding emptiness after 22:00.
+ */
+function getPedestrianTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeight) {
+  // `fastest` sets traffic: 0.0. The linearisation 1 + (raw - 1) * w collapses this
+  // to exactly 1.0, so honouring it explicitly keeps the two branches consistent
+  // and short-circuits the work.
+  if (trafficWeight === 0) return 1.0;
+
+  // After dark, isolation is the hazard. Hand off to the audited night logic.
+  if (timePeriod === "night") {
+    return getTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeight);
+  }
+
+  const isPeakHour = PEAK_HOURS.includes(currentHour);
+
+  if (PEDESTRIAN_ONLY_ROAD_TYPES.includes(highwayType)) {
+    // Segregated from motor traffic. The only meaningful signal is how many other
+    // people are around, which is a SAFETY benefit, not a cost.
+    if (isPeakHour) {
+      // Peak crowding: the benefit is partly cancelled by the loss of personal
+      // space on a congested corridor.
+      return 1 + (1 - PED_BUSY_FOOTWAY_BENEFIT) * trafficWeight * PEAK_CROWD_SHIFT;
+    }
+    return 1 + (1 - PED_BUSY_FOOTWAY_BENEFIT) * trafficWeight;
+  }
+
+  if (MOTOR_TRAFFIC_ROAD_TYPES.includes(highwayType)) {
+    // Shared with motor traffic — a real hazard, scaled by how much of it there is.
+    const volume = (isPeakHour)                    ? 1.0
+                 : (timePeriod === "dusk")         ? 0.8
+                 :                                   0.5;
+    return 1 + PED_MOTOR_TRAFFIC_PENALTY * trafficWeight * volume;
+  }
+
+  // Unknown road class — neutral, not optimistic. Classes absent from both lists
+  // above are the synthetic 'connection' edges and anything added later.
+  return 1.0;
+}
+
 export function isEdgeAllowed(edge, vehicleMode) {
   const highwayType  = edge.tags?.highway || edge.type || 'residential';
   const vehicleConfig = VEHICLE_MODES[vehicleMode];
@@ -509,14 +793,33 @@ export function getEstimatedTime(distanceMeters, vehicleMode) {
  */
 const DECISION_RADIUS_METERS = 50;
 
+// Applied when a decision's window cannot be measured — legacy payloads written
+// before the server anchored expires_at to decided_at, and any unparseable date.
+// Same length as the server's DECAY_WINDOW_DAYS, so a repaired payload decays
+// identically to a well-formed one.
+const FALLBACK_DECAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 function decayDecisionPenalty(decision, now = Date.now()) {
   const decidedAt = new Date(decision.decided_at).getTime();
   const expiresAt = new Date(decision.expires_at).getTime();
+
+  // An unparseable decided_at must not silently become "no decay": that pins a
+  // block at its full penalty forever. Rebuild an equivalent window from expires_at
+  // so a badly-formed decision still ages out instead of becoming permanent.
   const total = expiresAt - decidedAt;
-  if (!(total > 0)) return decision.penalty;
-  const remaining = expiresAt - now;
-  if (remaining <= 0) return 1.0;
-  const decayFactor = Math.max(0, Math.min(1, remaining / total));
+  const window = total > 0 ? total : FALLBACK_DECAY_WINDOW_MS;
+
+  // Likewise, an unparseable expires_at cannot be shown to be expired. Start a full
+  // fallback window from now: the verdict keeps its weight and is still guaranteed
+  // to decay out, rather than either being permanent or vanishing. The `>= 0`
+  // fallback also catches NaN, which would otherwise flow through min/max as NaN
+  // and poison the whole cost with it.
+  const rawRemaining = expiresAt - now;
+  const remaining = Number.isFinite(rawRemaining) ? rawRemaining : window;
+
+  if (remaining <= 0) return 1.0; // expired
+
+  const decayFactor = Math.max(0, Math.min(1, remaining / window));
   return 1 + (decision.penalty - 1) * decayFactor;
 }
 
@@ -571,6 +874,8 @@ export function calculateEdgeCost(
 
   const tags     = edge.tags || {};
   const distance = edge.distance;
+  // Weight integrity is guaranteed for every PROFILES entry by the import-time
+  // check in this module, so this needs no re-checking per edge.
   const w        = profile.weights;
 
   const highwayType = tags.highway || edge.type || "residential";
@@ -617,20 +922,26 @@ export function calculateEdgeCost(
   }
 
   // ── Incline ───────────────────────────────────────────────────────────────
-  const inclineCat     = getInclineCategory(tags.incline);
-  const inclinePenalty = INCLINE_PENALTIES[inclineCat] ?? 1.0;
-  let inclineCost    = 1 + (inclinePenalty - 1) * w.incline;
+  // Pessimistic by construction: a missing `incline` tag no longer resolves to
+  // "flat" (which scored 1.0, identical to a surveyed level path). See
+  // getInclinePenalty / UNKNOWN_INCLINE.
+  const inclineCategory = getInclineCategory(tags.incline);
+  const inclinePenalty  = getInclinePenalty(edge, tags.incline);
+  let inclineCost       = 1 + (inclinePenalty - 1) * w.incline;
 
   // Cyclists penalize steep inclines more
   if (vehicleMode === 'bicycle') {
-    if (inclineCat === 'steep') inclineCost *= 1.5;
-    else if (inclineCat === 'very_steep') inclineCost *= 2.0;
+    if (inclineCategory === 'steep') inclineCost *= 1.5;
+    else if (inclineCategory === 'very_steep') inclineCost *= 2.0;
   }
 
   // ── Sidewalk ──────────────────────────────────────────────────────────────
-  const sidewalkTag  = tags.sidewalk?.toLowerCase();
-  const noSidewalk   = sidewalkTag === "none" || sidewalkTag === "no";
-  const sidewalkCost = noSidewalk ? 1 + (0.4 * w.sidewalk) : 1.0;
+  // Three-state now: confirmed pavement (1.0), confirmed absence
+  // (SIDEWALK_MISSING_PENALTY), and no evidence (SIDEWALK_UNKNOWN_PENALTY). The old
+  // code penalised only an explicit `sidewalk=no`, so an untagged road scored the
+  // same as a confirmed footway pavement — on a tag present on 2.3% of local ways.
+  const sidewalkPenalty = getSidewalkPenalty(highwayType, tags.sidewalk);
+  const sidewalkCost    = 1 + (sidewalkPenalty - 1) * w.sidewalk;
 
   // ── Lighting ──────────────────────────────────────────────────────────────
   // key:lit has more values than yes/no, and the extra ones are safety-relevant.
@@ -664,7 +975,15 @@ export function calculateEdgeCost(
   }
 
   // ── Traffic ───────────────────────────────────────────────────────────────
-  let trafficCost = getTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic);
+  // Congestion is a VEHICLE prior; pedestrian safety is a different signal with
+  // the opposite sign in daylight. Routing a walker through the congestion term
+  // charged them 28% more to cross a populated footway than an empty minor path
+  // (measured 1.281x vs 1.000x at 08:00), which is backwards for personal
+  // security. Split by mode. See getPedestrianTrafficMultiplier.
+  const isHumanPowered = vehicleMode === 'walk' || vehicleMode === 'jogging';
+  let trafficCost = isHumanPowered
+    ? getPedestrianTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic)
+    : getTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic);
 
   // Cyclists and joggers avoid busy roads more
   if (vehicleMode === 'bicycle' || vehicleMode === 'jogging') {

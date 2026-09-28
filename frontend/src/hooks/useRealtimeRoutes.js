@@ -1,5 +1,5 @@
 // hooks/useRealtimeRoutes.js
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { getAllRoutes, findNearestNode } from "../services/routing";
 import { fetchDecisionFeed } from "../services/reportService";
 import { fetchWeather, getWeatherMultipliers } from "../services/weatherService";
@@ -266,7 +266,45 @@ export function useRealtimeRoutes({
     for (const profile of ["standard", "fastest", "accessible", "night"]) {
       if (routes[profile]?.usable !== false) return routes[profile];
     }
+    // Every candidate is blocked. Returning `requested` keeps a map on screen
+    // rather than blanking it, but it is a route through a signed-off hazard —
+    // so routeGuardNotice below reports it rather than presenting it as normal.
     return requested ?? null;
+  }, [routes, activeProfile]);
+
+  /**
+   * Surfaces the route guard to the user instead of applying it silently.
+   *
+   * getPrimaryRoute() swapping profiles is invisible by construction: the user
+   * asked for a route and gets a different one with no indication anything was
+   * wrong. And in the all-blocked case the blocked route is returned anyway. Both
+   * are the guard working, but neither tells the walker that a hazard they may have
+   * reported is affecting the path they are about to walk — which is the one piece
+   * of information that makes the remaining route trustworthy.
+   *
+   * Returns null when the guard had nothing to do.
+   */
+  const routeGuardNotice = useMemo(() => {
+    const requested = routes[activeProfile];
+    if (!requested?.coordinates?.length) return null;
+
+    const blocked = requested.usable === false;
+    const servedByDemotion = !blocked && activeProfile !== "standard" &&
+      routes.standard?.coordinates?.length && requested !== routes.standard &&
+      (requested.decisions?.primary === "avoid" || requested.decisions?.incidents?.length);
+
+    if (!blocked && !servedByDemotion) return null;
+
+    const block = requested.decisions?.incidents?.find((d) => d.verdict === "block");
+
+    return {
+      type: blocked ? "block" : "warn",
+      icon: blocked ? "\u26D4" : "\u26A0\uFE0F",
+      message: blocked
+        ? `All routes pass a hazard near ${block?.location_name || "your route"}. Showing the least-bad path \u2014 please check ${block?.issue_type || "the area"} before setting off.`
+        : `Switched from ${ROUTE_PROFILES[activeProfile]?.label || activeProfile} because it passes a reported hazard.`,
+      decision: block ?? requested.decisions?.incidents?.[0] ?? null,
+    };
   }, [routes, activeProfile]);
   
   const getAlternativeRoutes = useCallback(() => {
@@ -288,6 +326,7 @@ export function useRealtimeRoutes({
     decisionFeed,
     weatherBasis,
     hazardFeedState,
+    routeGuardNotice,
     primaryRoute:       getPrimaryRoute(),
     alternativeRoutes:  getAlternativeRoutes(),
     isLoading,

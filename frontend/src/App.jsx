@@ -224,6 +224,7 @@ export default function App() {
     routes,
     weatherBasis,
     hazardFeedState,
+    routeGuardNotice,
     decisionFeed,
   } = useRealtimeRoutes({
     graph,
@@ -264,6 +265,14 @@ export default function App() {
 
   if (snapWarning) {
     warnings.push({ type: "warn", icon: "📍", message: snapWarning });
+  }
+
+  // The route guard is otherwise invisible: the user picks a profile and silently
+  // gets a different path, or gets the only path left when all four are blocked.
+  // Reuse the existing warning channel rather than adding a new banner, so it sits
+  // alongside the other route caveats and is dismissed the same way.
+  if (routeGuardNotice) {
+    warnings.push(routeGuardNotice);
   }
 
   // What this route is actually based on. Surfaced in the UI so the user is

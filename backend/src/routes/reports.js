@@ -129,7 +129,26 @@ const VERDICT_SIGNALS = {
 function computeReportVerdict(report, confirmers, reporterReputation = 1) {
   const now = Date.now();
   const created = new Date(report.created_at).getTime();
-  const expiresAt = new Date(created + VERDICT_SIGNALS.DECAY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+  // The decay window must start when the VERDICT was made, not when the report was
+  // filed.
+  //
+  // These were previously mismatched: expires_at was created_at + 30d while
+  // decided_at was reviewed_at. costFunction.decayDecisionPenalty computes
+  // `total = expires_at - decided_at` and, when that is not positive, returns the
+  // raw penalty with NO decay at all. So any report an admin approved more than 30
+  // days after submission — a vacation backlog, a re-approved old report, a
+  // moderation queue that ran long — took that branch and held a permanent 9999
+  // block on its edge, which is precisely the outcome the decay exists to prevent
+  // (see the docstring on decayDecisionPenalty). The inverse was also true: a
+  // report approved inside the window could be delivered already decayed, so an
+  // admin's explicit approval did not earn the full penalty it should.
+  //
+  // An admin deciding "this is real" is making that decision NOW, and is entitled
+  // to a full window from that moment.
+  const reviewedAt = report.reviewed_at ? new Date(report.reviewed_at).getTime() : NaN;
+  const decidedAt = Number.isFinite(reviewedAt) ? reviewedAt : created;
+  const expiresAt = decidedAt + VERDICT_SIGNALS.DECAY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
   // Admin approval short-circuits confidence to 1.0; corroborations + reputation
   // add up to 0.95 without a human review (B.2 reference table).
@@ -143,9 +162,25 @@ function computeReportVerdict(report, confirmers, reporterReputation = 1) {
 
   let verdict = 'ignore';
   let penalty = 1.0;
-  if (isConstructionBlock && confidence >= 0.7) {
-    verdict = 'block';
-    penalty = 9999;
+  if (isConstructionBlock) {
+    // Hard-blocking a whole edge needs a human decision, not a machine threshold.
+    // A block makes the edge effectively impassable (cost 9999 * distance), which
+    // can cut a street off entirely. The corroboration+reputation sum can reach
+    // 0.95 with no admin ever looking at it, so an unreviewed report that cleared
+    // the old 0.7 bar was closing roads on the strength of unverified
+    // confirmations alone.
+    //
+    // `block` is therefore reserved for an admin-approved report. An unreviewed
+    // construction report still routes around the hazard, but at `avoid` strength,
+    // and only once there is real signal (>= 0.4) to act on. Below that it stays
+    // `ignore` rather than nudging the route on one weak confirmation.
+    if (report.status === 'approved') {
+      verdict = 'block';
+      penalty = 9999;
+    } else if (confidence >= 0.4) {
+      verdict = 'avoid';
+      penalty = 1 + (2.0 - 1) * confidence;
+    }
   } else if (report.severity >= 2 && confidence >= 0.4) {
     verdict = 'avoid';
     const maxMultiplier = report.severity === 3 ? 3.0 : 2.0;
@@ -164,8 +199,12 @@ function computeReportVerdict(report, confirmers, reporterReputation = 1) {
     confirmers,
     penalty: Math.round(penalty * 100) / 100,
     reputation: reporterReputation ?? 1,
-    decided_at: report.reviewed_at || report.updated_at || report.created_at,
-    expires_at: expiresAt.toISOString(),
+    // MUST be the same value `expiresAt` was measured from, or the client's
+    // `total = expires_at - decided_at` goes non-positive again and decay silently
+    // switches off. Previously this fell back to `updated_at` while expires_at
+    // was anchored to `created_at` — two different clocks.
+    decided_at: new Date(decidedAt).toISOString(),
+    expires_at: new Date(expiresAt).toISOString(),
   };
 }
 
