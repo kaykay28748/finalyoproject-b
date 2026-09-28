@@ -237,7 +237,11 @@ export function findShortestPath(
   profileKey  = "standard",
   vehicleMode = "walk",
   decisions = [],
-  weatherMultipliers = undefined
+  weatherMultipliers = undefined,
+  // Geographic context from the backend geofence, threaded through to
+  // calculateEdgeCost(). Defaults inside costFunction.js when omitted, so every
+  // other call site of this function is unaffected.
+  sandboxContext = undefined
 ) {
   if (!graph?.nodes || !graph?.edges) {
     console.error("[Routing] Invalid graph");
@@ -369,7 +373,8 @@ export function findShortestPath(
         incomingBearing,
         goalBearing,
         context.weatherMultipliers,
-        decisions
+        decisions,
+        sandboxContext
       );
 
       const tentativeG = currentG + edgeCost;
@@ -477,19 +482,24 @@ export async function getAllRoutes(
   endNodeId,
   vehicleMode = "walk",
   decisions = [],
-  weatherMultipliers = undefined
+  weatherMultipliers = undefined,
+  // Geographic context from the backend geofence. Forwarded to every profile's
+  // A* run so all four are costed against the same context — mixing contexts
+  // would make the profile switcher compare routes built on different
+  // assumptions, which is not a meaningful comparison.
+  sandboxContext = undefined
 ) {
   const startTime = performance.now();
 
   const [standard, fastest, accessible, night] = await Promise.all([
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, decisions, weatherMultipliers)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, decisions, weatherMultipliers)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, decisions, weatherMultipliers)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, decisions, weatherMultipliers)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, decisions, weatherMultipliers, sandboxContext)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, decisions, weatherMultipliers, sandboxContext)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, decisions, weatherMultipliers, sandboxContext)),
+    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, decisions, weatherMultipliers, sandboxContext)),
   ]);
 
   const elapsed = performance.now() - startTime;
-  console.log(`[Routing] All 4 routes in ${elapsed.toFixed(0)}ms (vehicle: ${vehicleMode})`);
+  console.log(`[Routing] All 4 routes in ${elapsed.toFixed(0)}ms (vehicle: ${vehicleMode}, context: ${sandboxContext ?? 'default'})`);
 
   if (standard?.context)   standard.context.warnings   = getActiveWarnings(standard.context,   "standard",   vehicleMode);
   if (fastest?.context)    fastest.context.warnings     = getActiveWarnings(fastest.context,    "fastest",    vehicleMode);

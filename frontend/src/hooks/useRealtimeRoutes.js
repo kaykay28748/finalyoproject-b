@@ -1,6 +1,7 @@
 // hooks/useRealtimeRoutes.js
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { getAllRoutes, findNearestNode } from "../services/routing";
+import { fetchGraphSlice, SANDBOX_CONTEXT } from "../services/graphSliceService";
 import { fetchDecisionFeed } from "../services/reportService";
 import { fetchWeather, getWeatherMultipliers } from "../services/weatherService";
 import { getDistanceToRoute, distanceBetween, findClosestPointOnRoute } from "../function/utils/geometry";
@@ -69,6 +70,73 @@ export function useRealtimeRoutes({
 
   const hasSpokenDeviationRef   = useRef(false);
 
+  // ── Adaptive geofenced slicing ─────────────────────────────────────────────
+  //
+  // `graph` is still a prop and is still authoritative when present: App.jsx
+  // builds it from Overpass. The slice is an *enhancement* layered on top, not a
+  // replacement, because the backend returns no graph at all on local SQLite dev
+  // and the edge tables may not be loaded yet. So:
+  //
+  //   slice graph available  -> route over it (no Overpass parse needed)
+  //   slice graph unavailable -> route over the Overpass `graph` prop
+  //
+  // Folding the fallback in here is what keeps `calculateRoutes` free of branching
+  // and keeps every downstream consumer — progress tracking, voice, the profile
+  // switcher — unaware of which graph it is routing over.
+  const [sandboxContext, setSandboxContext] = useState(SANDBOX_CONTEXT.CAMPUS);
+  const [enforceGpsTracking, setEnforceGpsTracking] = useState(false);
+  const [sliceGraph, setSliceGraph] = useState(null);
+  const [sliceSource, setSliceSource] = useState('not-requested');
+  // Refs, not state: activeGraph is read inside calculateRoutes and must not
+  // become a dependency of the useCallback, or a slice arriving would rebuild
+  // the callback and re-trigger the initial route effect.
+  const activeGraphRef        = useRef(graph);
+  const sandboxContextRef     = useRef(SANDBOX_CONTEXT.CAMPUS);
+
+  useEffect(() => {
+    activeGraphRef.current = sliceGraph ?? graph;
+  }, [sliceGraph, graph]);
+
+  useEffect(() => {
+    sandboxContextRef.current = sandboxContext;
+  }, [sandboxContext]);
+
+  // Fetch the slice once per meaningful location change. Keyed on a coarse grid
+  // so ordinary GPS jitter does not re-request; the geofence verdict cannot
+  // change within a few metres anyway, and re-requesting per metre would hammer
+  // the endpoint while walking.
+  const sliceRequestKeyRef = useRef('');
+  useEffect(() => {
+    const lat = currentLocation?.lat;
+    const lng = currentLocation?.lng;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    // ~1.1km grid. Coarser than the 2km slice, so the slice always covers the
+    // request point even after the user walks a short distance.
+    const key = `${Math.round(lat * 100) / 100}:${Math.round(lng * 100) / 100}`;
+    if (key === sliceRequestKeyRef.current) return;
+    sliceRequestKeyRef.current = key;
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    fetchGraphSlice(lat, lng, { signal: controller.signal })
+      .then((slice) => {
+        if (cancelled) return;
+        setSandboxContext(slice.sandboxContext);
+        setEnforceGpsTracking(slice.enforceGpsTracking);
+        setSliceGraph(slice.graph);
+        setSliceSource(slice.source);
+      })
+      .catch(() => {
+        // fetchGraphSlice already swallows its own errors; this is belt-and-braces
+        // so a thrown rejection can never leave the hook in a broken state.
+        if (!cancelled) setSliceSource('fetch-failed');
+      });
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [currentLocation?.lat, currentLocation?.lng]);
+
   const { isVoiceEnabled, speakRouteSummary, speakDeviation } = useVoiceGuidance();
   
   const isVoiceEnabledRef = useRef(isVoiceEnabled);
@@ -81,9 +149,47 @@ export function useRealtimeRoutes({
   }, [startNodeId]);
 
   const calculateRoutes = useCallback(async (fromNodeId, reason = "initial") => {
-    if (!graph || !fromNodeId || !endNodeId) {
+    // Route over the slice graph when we have one, else the Overpass graph.
+    // `let`, not `const`: the fallbacks below reassign it back to the Overpass
+    // graph when the slice cannot serve the requested endpoints.
+    let activeGraph = activeGraphRef.current;
+    if (!activeGraph || !fromNodeId || !endNodeId) {
       console.warn('[useRealtimeRoutes] Missing graph or node IDs');
       return;
+    }
+
+    // The node IDs arrive from App.jsx, which snapped them against the OVERPASS
+    // graph. They are meaningless in a slice graph — different node table, so
+    // findShortestPath returns null with "Start or end node not found" and the
+    // user gets no route at all. So when the two graphs differ, re-snap by
+    // coordinate against the graph actually being routed over.
+    let startId = fromNodeId;
+    let endId = endNodeId;
+
+    if (activeGraph !== graph) {
+      const startCoord = graph?.nodes?.[fromNodeId];
+      const endCoord   = graph?.nodes?.[endNodeId];
+
+      if (!startCoord || !endCoord) {
+        // The Overpass graph no longer has the node we were handed, so there is no
+        // coordinate to re-snap from. Fall back rather than route over nothing.
+        console.warn('[useRealtimeRoutes] Cannot re-snap onto slice graph, using Overpass graph');
+        activeGraphRef.current = graph;
+        activeGraph = graph;
+      } else {
+        const startSnap = findNearestNode(activeGraph, startCoord.lat, startCoord.lng);
+        const endSnap   = findNearestNode(activeGraph, endCoord.lat, endCoord.lng);
+        if (!startSnap || !endSnap) {
+          // The slice does not cover the requested endpoints. findNearestNode
+          // returns null past its max distance, which is the signal for this.
+          console.warn('[useRealtimeRoutes] Slice graph does not cover the endpoints, using Overpass graph');
+          activeGraphRef.current = graph;
+          activeGraph = graph;
+        } else {
+          startId = startSnap;
+          endId = endSnap;
+        }
+      }
     }
 
     const now = Date.now();
@@ -99,12 +205,20 @@ export function useRealtimeRoutes({
     });
 
     const isReroute = reason !== "initial";
-    if (isReroute) setIsRerouting(true);
-    else           setIsLoading(true);
+
+    // A slice swap is not a reroute in the user's sense — they did not move and
+    // nothing was blocked. Using the isRerouting flag here would show the
+    // "recalculating" indicator and suppress the deviation check for what is
+    // really just a background data swap, and the slice normally arrives seconds
+    // after the initial route, so a spinner would flash for no reason.
+    const isSliceSwap = reason === "slice";
+    if (isSliceSwap) setIsLoading(false);
+    else if (isReroute) setIsRerouting(true);
+    else setIsLoading(true);
 
     lastRerouteTime.current       = now;
-    currentStartNodeIdRef.current = fromNodeId;
-    lastNodePairRef.current       = `${fromNodeId}-${endNodeId}`;
+    currentStartNodeIdRef.current = startId;
+    lastNodePairRef.current       = `${startId}-${endId}`;
 
     if (reason === "initial") resetHeatmapSession();
 
@@ -127,8 +241,18 @@ export function useRealtimeRoutes({
         message:  weatherMultipliers.message,
       });
 
-      // Fetch all profiles in parallel (handled by services/routing)
-      const allRoutes = await getAllRoutes(graph, fromNodeId, endNodeId, vehicleMode, feed?.reports ?? [], weatherMultipliers);
+      // Fetch all profiles in parallel (handled by services/routing).
+      // sandboxContextRef is passed by reference on purpose: it is current at call
+      // time without making calculateRoutes re-create whenever the slice lands.
+      const allRoutes = await getAllRoutes(
+        activeGraph,
+        startId,
+        endId,
+        vehicleMode,
+        feed?.reports ?? [],
+        weatherMultipliers,
+        sandboxContextRef.current
+      );
       
       setRoutes({ ...allRoutes, lastUpdated: now });
       setDeviationDetected(false);
@@ -179,6 +303,23 @@ export function useRealtimeRoutes({
       calculateRoutes(startNodeId, "initial");
     }
   }, [startNodeId, endNodeId, graph, calculateRoutes]);
+
+  // Recalculate once a server slice arrives.
+  //
+  // Without this the slice would be fetched, stored, and then never used: the
+  // effect above keys on `graph`, and `graph` does not change when a slice lands.
+  //
+  // `sliceGraph` is a dependency on purpose — that is the trigger — but the call
+  // is guarded so it only fires on a genuine arrival, not on every re-render of
+  // the same graph. A no-op reroute is user-visible: it resets progress to zero
+  // and re-speaks the route summary through voice guidance.
+  const lastReroutedSliceRef = useRef(null);
+  useEffect(() => {
+    if (!sliceGraph || !startNodeId || !endNodeId) return;
+    if (lastReroutedSliceRef.current === sliceGraph) return;
+    lastReroutedSliceRef.current = sliceGraph;
+    calculateRoutes(startNodeId, "slice");
+  }, [sliceGraph, startNodeId, endNodeId, calculateRoutes]);
 
   // Progress interval
   useEffect(() => {
@@ -326,6 +467,12 @@ export function useRealtimeRoutes({
     decisionFeed,
     weatherBasis,
     hazardFeedState,
+    // Adaptive geofenced slicing state. `enforceGpsTracking` is the flag the
+    // sandbox uses to require a real GPS fix instead of accepting a typed
+    // address; exposed so the UI can reflect it rather than assume campus rules.
+    sandboxContext,
+    enforceGpsTracking,
+    graphSource: sliceGraph ? sliceSource : 'overpass',
     routeGuardNotice,
     primaryRoute:       getPrimaryRoute(),
     alternativeRoutes:  getAlternativeRoutes(),

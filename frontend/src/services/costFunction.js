@@ -710,6 +710,25 @@ const PED_MOTOR_TRAFFIC_PENALTY = 0.7;  // conflict risk on a shared carriageway
 const PED_BUSY_FOOTWAY_BENEFIT   = 0.85; // < 1, i.e. a discount for a populated footway
 const PEAK_CROWD_SHIFT           = 0.6;  // how much of that benefit crowding gives back
 
+// Which geographic context the graph came from. Decided by the backend geofence
+// (GET /api/routing/graph-slice) and threaded down to the cost function.
+//
+// CAMPUS_SANDBOX    — campus graph; the crowd benefits and campus-specific
+//                     reasoning below are considered evidence-based here.
+// EXTERNAL_TESTING  — a slice around the user's home coordinates. The campus
+//                     constants are NOT evidence for that area, so the neutral
+//                     urban term is used instead.
+//
+// Defaulting to CAMPUS_SANDBOX is deliberate. This is the app's real deployment
+// context, and the pessimistic fallbacks (UNKNOWN_INCLINE, SIDEWALK_*_PENALTY)
+// are *more* conservative in campus mode, so an absent context degrades toward
+// safety rather than toward optimism. Flipping the default would silently relax
+// safety penalties for anyone whose context fetch failed.
+const SANDBOX_CONTEXT = {
+  CAMPUS:   'CAMPUS_SANDBOX',
+  EXTERNAL: 'EXTERNAL_TESTING',
+};
+
 /**
  * Pedestrian-safety traffic term. Used for `walk` and `jogging` in place of the
  * congestion prior during day and dusk.
@@ -722,11 +741,24 @@ const PEAK_CROWD_SHIFT           = 0.6;  // how much of that benefit crowding gi
  * clock — the "busy footway" discount would cancel the night-isolation penalty and
  * the sign would flip back to rewarding emptiness after 22:00.
  */
-function getPedestrianTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeight) {
+function getPedestrianTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeight, sandboxContext) {
   // `fastest` sets traffic: 0.0. The linearisation 1 + (raw - 1) * w collapses this
   // to exactly 1.0, so honouring it explicitly keeps the two branches consistent
   // and short-circuits the work.
   if (trafficWeight === 0) return 1.0;
+
+  // EXTERNAL_TESTING: outside the campus sandbox the crowd-benefit reasoning does
+  // not hold. These constants were derived from observation of Legon footways, so
+  // applying them to, say, a user's home neighbourhood would be inventing evidence
+  // about a place that was never surveyed. Fall back to the vehicular congestion
+  // term, which is the neutral urban-distance behaviour.
+  //
+  // This is a *revert to the prior model*, not a removal of safety logic: the
+  // pessimistic incline and sidewalk defaults below are unaffected, because they
+  // encode absent data rather than a claim about a specific place.
+  if (sandboxContext === SANDBOX_CONTEXT.EXTERNAL) {
+    return getTrafficMultiplier(highwayType, timePeriod, currentHour, trafficWeight);
+  }
 
   // After dark, isolation is the hazard. Hand off to the audited night logic.
   if (timePeriod === "night") {
@@ -865,8 +897,12 @@ export function calculateEdgeCost(
   incomingBearing = null,
   goalBearing = null,
   weatherMultipliers = DEFAULT_WEATHER_MULTIPLIERS,
-  decisions = []
-) {
+  decisions = [],
+  // Geographic context from the backend geofence. Optional so every existing
+  // call site keeps working unchanged; see SANDBOX_CONTEXT for the default's
+  // safety reasoning.
+  sandboxContext = SANDBOX_CONTEXT.CAMPUS
+  ) {
   // Hard block for this vehicle mode
   if (!isEdgeAllowed(edge, vehicleMode)) {
     return 9999 * edge.distance;
@@ -980,10 +1016,10 @@ export function calculateEdgeCost(
   // charged them 28% more to cross a populated footway than an empty minor path
   // (measured 1.281x vs 1.000x at 08:00), which is backwards for personal
   // security. Split by mode. See getPedestrianTrafficMultiplier.
-  const isHumanPowered = vehicleMode === 'walk' || vehicleMode === 'jogging';
-  let trafficCost = isHumanPowered
-    ? getPedestrianTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic)
-    : getTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic);
+    const isHumanPowered = vehicleMode === 'walk' || vehicleMode === 'jogging';
+    let trafficCost = isHumanPowered
+      ? getPedestrianTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic, sandboxContext)
+      : getTrafficMultiplier(highwayType, timePeriod, currentHour, w.traffic);
 
   // Cyclists and joggers avoid busy roads more
   if (vehicleMode === 'bicycle' || vehicleMode === 'jogging') {
