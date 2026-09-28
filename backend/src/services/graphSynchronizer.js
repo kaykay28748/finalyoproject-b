@@ -666,6 +666,12 @@ async function backfillDerivedColumns(table) {
   const types = coordinateColumnTypes();
   const existing = await existingColumnNames(table);
 
+  if (!existing.has('osm_id')) {
+    await query(`ALTER TABLE ${table} ADD COLUMN osm_id TEXT`);
+    await query(`UPDATE ${table} SET osm_id = CAST(id AS TEXT) WHERE osm_id IS NULL`);
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pedestrian_edges_osm_id ON ${table} (osm_id)`);
+  }
+
   for (const col of Object.keys(types)) {
     if (existing.has(col)) continue;
     // Added nullable, without NOT NULL: a NOT NULL column cannot be added to a
