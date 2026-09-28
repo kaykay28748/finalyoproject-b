@@ -38,10 +38,10 @@ router.post('/sync', async (req, res) => {
     // stable key, so the sync must reconcile by id and update email/username.
     const result = await query(
       `INSERT INTO users (id, email, username, updated_at)
-       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(id) DO UPDATE SET
-         email = excluded.email,
-         username = excluded.username,
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (id) DO UPDATE SET
+         email = EXCLUDED.email,
+         username = EXCLUDED.username,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id, email, username, is_admin, created_at`,
       [supabaseUser.id, supabaseUser.email, username]

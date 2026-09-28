@@ -20,13 +20,20 @@ export const pool = new Pool({
 export const isPostgres = true;
 export const isProduction = isPostgres;
 
+function convertPlaceholders(sql) {
+  let index = 0;
+  return sql.replace(/\?/g, () => `$${++index}`);
+}
+
 export async function query(sql, params = []) {
   try {
-    const result = await pool.query(sql, params);
+    const convertedSql = convertPlaceholders(sql);
+    const result = await pool.query(convertedSql, params);
     return { rows: result.rows };
   } catch (error) {
     console.error('[DB] Query error:', error.message);
     console.error('[DB] SQL:', sql);
+    console.error('[DB] Converted SQL:', convertPlaceholders(sql));
     console.error('[DB] Params:', params);
     throw error;
   }
