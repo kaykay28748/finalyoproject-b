@@ -181,3 +181,62 @@ CREATE INDEX IF NOT EXISTS idx_accessibility_reports_submitted_by ON accessibili
 CREATE INDEX IF NOT EXISTS idx_report_confirmations_report_id ON report_confirmations(report_id);
 CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id);
 CREATE INDEX IF NOT EXISTS idx_report_messages_sender_id ON report_messages(sender_id);
+
+-- ============================================
+-- PEDESTRIAN EDGE GRAPH (spatial graph compiler) - SQLite
+-- ============================================
+-- The SQLite counterpart of public.pedestrian_edges in postgres-schema.sql.
+-- Written by backend/src/services/graphSynchronizer.js via
+-- POST /api/admin/sync-region, and read by getSpatialGraphSlice() in
+-- backend/src/services/routingContext.js.
+--
+-- THE TABLE IS NAMED public_pedestrian_edges, NOT public.pedestrian_edges.
+-- SQLite has no schemas, so a dotted name is a syntax error rather than an
+-- unqualified one. The rename is applied in exactly two places —
+-- graphSynchronizer.js and routingContext.js — and both derive it from the same
+-- rule (isPostgres decides), so the writer and the reader cannot disagree.
+--
+-- Differences from the PostgreSQL version, all forced by the dialect rather
+-- than chosen:
+--
+--  * No `geom` column and no PostGIS. The four coordinate columns are therefore
+--    not a duplicate of anything here — they are the ONLY way to ask a spatial
+--    question, and the external graph slice is a BETWEEN test on them.
+--  * BOOLEAN/TIMESTAMPTZ do not exist. `lit` and `is_on_campus` are INTEGER
+--    holding 0/1, and the reader binds 0/1 rather than true/false to match.
+--    The campus branch is written `is_on_campus = ?` with a bound 1, never a
+--    bare `WHERE is_on_campus`, because a bare integer column in a WHERE
+--    clause is a portability trap.
+--  * `id` is INTEGER PRIMARY KEY AUTOINCREMENT rather than BIGSERIAL.
+--
+-- Column-for-column the same otherwise, so a row synced on a developer machine
+-- and a row synced in production have the same shape.
+CREATE TABLE IF NOT EXISTS public_pedestrian_edges (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  osm_id        TEXT NOT NULL UNIQUE,
+  from_node_id  TEXT NOT NULL,
+  to_node_id    TEXT NOT NULL,
+  distance_m    REAL NOT NULL,
+  highway_type  TEXT,
+  surface       TEXT,
+  lit           INTEGER DEFAULT 0,
+  sidewalk      TEXT,
+  incline       TEXT,
+  from_lat      REAL NOT NULL,
+  from_lng      REAL NOT NULL,
+  to_lat        REAL NOT NULL,
+  to_lng        REAL NOT NULL,
+  is_on_campus  INTEGER NOT NULL DEFAULT 0,
+  updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Partial index on the campus rows only: the campus slice is an equality scan
+-- over the whole campus, and on SQLite a partial index is the cheapest way to
+-- keep that off the external rows.
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_campus
+  ON public_pedestrian_edges (is_on_campus) WHERE is_on_campus = 1;
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_from ON public_pedestrian_edges (from_node_id);
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_to   ON public_pedestrian_edges (to_node_id);
+
+-- See the PostgreSQL version for why osm_id is segment-scoped, why the four
+-- coordinate columns exist at all, and why there is no `name` column.

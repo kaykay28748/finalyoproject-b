@@ -23,9 +23,9 @@ import "../Legend/Legend.css";
 
 import {
   UG_MAX_BOUNDS,
+  WORLD_BOUNDS,
   UG_CENTER,
   DEFAULT_ZOOM,
-  MIN_ZOOM,
   MAX_ZOOM,
 } from "../../function/utils/bounds";
 import "./MapView.css";
@@ -467,9 +467,20 @@ export default function MapView({
         <MapContainer
           center={[UG_CENTER.lat, UG_CENTER.lng]}
           zoom={DEFAULT_ZOOM}
-          maxBounds={UG_MAX_BOUNDS}
-          maxBoundsViscosity={0.4}
-          minZoom={MIN_ZOOM}
+          // Free panning. Was maxBounds={UG_MAX_BOUNDS} with viscosity 0.4,
+          // which rubber-banded the map back to Legon and made routing from
+          // anywhere else impossible. WORLD_BOUNDS is the Web Mercator
+          // envelope, so the constraint now only stops Leaflet asking for tiles
+          // that do not exist rather than confining the user to one campus.
+          maxBounds={WORLD_BOUNDS}
+          // 1.0 = hard clamp at the edge, no spring-back. The old 0.4 produced a
+          // visible bounce that made free panning feel broken even though it
+          // technically worked.
+          maxBoundsViscosity={1.0}
+          // 2 lets the wider window be reached: at the old MIN_ZOOM of 12 the
+          // campus boundary was only a few degrees wide, so zooming out fought
+          // the clamp instead of revealing more area.
+          minZoom={2}
           maxZoom={MAX_ZOOM}
           zoomControl={false}
           preferCanvas={true}

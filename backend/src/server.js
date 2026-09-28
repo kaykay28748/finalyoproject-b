@@ -14,7 +14,9 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import analyticsRoutes, { heatmapRouter } from './routes/analytics.js';
 import reportsRoutes from './routes/reports.js';
-import routingRoutes from './routes/routing.js';
+import routingRoutes, { graphSyncRouter } from './routes/routing.js';
+import { verifyToken } from './middleware/auth.js';
+import { requireAdmin } from './middleware/admin.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -473,6 +475,21 @@ app.use('/api/reports', reportsRoutes);
 // Mounted under /api/routing so the endpoint reads /api/routing/context.
 // Unauthenticated — the frontend needs the geofence verdict before login.
 app.use('/api/routing', routingRoutes);
+
+// ============================================
+// ADMIN GRAPH COMPILATION ROUTES
+// ============================================
+//
+// Mounted on its own sub-router, separate from /api/routing, so that
+// verifyToken + requireAdmin can be applied here WITHOUT also gating
+// /api/routing/context and /api/routing/graph-slice — which the frontend calls
+// on startup before any session exists. Those are reads; this is a write that
+// spends a third party's Overpass capacity, so it must be admin-only.
+//
+// The rate limiter is intentionally NOT bypassed: an admin recompiling regions
+// in a loop is still a way to hammer overpass-api.de, and adminBypassRateLimit
+// exists for dashboard reads, not ingestion.
+app.use('/api/admin', verifyToken, requireAdmin, graphSyncRouter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/admin', adminRoutes);

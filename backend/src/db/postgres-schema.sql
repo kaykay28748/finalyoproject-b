@@ -347,3 +347,83 @@ CREATE POLICY report_messages_select ON report_messages FOR SELECT
   );
 DROP POLICY IF EXISTS report_messages_insert ON report_messages;
 CREATE POLICY report_messages_insert ON report_messages FOR INSERT WITH CHECK (sender_id = auth.uid());
+-- ============================================
+-- PEDESTRIAN EDGE GRAPH (spatial graph compiler)
+-- ============================================
+-- Written by backend/src/services/graphSynchronizer.js via
+-- POST /api/admin/sync-region, and read by getSpatialGraphSlice() in
+-- backend/src/services/routingContext.js. One table serves both graph slices:
+-- the campus slice is `WHERE is_on_campus = TRUE`, the external slice is
+-- `WHERE is_on_campus = FALSE AND ST_Intersects(geom, ST_MakeEnvelope(...))`.
+--
+-- The table is declared here as well as created at runtime. The runtime
+-- CREATE TABLE IF NOT EXISTS is what makes the endpoint work on a database
+-- that was provisioned without this file; it is not a substitute for it,
+-- because a table created in code is invisible to anyone reading the schema.
+--
+-- Notes on the columns that are not obvious:
+--
+--  * osm_id is SEGMENT-scoped (`<wayId>:<segmentIndex>`), not a way id. One
+--    OSM way becomes one row per consecutive node pair, so a way id alone
+--    cannot be unique. It is nevertheless the conflict key, so a re-sync
+--    updates rows in place instead of duplicating them.
+--
+--  * from_lat/from_lng/to_lat/to_lng duplicate the information in geom on
+--    purpose. They are what makes a spatial slice possible without PostGIS:
+--    on SQLite (no geometry type) and on a PostgreSQL database where the
+--    extension is not installed, they are the only filter available. Writing
+--    them on every row also means the two paths cannot disagree about where
+--    an edge is.
+--
+--  * is_on_campus is derived from CAMPUS_BOUNDS in graphSynchronizer.js, which
+--    mirrors UG_BOUNDS in frontend/src/function/utils/bounds.js. It buckets an
+--    edge at ingest so the campus slice is a plain equality scan. It is NOT
+--    the authority on whether a *user* is on campus — that stays with the
+--    check_if_inside_legon RPC, so there is one geofence, not two that can
+--    drift. Correcting CAMPUS_BOUNDS and re-syncing reclassifies rows.
+--
+--  * No `name` column. OSM way names are not ingested, so routingContext.js
+--    selects NULL AS name rather than depending on a column no writer fills.
+--    costFunction.js already falls back to the highway type when name is null.
+--
+-- No RLS is enabled here. The table is read by the backend only, which
+-- connects with the service_role key; a policy would add no protection and a
+-- restrictive one would break the graph slice.
+CREATE TABLE IF NOT EXISTS public.pedestrian_edges (
+  id            BIGSERIAL PRIMARY KEY,
+  osm_id        TEXT NOT NULL UNIQUE,
+  from_node_id  TEXT NOT NULL,
+  to_node_id    TEXT NOT NULL,
+  distance_m    DOUBLE PRECISION NOT NULL,
+  highway_type  TEXT,
+  surface       TEXT,
+  lit           BOOLEAN DEFAULT FALSE,
+  sidewalk      TEXT,
+  incline       TEXT,
+  from_lat      DOUBLE PRECISION NOT NULL,
+  from_lng      DOUBLE PRECISION NOT NULL,
+  to_lat        DOUBLE PRECISION NOT NULL,
+  to_lng        DOUBLE PRECISION NOT NULL,
+  is_on_campus  BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- The campus slice is `is_on_campus = TRUE` across the whole campus, so a
+-- partial index on just those rows keeps it off the full table.
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_campus
+  ON public.pedestrian_edges (is_on_campus) WHERE is_on_campus;
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_from
+  ON public.pedestrian_edges (from_node_id);
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_to
+  ON public.pedestrian_edges (to_node_id);
+CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_type
+  ON public.pedestrian_edges (highway_type);
+
+-- `name` is selected as NULL by the reader and is therefore not a column here.
+
+-- geom is created only when the PostGIS extension is present, and the extension
+-- itself is not created here: CREATE EXTENSION requires privileges the backend's
+-- connection does not have on most managed Postgres, and a schema file that
+-- fails halfway leaves a confusing partial state. Enable PostGIS in the Supabase
+-- dashboard, then run the sync once — graphSynchronizer.js adds the column, this
+-- GIST index, and backfills it from the coordinate columns.

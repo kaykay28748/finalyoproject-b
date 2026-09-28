@@ -5,8 +5,20 @@ import ugLocations from "../data/ugLocations.json";
 
 const apiCache = new Map();
 
-// Results beyond this distance from UG centre are dropped entirely
-const UG_MAX_RADIUS_KM = 6;
+// Reachable search radius, measured from UG centre.
+//
+// Was 6km, which covered only Legon and its immediate neighbourhood — a search
+// run from home or a lecture outside the main campus returned nothing, and the
+// dropdown was simply empty with no error shown.
+//
+// 50km covers the Greater Accra metropolitan area in every direction: Accra
+// proper spans roughly 25km east-west, Tema is ~25km, and Madina to the north is
+// ~15km, so a 50km circle contains all of them with margin. The value is a
+// "drop the clearly unreachable tail" guard, not a routing limit — the real
+// limit is whether the server-side graph compiler has an edge for the region,
+// and that is decided at request time by /api/admin/sync-region rather than
+// being baked into the search box.
+const METRO_MAX_RADIUS_KM = 50;
 
 // ── Local fuzzy search ───────────────────────────────────────────────────────
 
@@ -150,12 +162,23 @@ export async function geocode(query, signal) {
           type: "place",
         };
       })
-      // Drop anything beyond the campus radius (e.g. same chain in Kumasi)
-      .filter((r) => r.dist <= UG_MAX_RADIUS_KM)
-      // Closest branch first
+      // Reachable window: 50km from campus, so the whole Greater Accra
+      // metropolitan area is searchable.
+      //
+      // This was a hard `.filter((r) => r.dist <= UG_MAX_RADIUS_KM)` at 6km,
+      // which made a search from home return an empty dropdown with no error —
+      // the same chain in Kumasi was in the API response and was simply being
+      // discarded. The filter is not deleted, it is widened: without ANY bound
+      // the LocationIQ response is ranked by relevance, and a query like
+      // "KFC" can otherwise fill the whole dropdown with branches in Tema or
+      // Takoradi that the user cannot route to.
+      .filter((r) => r.dist <= METRO_MAX_RADIUS_KM)
+      // Closest branch first — still the right order now that the window is
+      // wide, because the user almost always wants the nearest match.
       .sort((a, b) => a.dist - b.dist)
-      // Cap at 5 for the dropdown
-      .slice(0, 5);
+      // Cap at 8 for the dropdown (was 5): a wider window needs more rows
+      // before the nearest useful one appears.
+      .slice(0, 8);
 
     apiCache.set(cacheKey, formatted);
     // Keep cache from growing unbounded

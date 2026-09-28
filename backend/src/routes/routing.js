@@ -6,6 +6,7 @@
 
 import express from 'express';
 import { getRoutingContext, getSpatialGraphSlice } from '../services/routingContext.js';
+import { syncSpatialGraphRegion } from '../services/graphSynchronizer.js';
 
 const router = express.Router();
 
@@ -99,6 +100,93 @@ router.get('/graph-slice', async (req, res) => {
       enforceGpsTracking: false,
       graph: { nodes: {}, edges: [] },
       source: 'error-default',
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN: regional graph compilation
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Split out from the public router so the admin guards are applied to THIS path
+// only. `router.use(requireAdmin)` on the public router would lock out
+// /context and /graph-slice, which the frontend calls before a session exists.
+//
+// The handlers are mounted on their own sub-router in server.js at
+// /api/admin/sync-region, so the two files stay separate but the URL is as
+// specified.
+export const graphSyncRouter = express.Router();
+
+/**
+ * Reject anything that is not a plausible bbox before it reaches the service.
+ *
+ * Shares validateLatLng's coercion discipline (Number() first, then range) but
+ * is a separate function because a bbox has four numbers and two ordering
+ * constraints, which a lat/lng pair does not have.
+ */
+function validateBboxParams(body) {
+  const { minLat, minLng, maxLat, maxLng } = body || {};
+  const required = { minLat, minLng, maxLat, maxLng };
+
+  for (const [name, value] of Object.entries(required)) {
+    if (value === undefined || value === null || value === '') {
+      return `Missing required field: ${name}`;
+    }
+    // Number() rather than a truthiness check: Number('') is 0, which passes a
+    // truthiness test and would silently compile a box at the equator.
+    if (!Number.isFinite(Number(value))) {
+      return `${name} must be a number, got ${JSON.stringify(value)}`;
+    }
+  }
+
+  const bbox = {
+    minLat: Number(minLat), minLng: Number(minLng),
+    maxLat: Number(maxLat), maxLng: Number(maxLng),
+  };
+
+  if (bbox.minLat < -90 || bbox.maxLat > 90) return 'minLat/maxLat must be within -90..90';
+  if (bbox.minLng < -180 || bbox.maxLng > 180) return 'minLng/maxLng must be within -180..180';
+  if (bbox.minLat >= bbox.maxLat) return 'minLat must be less than maxLat';
+  if (bbox.minLng >= bbox.maxLng) return 'minLng must be less than maxLng';
+
+  return null;
+}
+
+// POST /api/admin/sync-region
+//
+// Compiles a bounding box into the edge table from Overpass. This is the write
+// path that replaces the browser's per-cold-start Overpass fetch.
+//
+// Deliberately not mounted on the public router and deliberately not
+// authenticated here: server.js wraps this sub-router in verifyToken +
+// requireAdmin. An unauthenticated write to a shared Overpass instance is an
+// abuse vector, and this endpoint costs a third party real capacity.
+graphSyncRouter.post('/sync-region', async (req, res) => {
+  const invalid = validateBboxParams(req.body);
+  if (invalid) {
+    return res.status(400).json({ error: invalid });
+  }
+
+  try {
+    const result = await syncSpatialGraphRegion(
+      req.body.minLat, req.body.minLng, req.body.maxLat, req.body.maxLng
+    );
+
+    if (!result.ok) {
+      // 502 for an upstream failure, 400 for bad input. The service returns a
+      // string error without a code, so the distinction is made here: a failed
+      // Overpass fetch is a bad gateway, not a malformed request. Getting this
+      // backwards would make a client retry a permanently-invalid bbox forever.
+      const isUpstream = /Overpass|prepare edge table|Upsert|Prune/i.test(result.error || '');
+      return res.status(isUpstream ? 502 : 400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[SyncRegion] Unexpected error:', err);
+    return res.status(500).json({
+      ok: false,
+      error: err?.message || 'Sync failed',
     });
   }
 });
