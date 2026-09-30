@@ -1,5 +1,6 @@
 // src/server.js
 import 'dotenv/config';
+import { createHash } from 'node:crypto';
 console.log('[DEBUG] EMAIL_USER:', process.env.EMAIL_USER);
 console.log('[DEBUG] EMAIL_PASS:', process.env.EMAIL_PASS ? '***LOADED***' : 'MISSING');
 
@@ -96,11 +97,48 @@ const generalLimiter = rateLimit({
 
 const overpassCache = new Map();
 const OVERPASS_CACHE_TTL = 24 * 60 * 60 * 1000;
+// Past the fresh window we stop serving proactively, but keep the payload
+// around a while longer so a total mirror outage can still fall back to it
+// instead of handing the client an empty map.
+const OVERPASS_STALE_TTL = 7 * 24 * 60 * 60 * 1000;
+const OVERPASS_CACHE_MAX_ENTRIES = 40;
+
+// The full campus query returns in ~15s against a healthy mirror. Much beyond
+// that means the mirror is stalled or rate-limiting us, so fail over rather
+// than hold the browser's request open for minutes.
+const OVERPASS_ATTEMPT_TIMEOUT_MS = 30_000;
+// Hard ceiling for the whole proxy call. The client gives up before this, so
+// returning an error beats leaving the socket hanging.
+const OVERPASS_TOTAL_BUDGET_MS = 75_000;
+
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
+
+// Hash the entire query. Keying on a body prefix let two queries that differ
+// only in their bounding box collide and serve the wrong geometry.
+function overpassCacheKey(body) {
+  return createHash('sha256').update(body).digest('hex');
+}
 
 function getCachedOverpass(key) {
   const cached = overpassCache.get(key);
   if (!cached) return null;
-  if (Date.now() - cached.timestamp > OVERPASS_CACHE_TTL) {
+  const age = Date.now() - cached.timestamp;
+  if (age > OVERPASS_STALE_TTL) {
+    overpassCache.delete(key);
+    return null;
+  }
+  if (age > OVERPASS_CACHE_TTL) return null; // stale — fallback-only
+  return cached.data;
+}
+
+function getStaleOverpass(key) {
+  const cached = overpassCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > OVERPASS_STALE_TTL) {
     overpassCache.delete(key);
     return null;
   }
@@ -108,11 +146,27 @@ function getCachedOverpass(key) {
 }
 
 function setCachedOverpass(key, data) {
+  // Map preserves insertion order, so the first key is the least recently
+  // written and the cheapest thing to evict.
+  if (overpassCache.size >= OVERPASS_CACHE_MAX_ENTRIES && !overpassCache.has(key)) {
+    overpassCache.delete(overpassCache.keys().next().value);
+  }
   overpassCache.set(key, { data, timestamp: Date.now() });
 }
 
-async function fetchOverpassWithRetry(endpoint, body, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
+async function fetchOverpassAcrossMirrors(body, deadlineAt) {
+  // Rotate the starting mirror so concurrent users spread across the pool
+  // rather than all hammering the first one into a 429.
+  const offset = Math.floor(Date.now() / 1000) % OVERPASS_ENDPOINTS.length;
+
+  for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
+    const endpoint = OVERPASS_ENDPOINTS[(offset + i) % OVERPASS_ENDPOINTS.length];
+    const remaining = deadlineAt - Date.now();
+    if (remaining <= 0) {
+      console.warn('[Overpass Proxy] time budget exhausted before trying', endpoint);
+      return null;
+    }
+
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -121,27 +175,23 @@ async function fetchOverpassWithRetry(endpoint, body, retries = 3) {
           'Content-Type': 'text/plain',
           'User-Agent': 'TransitGuide/1.0 (https://ugnavigator.onrender.com)',
         },
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(Math.min(remaining, OVERPASS_ATTEMPT_TIMEOUT_MS)),
       });
 
       if (response.ok) return response;
 
-      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: HTTP ${response.status}`);
-      if (response.status === 429) {
-        const wait = Math.min(2000 * Math.pow(2, attempt), 16000);
-        await new Promise(r => setTimeout(r, wait));
-        continue;
-      }
       const text = await response.text().catch(() => '');
-      console.warn(`[Overpass Proxy] body: ${text.slice(0, 200)}`);
-      return null;
+      console.warn(
+        `[Overpass Proxy] ${endpoint}: HTTP ${response.status} — ${text.slice(0, 160)}`
+      );
+      // 429 and 5xx are mirror-local. Move to the next mirror immediately
+      // instead of sleeping out a backoff on an endpoint already refusing us.
     } catch (err) {
-      console.warn(`[Overpass Proxy] ${endpoint} attempt ${attempt + 1}: ${err.name}: ${err.message}`);
-      if (attempt < retries - 1) {
-        await new Promise(r => setTimeout(r, 3000 * Math.pow(2, attempt)));
-      }
+      const name = err?.name || 'Error';
+      console.warn(`[Overpass Proxy] ${endpoint}: ${name} — ${err?.message}`);
     }
   }
+
   return null;
 }
 
@@ -153,7 +203,7 @@ app.post('/api/overpass', async (req, res) => {
 
   if (!body) return res.status(400).json({ error: 'Missing Overpass QL query' });
 
-  const cacheKey = body.slice(0, 200);
+  const cacheKey = overpassCacheKey(body);
   const cached = getCachedOverpass(cacheKey);
   if (cached) {
     res.set('Content-Type', 'application/json');
@@ -161,15 +211,10 @@ app.post('/api/overpass', async (req, res) => {
     return res.send(cached);
   }
 
-  const endpoints = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-  ];
+  const deadlineAt = Date.now() + OVERPASS_TOTAL_BUDGET_MS;
+  const response = await fetchOverpassAcrossMirrors(body, deadlineAt);
 
-  for (const endpoint of endpoints) {
-    const response = await fetchOverpassWithRetry(endpoint, body);
-    if (!response) continue;
-
+  if (response) {
     const text = await response.text();
     setCachedOverpass(cacheKey, text);
     res.set('Content-Type', 'application/json');
@@ -177,12 +222,12 @@ app.post('/api/overpass', async (req, res) => {
     return res.send(text);
   }
 
-  const stale = overpassCache.get(cacheKey);
+  const stale = getStaleOverpass(cacheKey);
   if (stale) {
-    console.log('[Overpass Proxy] Serving stale cache');
+    console.warn('[Overpass Proxy] serving stale cache after mirror failure');
     res.set('Content-Type', 'application/json');
     res.set('X-Cache', 'stale');
-    return res.send(stale.data);
+    return res.send(stale);
   }
 
   res.status(502).json({ error: 'Overpass API unavailable — try again later' });
