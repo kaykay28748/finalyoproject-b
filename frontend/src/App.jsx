@@ -68,6 +68,7 @@ export default function App() {
   const [selectedHour, setSelectedHour] = useState(undefined);
   const [mapLayer, setMapLayer] = useState("standard");
   const [browseCategory, setBrowseCategory] = useState(null);
+  const [browseListOpen, setBrowseListOpen] = useState(false);
   const [selectedBrowsePlace, setSelectedBrowsePlace] = useState(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -332,6 +333,7 @@ export default function App() {
   const handleNavExpandRequest = useCallback((expanded) => {
     if (expanded) {
       setBrowseCategory(null);
+      setBrowseListOpen(false);
       setSelectedBrowsePlace(null);
       // When expanding NavPanel, collapse Legend first (smooth coordination)
       setIsPanelTransitioning(true);
@@ -389,7 +391,12 @@ export default function App() {
 
   const handleBrowseCategoryChange = (category) => {
     setBrowseCategory((current) => current === category ? null : category);
+    setBrowseListOpen(false);
     setSelectedBrowsePlace(null);
+  };
+
+  const handleBrowseListToggle = () => {
+    setBrowseListOpen((isOpen) => !isOpen);
   };
 
   const handleBrowsePlaceSelect = useCallback((place) => {
@@ -399,6 +406,7 @@ export default function App() {
 
   const handleBrowseDirections = (place) => {
     setBrowseCategory(null);
+    setBrowseListOpen(false);
     setSelectedBrowsePlace(null);
     handleDestSelect(place);
     handleNavExpandRequest(true);
@@ -456,6 +464,7 @@ export default function App() {
 
   const handleShowOnMap = async () => {
     setBrowseCategory(null);
+    setBrowseListOpen(false);
     setSelectedBrowsePlace(null);
     setIsResolving(true);
     let resolvedStart = effectiveStartPoint;
@@ -550,6 +559,7 @@ export default function App() {
 
   const handleReset = () => {
     setBrowseCategory(null);
+    setBrowseListOpen(false);
     setSelectedBrowsePlace(null);
     setDestPoint(null);
     setDestText("");
@@ -637,9 +647,12 @@ export default function App() {
           activeProfile={activeProfile}
           locationError={locationError}
           browseCategory={browseCategory}
+          browseListOpen={browseListOpen}
           browsePlaces={browsePlaces}
           selectedBrowsePlace={selectedBrowsePlace}
           onBrowseCategoryChange={handleBrowseCategoryChange}
+          onBrowseListToggle={handleBrowseListToggle}
+          onBrowsePlaceClear={() => setSelectedBrowsePlace(null)}
           onBrowsePlaceSelect={handleBrowsePlaceSelect}
           onBrowseDirections={handleBrowseDirections}
           isExpanded={isNavExpanded}
@@ -658,9 +671,9 @@ export default function App() {
             markersVisible={markersVisible}
             flyTarget={flyTarget}
             browsePlaces={browsePlaces}
+            browseListOpen={browseListOpen}
             selectedBrowsePlace={selectedBrowsePlace}
             onBrowsePlaceSelect={handleBrowsePlaceSelect}
-            onBrowseDirections={handleBrowseDirections}
             darkMode={darkMode}
             mapLayer={mapLayer}
             onMapLayerChange={setMapLayer}

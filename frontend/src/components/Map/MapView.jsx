@@ -1,5 +1,5 @@
 // components/Map/MapView.jsx
-import { MapContainer, useMap, Marker, Polyline, Popup, Tooltip } from "react-leaflet";
+import { MapContainer, useMap, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-rotate";
@@ -131,7 +131,6 @@ const BrowsePlacesLayer = memo(function BrowsePlacesLayer({
   places,
   selectedPlace,
   onPlaceSelect,
-  onDirections,
 }) {
   const map = useMap();
   const fittedPlacesKeyRef = useRef("");
@@ -173,26 +172,23 @@ const BrowsePlacesLayer = memo(function BrowsePlacesLayer({
         zIndexOffset={isSelected ? 700 : 500}
         bubblingMouseEvents={false}
         eventHandlers={{ click: () => onPlaceSelect(place) }}
-      >
-        <Tooltip direction="top" offset={[0, -16]}>{place.name}</Tooltip>
-        <Popup className="browse-map-popup-shell">
-          <div className="browse-map-popup">
-            <strong>{place.name}</strong>
-            <span>{place.distance.toFixed(1)} km {place.distanceReference}</span>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDirections(place);
-              }}
-            >
-              Directions
-            </button>
-          </div>
-        </Popup>
-      </Marker>
+      />
     );
   });
+});
+
+// ── BrowsePanelInset — keeps Leaflet's canvas in sync with the docked desktop
+//    discovery panel, so the map shrinks instead of being covered.
+const BrowsePanelInset = memo(function BrowsePanelInset({ listOpen }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const id = window.setTimeout(() => map.invalidateSize({ animate: false }), 220);
+    return () => window.clearTimeout(id);
+  }, [map, listOpen]);
+
+  return null;
 });
 
 // ── MapDragGuard — disables Leaflet drag/touchZoom while legend is being
@@ -357,9 +353,9 @@ export default function MapView({
   vehicleMode = "walk",
   flyTarget,
   browsePlaces = [],
+  browseListOpen = false,
   selectedBrowsePlace = null,
   onBrowsePlaceSelect,
-  onBrowseDirections,
   darkMode,
   waitingForStart,
   useCustomLocation = false,
@@ -537,7 +533,7 @@ export default function MapView({
 
   return (
     <>
-      <div className={`map-wrap ${isMapBlurred ? "map-blurred" : ""}`}>
+      <div className={`map-wrap ${isMapBlurred ? "map-blurred" : ""}${browseListOpen ? " map-wrap--browse-open" : ""}`}>
       {/* Apple-style glass blur overlay */}
       <div
         className="map-blur-overlay"
@@ -600,11 +596,12 @@ export default function MapView({
           />
           <MapClickHandler onMapClick={onMapClick} />
 
+          <BrowsePanelInset listOpen={browseListOpen} />
+
           <BrowsePlacesLayer
             places={browsePlaces}
             selectedPlace={selectedBrowsePlace}
             onPlaceSelect={onBrowsePlaceSelect}
-            onDirections={onBrowseDirections}
           />
 
           <GpsLocationMarker  location={currentLocation} accuracy={accuracy} routeDirection={currentRouteDirection} smoothedPosition={smoothedRoutePosition} deviceHeading={deviceHeading} />
@@ -698,6 +695,7 @@ export default function MapView({
             startPoint={displayStartPoint}
             destPoint={destPoint}
             browsePlaces={browsePlaces}
+            browseListOpen={browseListOpen}
             selectedBrowsePlace={selectedBrowsePlace}
             onBrowsePlaceSelect={onBrowsePlaceSelect}
             darkMode={darkMode}
@@ -854,9 +852,9 @@ export default function MapView({
         ref={legendRef}
         startText={displayStartPoint?.name || startText || "Start"}
         destText={destText}
-        visible={markersVisible}
-        route={markersVisible ? primaryRoute : null}
-        routeActive={markersVisible}
+        visible={markersVisible && !browseListOpen}
+        route={markersVisible && !browseListOpen ? primaryRoute : null}
+        routeActive={markersVisible && !browseListOpen}
         allRoutes={allRoutes}
         activeProfile={activeProfile}
         vehicleMode={vehicleMode}

@@ -9,6 +9,15 @@
   overflow: hidden;
 }
 
+/* Desktop: the discovery list docks as a side panel, so the map canvas
+   shrinks to its left rather than being covered. Mobile keeps the
+   bottom-sheet overlay because the map is full-bleed. */
+@media (min-width: 901px) {
+  .map-wrap--browse-open {
+    right: 362px;
+  }
+}
+
 .leaflet-container {
   height: 100%;
   width: 100%;

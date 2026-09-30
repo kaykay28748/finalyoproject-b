@@ -167,6 +167,7 @@ export default function MapLibre3DView({
   startPoint,
   destPoint,
   browsePlaces = [],
+  browseListOpen = false,
   selectedBrowsePlace = null,
   onBrowsePlaceSelect,
   onMapClick,
@@ -777,6 +778,15 @@ export default function MapLibre3DView({
     if (!map || !mapLoaded) return;
     syncRouteColor(map);
   }, [activeProfile, mapLoaded, syncRouteColor]);
+
+  // Keep the canvas in sync with the desktop discovery side panel, which
+  // shrinks the map container rather than floating over it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const id = window.setTimeout(() => map.resize(), 220);
+    return () => window.clearTimeout(id);
+  }, [mapLoaded, browseListOpen]);
 
   // ── heatmap toggle ────────────────────────────────────────────────────────
 

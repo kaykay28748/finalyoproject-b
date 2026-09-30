@@ -121,14 +121,32 @@ function IconArrowRight() {
 }
 
 const DISCOVERY_CATEGORIES = [
-  { id: "food", label: "Food" },
-  { id: "health", label: "Health" },
-  { id: "printing", label: "Printing" },
-  { id: "admin", label: "Offices" },
-  { id: "hall", label: "Halls" },
-  { id: "library", label: "Library" },
-  { id: "sport", label: "Sports" },
+  { id: "food", label: "Food", icon: "food" },
+  { id: "health", label: "Health", icon: "health" },
+  { id: "printing", label: "Printing", icon: "printing" },
+  { id: "admin", label: "Offices", icon: "office" },
+  { id: "hall", label: "Halls", icon: "hall" },
+  { id: "library", label: "Library", icon: "library" },
+  { id: "sport", label: "Sports", icon: "sport" },
 ];
+
+function DiscoveryIcon({ name }) {
+  const paths = {
+    food: <><path d="M4 3v7m0-4h3m-3 4v11M16 3v18m0-18c3 3 3 7 0 9" /></>,
+    health: <><path d="M12 3v18M3 12h18" /><circle cx="12" cy="12" r="9" /></>,
+    printing: <><path d="M7 8V3h10v5M7 17H4V9h16v8h-3M7 14h10v7H7z" /><path d="M17 11h.01" /></>,
+    office: <><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 9h.01M15 9h.01M9 12h.01M15 12h.01" /></>,
+    hall: <><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6" /></>,
+    library: <><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zM4 17h14M8 7h6M8 11h6" /></>,
+    sport: <><circle cx="12" cy="12" r="9" /><path d="m12 3 2.5 5.5L20 12l-5.5 2.5L12 21l-2.5-6.5L4 12l5.5-3.5z" /></>,
+  };
+
+  return (
+    <svg className="nav-discovery-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -149,9 +167,12 @@ export default function NavPanel({
   accuracy,
   locationError,
   browseCategory,
+  browseListOpen,
   browsePlaces = [],
   selectedBrowsePlace,
   onBrowseCategoryChange,
+  onBrowseListToggle,
+  onBrowsePlaceClear,
   onBrowsePlaceSelect,
   onBrowseDirections,
   isExpanded: externalIsExpanded,
@@ -539,6 +560,7 @@ export default function NavPanel({
                 aria-pressed={browseCategory === category.id}
                 onClick={() => onBrowseCategoryChange(category.id)}
               >
+                <DiscoveryIcon name={category.icon} />
                 {category.label}
                 {browseCategory === category.id && browsePlaces.length > 0 && (
                   <span className="nav-discovery-count">{browsePlaces.length}</span>
@@ -548,59 +570,110 @@ export default function NavPanel({
           </div>
 
           {browseCategory && (
-            <section className="nav-discovery-tray" aria-label={`${DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Campus"} places`}>
-              <div className="nav-discovery-tray-header">
-                <div className="nav-discovery-tray-title">
-                  <strong>{DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Places"}</strong>
-                  <span>{browsePlaces.length} places</span>
-                </div>
-                <button
-                  className="nav-discovery-close"
-                  type="button"
-                  onClick={() => onBrowseCategoryChange(browseCategory)}
-                  aria-label="Close place results"
-                  title="Close results"
-                >
-                  ×
-                </button>
-              </div>
-
-              {browsePlaces.length ? (
-                <div className="nav-discovery-list">
-                  {browsePlaces.map((place, index) => (
-                    <div className="nav-discovery-row" key={`${place.name}-${place.lat}-${place.lng}`}>
-                      <button
-                        type="button"
-                        className={`nav-discovery-place${selectedBrowsePlace?.name === place.name ? " nav-discovery-place--selected" : ""}`}
-                        onClick={() => onBrowsePlaceSelect(place)}
-                        aria-pressed={selectedBrowsePlace?.name === place.name}
-                      >
-                        <span className="nav-discovery-index">{index + 1}</span>
-                        <span className="nav-discovery-place-copy">
-                          <span className="nav-discovery-place-name">{place.name}</span>
-                          <span className="nav-discovery-place-distance">
-                            {place.distance.toFixed(1)} km {place.distanceReference}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        className="nav-discovery-directions"
-                        type="button"
-                        onClick={() => onBrowseDirections(place)}
-                        aria-label={`Directions to ${place.name}`}
-                        title={`Directions to ${place.name}`}
-                      >
-                        <IconDirections className="w-4 h-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="nav-discovery-empty">No mapped places in this category yet.</p>
-              )}
-            </section>
+            <div className="nav-discovery-summary">
+              <span>{browsePlaces.length} {DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label.toLowerCase()} places on map</span>
+              <button
+                className={`nav-discovery-list-toggle${browseListOpen ? " nav-discovery-list-toggle--active" : ""}`}
+                type="button"
+                onClick={onBrowseListToggle}
+                aria-expanded={browseListOpen}
+                aria-controls="nav-discovery-tray"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />
+                </svg>
+                <span>List</span>
+              </button>
+            </div>
           )}
+
+          {selectedBrowsePlace && !browseListOpen && (
+            <div className="nav-discovery-selection">
+              <button
+                className="nav-discovery-selection-place"
+                type="button"
+                onClick={() => onBrowsePlaceSelect(selectedBrowsePlace)}
+                aria-label={`Focus ${selectedBrowsePlace.name} on map`}
+              >
+                <span className="nav-discovery-selection-name">{selectedBrowsePlace.name}</span>
+                <span className="nav-discovery-place-distance">
+                  {selectedBrowsePlace.distance.toFixed(1)} km {selectedBrowsePlace.distanceReference}
+                </span>
+              </button>
+              <button
+                className="nav-discovery-directions"
+                type="button"
+                onClick={() => onBrowseDirections(selectedBrowsePlace)}
+                aria-label={`Directions to ${selectedBrowsePlace.name}`}
+                title={`Directions to ${selectedBrowsePlace.name}`}
+              >
+                <IconDirections className="w-4 h-4" aria-hidden="true" />
+              </button>
+              <button
+                className="nav-discovery-close"
+                type="button"
+                onClick={onBrowsePlaceClear}
+                aria-label="Clear selected place"
+                title="Clear selected place"
+              >×</button>
+            </div>
+          )}
+
         </div>
+      )}
+
+      {browseCategory && browseListOpen && (
+        <section id="nav-discovery-tray" className="nav-discovery-tray" aria-label={`${DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Campus"} places`}>
+          <div className="nav-discovery-tray-header">
+            <div className="nav-discovery-tray-title">
+              <strong>{DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Places"}</strong>
+              <span>{browsePlaces.length} places</span>
+            </div>
+            <button
+              className="nav-discovery-close"
+              type="button"
+              onClick={onBrowseListToggle}
+              aria-label="Close place list"
+              title="Close list"
+            >
+              ×
+            </button>
+          </div>
+
+          {browsePlaces.length ? (
+            <div className="nav-discovery-list">
+              {browsePlaces.map((place, index) => (
+                <div className="nav-discovery-row" key={`${place.name}-${place.lat}-${place.lng}`}>
+                  <button
+                    type="button"
+                    className={`nav-discovery-place${selectedBrowsePlace?.name === place.name ? " nav-discovery-place--selected" : ""}`}
+                    onClick={() => onBrowsePlaceSelect(place)}
+                    aria-pressed={selectedBrowsePlace?.name === place.name}
+                  >
+                    <span className="nav-discovery-index">{index + 1}</span>
+                    <span className="nav-discovery-place-copy">
+                      <span className="nav-discovery-place-name">{place.name}</span>
+                      <span className="nav-discovery-place-distance">
+                        {place.distance.toFixed(1)} km {place.distanceReference}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    className="nav-discovery-directions"
+                    type="button"
+                    onClick={() => onBrowseDirections(place)}
+                    aria-label={`Directions to ${place.name}`}
+                    title={`Directions to ${place.name}`}
+                  >
+                    <IconDirections className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="nav-discovery-empty">No mapped places in this category yet.</p>
+          )}
+        </section>
       )}
 
       <VoiceSearchModal
