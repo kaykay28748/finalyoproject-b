@@ -5,7 +5,36 @@ const DB_NAME = 'ug-routing-cache';
 const STORE_NAME = 'graphs';
 const CACHE_KEY = 'graph';
 
+// Safari/WebKit leaves indexedDB.open() pending indefinitely when another tab
+// holds an older connection open (the request fires onblocked and nothing else),
+// and commonly right after the user clears site data. With no ceiling the
+// caller waits forever, so the graph build stalls silently before it ever
+// reaches Overpass. Bounding it degrades that case into a plain cache miss.
+const DB_OPEN_TIMEOUT_MS = 4000;
+
+// Safari aborts the whole transaction when a write exceeds its storage quota
+// but does not reliably fire the request's error event, leaving tx.onabort as
+// the only signal that the write died.
+const TX_TIMEOUT_MS = 15000;
+
+// Marks "this browser will not give us a usable database" so callers can skip
+// the scary warning for an expected condition rather than a real fault.
+const CACHE_UNAVAILABLE = 'CacheUnavailableError';
+
 let dbInstance = null;
+let dbPending  = null;
+
+function cacheUnavailable(reason) {
+  const error = new Error(reason);
+  error.name = CACHE_UNAVAILABLE;
+  return error;
+}
+
+function reportReadFailure(error) {
+  if (error?.name !== CACHE_UNAVAILABLE) {
+    console.warn('[CacheStore] Could not read from IndexedDB:', error.message);
+  }
+}
 
 /**
  * Drop the cached handle. The browser can close an IndexedDB connection at any
@@ -23,15 +52,50 @@ function closeDB() {
 }
 
 /**
- * Initialize IndexedDB connection
+ * Resolve a usable connection, or null if this browser/context cannot provide
+ * one. Never rejects and never hangs, so a dead cache can only cost a rebuild.
  */
 async function initDB() {
   if (dbInstance) return dbInstance;
+  if (dbPending)  return dbPending;
 
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+  // Safari private browsing and locked-down contexts can omit IndexedDB
+  // entirely; treat that as "no cache" rather than a hard failure.
+  if (typeof indexedDB === 'undefined' || indexedDB === null) return null;
 
-    request.onerror = () => reject(request.error);
+  dbPending = new Promise((resolve) => {
+    let settled   = false;
+    let openTimer = null;
+
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      if (openTimer) clearTimeout(openTimer);
+      resolve(value);
+    };
+
+    let request;
+    try {
+      request = indexedDB.open(DB_NAME, 1);
+    } catch {
+      // Safari throws synchronously (SecurityError) in restricted contexts.
+      finish(null);
+      return;
+    }
+
+    openTimer = setTimeout(() => {
+      console.warn('[CacheStore] IndexedDB open timed out — treating as cache miss');
+      finish(null);
+    }, DB_OPEN_TIMEOUT_MS);
+
+    request.onerror = () => finish(null);
+
+    // Another connection is holding an older version open. The request will
+    // not settle until that tab goes away, so deliberately do not wait on it.
+    request.onblocked = () => {
+      console.warn('[CacheStore] IndexedDB open blocked by another connection');
+    };
+
     request.onsuccess = () => {
       const db = request.result;
       // A schema upgrade in another tab force-closes this handle; discard it so
@@ -41,7 +105,7 @@ async function initDB() {
         if (dbInstance === db) dbInstance = null;
       };
       dbInstance = db;
-      resolve(db);
+      finish(db);
     };
 
     request.onupgradeneeded = (event) => {
@@ -51,30 +115,84 @@ async function initDB() {
       }
     };
   });
+
+  const db = await dbPending;
+  dbPending = null;
+  return db;
 }
 
 /**
- * Run a read/write against the graph store, reopening once if the cached
- * connection turns out to be closed.
+ * Run a read/write against the graph store, reopening once if the connection is
+ * closed or unusable. Throws CacheUnavailableError when no database can be
+ * obtained, which callers treat as a cache miss.
  */
 async function withStore(mode, run) {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const db = await initDB();
     try {
+      const db = await initDB();
+      if (!db) throw cacheUnavailable('IndexedDB unavailable');
+
       return await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, mode);
-        const request = run(tx.objectStore(STORE_NAME));
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        let settled = false;
+        let txTimer = null;
+
+        const succeed = (value) => {
+          if (settled) return;
+          settled = true;
+          if (txTimer) clearTimeout(txTimer);
+          resolve(value);
+        };
+        const fail = (error) => {
+          if (settled) return;
+          settled = true;
+          if (txTimer) clearTimeout(txTimer);
+          reject(error);
+        };
+
+        let tx;
+        try {
+          tx = db.transaction(STORE_NAME, mode);
+        } catch (error) {
+          fail(error);
+          return;
+        }
+
+        txTimer = setTimeout(() => {
+          try {
+            tx.abort();
+          } catch {
+            // Transaction already settled.
+          }
+          fail(cacheUnavailable('IndexedDB transaction timed out'));
+        }, TX_TIMEOUT_MS);
+
+        tx.onabort = () => fail(tx.error || cacheUnavailable('IndexedDB transaction aborted'));
+        tx.onerror = () => fail(tx.error);
+
+        let request;
+        try {
+          request = run(tx.objectStore(STORE_NAME));
+        } catch (error) {
+          fail(error);
+          return;
+        }
+
+        request.onsuccess = () => succeed(request.result);
+        request.onerror   = () => fail(request.error);
       });
     } catch (error) {
-      const staleConnection = error?.name === 'InvalidStateError';
-      if (!staleConnection || attempt === 1) throw error;
-      console.warn('[CacheStore] Stale IndexedDB connection, reopening...');
+      // A closed handle or an unavailable database is worth one fresh attempt;
+      // Safari frequently opens cleanly on the second try after a data clear.
+      const retryable =
+        error?.name === 'InvalidStateError' || error?.name === CACHE_UNAVAILABLE;
+      if (!retryable || attempt === 1) throw error;
+
+      console.warn(`[CacheStore] ${error.name} — retrying with a fresh connection`);
       closeDB();
+      dbPending = null;
     }
   }
-  return null;
+  throw cacheUnavailable('IndexedDB unavailable');
 }
 
 /**
@@ -90,7 +208,9 @@ export async function cacheGraph(graph) {
     await withStore('readwrite', (store) => store.put(data, CACHE_KEY));
     console.log('[CacheStore] Graph cached to IndexedDB');
   } catch (error) {
-    console.warn('[CacheStore] Could not cache to IndexedDB:', error.message);
+    if (error?.name !== CACHE_UNAVAILABLE) {
+      console.warn('[CacheStore] Could not cache to IndexedDB:', error.message);
+    }
   }
 }
 
@@ -113,15 +233,19 @@ export async function getCachedGraph() {
     console.log('[CacheStore] Cache expired, will rebuild');
     return null;
   } catch (error) {
-    console.warn('[CacheStore] Could not read from IndexedDB:', error.message);
+    reportReadFailure(error);
     return null;
   }
 }
 
 /**
  * Load graph from IndexedDB cache, preserving its age.
- * Same contract as getCachedGraph, but returns { graph, cachedAt, ageMs } so
- * callers can disclose data freshness instead of only logging it.
+ *
+ * Expired entries are still returned, flagged with `isStale`. Overpass is a
+ * rate-limited public service that is frequently unreachable, so discarding a
+ * perfectly usable graph after 24h only guarantees a broken map for anyone who
+ * reloads while the mirrors are down. Callers revalidate stale data in the
+ * background instead of blocking on it.
  */
 export async function getCachedGraphWithAge() {
   try {
@@ -131,13 +255,14 @@ export async function getCachedGraphWithAge() {
     const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
     const ageMs = Date.now() - data.timestamp;
 
-    if (ageMs < CACHE_DURATION_MS) {
-      return { graph: data.graph, cachedAt: data.timestamp, ageMs };
-    }
-
-    return null;
+    return {
+      graph: data.graph,
+      cachedAt: data.timestamp,
+      ageMs,
+      isStale: ageMs >= CACHE_DURATION_MS,
+    };
   } catch (error) {
-    console.warn('[CacheStore] Could not read from IndexedDB:', error.message);
+    reportReadFailure(error);
     return null;
   }
 }
@@ -150,6 +275,8 @@ export async function clearCache() {
     await withStore('readwrite', (store) => store.delete(CACHE_KEY));
     console.log('[CacheStore] Cache cleared');
   } catch (error) {
-    console.warn('[CacheStore] Could not clear cache:', error.message);
+    if (error?.name !== CACHE_UNAVAILABLE) {
+      console.warn('[CacheStore] Could not clear cache:', error.message);
+    }
   }
 }

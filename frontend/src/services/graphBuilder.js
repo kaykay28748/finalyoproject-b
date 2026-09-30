@@ -69,55 +69,102 @@ async function fetchWithRetry(url, query, retries = 5) {
   throw new Error('All fetch attempts failed');
 }
 
+/**
+ * Fetch OSM data and assemble the routing graph, caching the result.
+ * Returns null when Overpass could not be reached or yielded nothing usable.
+ */
+async function fetchAndBuildGraph() {
+  const query = getOSMQuery(UG_BOUNDS);
+
+  let response;
+  try {
+    response = await fetchWithRetry(OVERPASS_PROXY, query);
+  } catch {
+    console.log("[GraphBuilder] All proxy retries exhausted");
+    return null;
+  }
+
+  if (!response) {
+    console.warn("[GraphBuilder] No response from Overpass API");
+    return null;
+  }
+
+  const data = await response.json();
+  console.log(`[GraphBuilder] Received ${data.elements?.length || 0} elements`);
+
+  if (!data.elements?.length) {
+    console.warn("[GraphBuilder] No OSM data returned");
+    return null;
+  }
+
+  let graph = processOSMData(data.elements);
+  if (!graph || !Object.keys(graph.nodes).length) {
+    console.warn("[GraphBuilder] Graph empty after processing");
+    return null;
+  }
+
+  graph = addManualPedestrianConnections(graph, 25);
+  graph = { nodes: graph.nodes, edges: graph.edges };
+  graph = connectNearbyNodes(graph, 15);
+
+  const components = findConnectedComponents(graph);
+  console.log(
+    `[GraphBuilder] Ready — ${Object.keys(graph.nodes).length} nodes, ` +
+    `${graph.edges.length} edges, ${components.length} component(s)`
+  );
+
+  await cacheGraph(graph);
+  return graph;
+}
+
+// Only ever one background refresh in flight; concurrent callers share it.
+let refreshInFlight = null;
+
+function refreshGraphInBackground() {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const graph = await fetchAndBuildGraph();
+      if (graph) console.log("[GraphBuilder] Background refresh succeeded");
+    } catch (error) {
+      console.warn("[GraphBuilder] Background refresh failed:", error.message);
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
 export async function buildGraph() {
   try {
     const cached = await getCachedGraphWithAge();
     if (cached) {
-      console.log("[GraphBuilder] Using cached graph from IndexedDB");
       registerGateNodes(cached.graph);
       // Record provenance on the graph so the UI can disclose data age.
-      cached.graph._provenance = { source: "cache", cachedAt: cached.cachedAt, ageMs: cached.ageMs };
+      cached.graph._provenance = {
+        source: cached.isStale ? "stale-cache" : "cache",
+        cachedAt: cached.cachedAt,
+        ageMs: cached.ageMs,
+      };
+
+      if (cached.isStale) {
+        // Overpass rate-limits aggressively and is often unreachable. Never
+        // hold the map hostage waiting on a refresh we may not be able to get.
+        console.warn("[GraphBuilder] Serving stale cache, revalidating in background");
+        refreshGraphInBackground();
+      } else {
+        console.log("[GraphBuilder] Using cached graph from IndexedDB");
+      }
+
       return cached.graph;
     }
 
     console.log("[GraphBuilder] Fetching OSM data for Legon...");
-    const query = getOSMQuery(UG_BOUNDS);
+    const graph = await fetchAndBuildGraph();
+    if (!graph) throw new Error('Unable to build graph — Overpass unavailable');
 
-    let response;
-    try {
-      response = await fetchWithRetry(OVERPASS_PROXY, query);
-    } catch {
-      console.log("[GraphBuilder] All proxy retries exhausted");
-      response = null;
-    }
-
-    if (!response) throw new Error('No response from Overpass API');
-
-    const data = await response.json();
-    console.log(`[GraphBuilder] Received ${data.elements?.length || 0} elements`);
-
-    if (!data.elements?.length) {
-      console.warn("[GraphBuilder] No OSM data returned");
-      return null;
-    }
-
-    let graph = processOSMData(data.elements);
-    if (!graph || !Object.keys(graph.nodes).length) {
-      console.warn("[GraphBuilder] Graph empty after processing");
-      return null;
-    }
-
-    graph = addManualPedestrianConnections(graph, 25);
-    graph = { nodes: graph.nodes, edges: graph.edges };
-    graph = connectNearbyNodes(graph, 15);
-
-    const components = findConnectedComponents(graph);
-    console.log(
-      `[GraphBuilder] Ready — ${Object.keys(graph.nodes).length} nodes, ` +
-      `${graph.edges.length} edges, ${components.length} component(s)`
-    );
-
-    await cacheGraph(graph);
     registerGateNodes(graph);
     graph._provenance = { source: "live", cachedAt: Date.now(), ageMs: 0 };
     return graph;
