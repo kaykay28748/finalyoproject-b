@@ -29,6 +29,7 @@ const CATEGORY_INTENTS = [
   { terms: ["library", "libraries"], types: ["library"] },
   { terms: ["bank", "banks", "banking", "atm", "cash"], keywords: ["bank"] },
   { terms: ["shop", "shopping", "supermarket", "groceries", "bookshop", "bookstore", "book store"], keywords: ["shopping"] },
+  { terms: ["print", "printer", "printers", "printing", "printing press", "press", "photocopy", "photocopying", "photostat", "copy", "copies", "copy shop", "copyshop", "copy center", "copy centre", "binding"], keywords: ["printing"] },
   { terms: ["hall", "halls", "hostel", "hostels", "residence", "accommodation", "dorm", "dormitory"], types: ["hall", "accommodation"] },
   { terms: ["academic", "academics", "faculty", "department", "departments"], types: ["academic", "school"] },
   { terms: ["research"], types: ["research"] },

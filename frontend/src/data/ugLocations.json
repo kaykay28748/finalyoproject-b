@@ -942,6 +942,55 @@
     }
   },
   {
+    "name": "Printing Shop",
+    "aliases": ["copy shop", "photocopy shop", "photostat", "campus printing shop"],
+    "keywords": ["printing", "print shop", "photocopy", "photostat", "copy shop", "binding", "stationery"],
+    "lat": 5.649965,
+    "lng": -0.1868512,
+    "type": "service",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/665125647",
+      "url": "https://www.openstreetmap.org/way/665125647"
+    }
+  },
+  {
+    "name": "University of Ghana Printing Press",
+    "aliases": ["UG Printing Press", "UG Press", "University Press Legon"],
+    "keywords": ["printing", "print shop", "printing press", "publishing", "booklets", "business cards", "flyers", "binding"],
+    "lat": 5.6564687,
+    "lng": -0.1886694,
+    "type": "service",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/University+of+Ghana+Printing+Press/@5.6564687,-0.1886694,17z"
+    }
+  },
+  {
+    "name": "Legon Hall Printing Shop",
+    "aliases": ["Legon Hall print shop", "Legon Hall photocopy", "printing near Legon Hall"],
+    "keywords": ["printing", "print shop", "photocopy", "photostat", "copy shop", "binding"],
+    "lat": 5.6498694,
+    "lng": -0.1885486,
+    "type": "service",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/LEGON+HALL+PRINTING+SHOP/@5.6498694,-0.1885486,17z"
+    }
+  },
+  {
+    "name": "Zilnik Print",
+    "aliases": ["Zilnik Printing", "Zilnik print shop", "Old Pentagon printing"],
+    "keywords": ["printing", "print shop", "commercial printer", "photocopy", "photostat", "copy shop", "binding", "banners", "labels"],
+    "lat": 5.6564379,
+    "lng": -0.1813414,
+    "type": "service",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Zilnik+Print/@5.6564379,-0.1813414,17z"
+    }
+  },
+  {
     "name": "Commonwealth Food Vendors",
     "aliases": ["Commonwealth food stalls", "Vandal City food vendors"],
     "keywords": ["food", "eatery", "food stalls", "snacks", "dining"],
