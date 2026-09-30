@@ -175,7 +175,7 @@ const BrowsePlacesLayer = memo(function BrowsePlacesLayer({
         eventHandlers={{ click: () => onPlaceSelect(place) }}
       >
         <Tooltip direction="top" offset={[0, -16]}>{place.name}</Tooltip>
-        <Popup>
+        <Popup className="browse-map-popup-shell">
           <div className="browse-map-popup">
             <strong>{place.name}</strong>
             <span>{place.distance.toFixed(1)} km {place.distanceReference}</span>

@@ -227,6 +227,16 @@
   outline-offset: 2px;
 }
 
+.ug-root.dark .browse-map-popup-shell .leaflet-popup-content-wrapper,
+.ug-root.dark .browse-map-popup-shell .leaflet-popup-tip {
+  background: #1c1c1e;
+  color: #f8fafc;
+}
+
+.ug-root.dark .browse-map-popup { color: #f8fafc; }
+.ug-root.dark .browse-map-popup span { color: #94a3b8; }
+.ug-root.dark .browse-map-popup button { background: #2563eb; }
+
 /* ============================================
    MOBILE RESPONSIVE
    ============================================ */
