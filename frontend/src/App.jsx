@@ -56,6 +56,7 @@ export default function App() {
   const [isRouteLocked, setIsRouteLocked] = useState(false);
   const [isNavExpanded, setIsNavExpanded] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   const [customStartPoint, setCustomStartPoint] = useState(null);
   const [useCustomLocation, setUseCustomLocation] = useState(false);
@@ -171,7 +172,8 @@ export default function App() {
         if (prefs.mapLayer)             setMapLayer(prefs.mapLayer);
         console.log("[App] Preferences loaded:", prefs);
       })
-      .catch((err) => console.warn("[App] Failed to load preferences:", err));
+      .catch((err) => console.warn("[App] Failed to load preferences:", err))
+      .finally(() => setPreferencesLoaded(true));
   }, []);
 
   // ── Log login + trigger location request ────────────────────────────────
@@ -187,9 +189,10 @@ export default function App() {
 
   // ── Save preferences ───────────────────────────────────────────
   useEffect(() => {
+    if (!preferencesLoaded) return;
     savePreferences({ activeProfile, darkMode, vehicleMode, showHeatmap, mapLayer })
       .catch((err) => console.warn("[App] Failed to save preferences:", err));
-  }, [activeProfile, darkMode, vehicleMode, showHeatmap, mapLayer]);
+  }, [activeProfile, darkMode, vehicleMode, showHeatmap, mapLayer, preferencesLoaded]);
 
   // ── Sync status bar color with theme ───────────────────────────
   useEffect(() => {
