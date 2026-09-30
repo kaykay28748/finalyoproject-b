@@ -51,10 +51,8 @@ export function useDeviceHeading() {
       if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
         newHeading = e.webkitCompassHeading;
       }
-      // Android / standard: alpha is the rotation around z-axis (0-360)
-      // But alpha is relative, so we need the absolute orientation event
-      else if (e.alpha !== null && e.alpha !== undefined) {
-        // On Android, use the 'absolute' event for true north
+      // Standard deviceorientation reports whether alpha is earth-relative.
+      else if (e.absolute && e.alpha !== null && e.alpha !== undefined) {
         newHeading = (360 - e.alpha) % 360;
       }
 
@@ -69,13 +67,6 @@ export function useDeviceHeading() {
       const granted = await requestPermission();
       if (!granted || !isActive) return;
 
-      // Prefer absolute orientation (true north) — falls back to regular
-      const AbsoluteOrientationEvent =
-        typeof window !== "undefined" && window.DeviceOrientationAbsoluteEvent
-          ? window.DeviceOrientationAbsoluteEvent
-          : DeviceOrientationEvent;
-
-      window.addEventListener("deviceorientationabsolute", handleOrientation, true);
       window.addEventListener("deviceorientation", handleOrientation, true);
 
       // Fallback check: if no events fire after 1s on desktop, mark unsupported
@@ -90,7 +81,6 @@ export function useDeviceHeading() {
 
     return () => {
       isActive = false;
-      window.removeEventListener("deviceorientationabsolute", handleOrientation, true);
       window.removeEventListener("deviceorientation", handleOrientation, true);
     };
   }, [requestPermission]);
