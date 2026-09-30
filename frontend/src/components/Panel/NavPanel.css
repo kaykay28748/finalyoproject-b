@@ -1474,18 +1474,21 @@
 .nav-discovery-directions:hover { background: rgba(15, 23, 42, 0.07); }
 
 .nav-discovery-list {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
+/* The tray is a single card. Its rows are flat, full-bleed bands separated by
+   hairlines — insetting and rounding each row is what made the panel read as a
+   card nested inside a card. */
 .nav-discovery-row {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 58px;
-  padding: 4px 8px 4px 10px;
+  align-items: stretch;
+  gap: 0;
+  min-height: 56px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
@@ -1494,38 +1497,44 @@
 .nav-discovery-place {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
-  min-height: 48px;
-  padding: 5px 8px;
+  min-height: 56px;
+  padding: 8px 4px 8px 18px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 0;
   background: transparent;
   color: inherit;
   font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
+  transition: background-color 0.12s ease-out;
 }
 
 .nav-discovery-place:hover,
-.nav-discovery-place--selected { background: rgba(37, 99, 235, 0.08); }
+.nav-discovery-place--selected { background: rgba(37, 99, 235, 0.07); }
 
-.nav-discovery-index {
-  display: grid;
-  place-items: center;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.22);
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+/* Selection is marked with one accent edge and a tinted band rather than a
+   filled chip, so the list keeps reading as one continuous surface. */
+.nav-discovery-row:has(.nav-discovery-place--selected) {
+  box-shadow: inset 3px 0 0 #2563eb;
 }
+
+/* The rank was a white-ringed blue disc with its own shadow — a third nested
+   surface. A quiet tabular numeral does the same job without the clutter. */
+.nav-discovery-index {
+  flex: 0 0 auto;
+  width: 16px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.nav-discovery-row:hover .nav-discovery-index,
+.nav-discovery-place--selected .nav-discovery-index { color: #2563eb; }
 
 .nav-discovery-place-copy {
   display: flex;
@@ -1549,8 +1558,35 @@
   line-height: 1.2;
 }
 
-.nav-discovery-directions {
-  background: rgba(37, 99, 235, 0.08);
+/* Inside the tray the action is a quiet icon revealed on hover or keyboard
+   focus, instead of a filled blue pill that read as a third nested surface.
+   Scoped to .nav-discovery-row so the compact selection pill on mobile, which
+   shares this class, keeps its filled treatment.
+   Touch devices have no hover, so it stays visible there. */
+.nav-discovery-row .nav-discovery-directions {
+  margin-right: 10px;
+  background: transparent;
+  color: #64748b;
+  transition: background-color 0.12s ease-out, color 0.12s ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav-discovery-row .nav-discovery-directions { opacity: 0; }
+
+  .nav-discovery-row:hover .nav-discovery-directions,
+  .nav-discovery-row:focus-within .nav-discovery-directions,
+  .nav-discovery-row:has(.nav-discovery-place--selected) .nav-discovery-directions {
+    opacity: 1;
+  }
+}
+
+.nav-discovery-row:hover .nav-discovery-directions {
+  background: rgba(15, 23, 42, 0.06);
+  color: #1d4ed8;
+}
+
+.nav-discovery-row:focus-within .nav-discovery-directions {
+  background: rgba(37, 99, 235, 0.1);
   color: #1d4ed8;
 }
 
@@ -1616,6 +1652,19 @@
 .ug-root.dark .nav-discovery-directions:hover,
 .ug-root.dark .nav-discovery-place:hover,
 .ug-root.dark .nav-discovery-place--selected { background: rgba(96, 165, 250, 0.14); }
+
+.ug-root.dark .nav-discovery-index { color: #64748b; }
+.ug-root.dark .nav-discovery-row:hover .nav-discovery-index,
+.ug-root.dark .nav-discovery-place--selected .nav-discovery-index { color: #93c5fd; }
+
+.ug-root.dark .nav-discovery-row:has(.nav-discovery-place--selected) {
+  box-shadow: inset 3px 0 0 #3b82f6;
+}
+
+.ug-root.dark .nav-discovery-row .nav-discovery-directions { color: #94a3b8; }
+
+.ug-root.dark .nav-discovery-row:hover .nav-discovery-directions { background: rgba(255, 255, 255, 0.1); }
+.ug-root.dark .nav-discovery-row:focus-within .nav-discovery-directions { background: rgba(96, 165, 250, 0.18); }
 
 @keyframes nav-discovery-in {
   from { opacity: 0; transform: translateY(-5px); }
