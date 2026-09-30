@@ -528,7 +528,8 @@ export default function NavPanel({
       </div>
 
       {!isExpanded && (
-        <div className="nav-discovery-shell">
+        <div className={`nav-discovery-shell${markersVisible ? " nav-discovery-shell--with-legend" : ""}`}>
+          <span className="nav-discovery-label">Explore campus</span>
           <div className="nav-discovery-categories" role="group" aria-label="Explore campus places">
             {DISCOVERY_CATEGORIES.map((category) => (
               <button
