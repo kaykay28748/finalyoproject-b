@@ -4,11 +4,22 @@
 import { UG_BOUNDS } from "../function/utils/bounds";
 import { distanceKm } from "../function/utils/distance";
 import { getCachedGraphWithAge, cacheGraph } from "./cacheStore";
-import { API_URL } from "../config";
 import { UG_GATES } from "./gateSchedule";
 import { setGateNodeIds } from "./costFunction";
 
-const OVERPASS_PROXY = `${API_URL}/api/overpass`;
+// Full-planet Overpass mirrors, tried in order. Regional extracts are
+// deliberately excluded: they answer quickly with an empty element list for a
+// campus outside their area, which is indistinguishable from "no roads here".
+// overpass.osm.ch is a live example — HTTP 200 in 1.6s, zero Legon features.
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
+
+// The campus query returns in ~15s against a healthy mirror. Past 30s the
+// mirror is stalled, so move on rather than hold the map hostage.
+const OVERPASS_ATTEMPT_MS = 30000;
 
 function getBoundsValues(bounds) {
   if (bounds?._southWest && bounds?._northEast) {
@@ -36,37 +47,55 @@ const getOSMQuery = (bounds) => {
   `;
 };
 
-async function fetchWithRetry(url, query, retries = 5) {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId  = setTimeout(() => controller.abort(), 60000);
+/**
+ * Query Overpass mirrors directly from the browser.
+ *
+ * This deliberately bypasses our own /api/overpass proxy: that hop added a
+ * Render cold start and put every request through one shared egress IP that
+ * Overpass rate-limits, turning a healthy mirror into a multi-minute hang.
+ * Overpass sends `Access-Control-Allow-Origin: *`, so no proxy is needed.
+ *
+ * Returns the parsed payload, or null if every mirror failed.
+ */
+async function fetchOverpassDirect(query) {
+  for (const mirror of OVERPASS_MIRRORS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OVERPASS_ATTEMPT_MS);
 
-      const response = await fetch(url, {
+    try {
+      const response = await fetch(mirror, {
         method:  "POST",
         body:    query,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: { "Content-Type": "text/plain" },
         signal:  controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
-      if (response.ok) return response;
-
-      if (response.status === 429) {
-        const wait = Math.min(5000 * Math.pow(2, i), 30000);
-        console.warn(`[GraphBuilder] Rate limited (429), waiting ${wait}ms...`);
-        await new Promise(r => setTimeout(r, wait));
+      if (!response.ok) {
+        console.warn(`[GraphBuilder] ${mirror} -> HTTP ${response.status}`);
         continue;
       }
 
-      console.warn(`[GraphBuilder] Attempt ${i + 1} failed: HTTP ${response.status}`);
+      const data = await response.json();
+
+      // An empty element list from a mirror is never trustworthy: it means
+      // either the query genuinely matched nothing or we hit a regional
+      // extract. Trying the next mirror is cheaper than silently returning an
+      // empty graph and a blank map.
+      if (!data.elements?.length) {
+        console.warn(`[GraphBuilder] ${mirror} returned 0 elements, trying next mirror`);
+        continue;
+      }
+
+      return data;
     } catch (error) {
-      console.warn(`[GraphBuilder] Attempt ${i + 1} failed:`, error.message);
+      const reason = error.name === "AbortError" ? `timed out after ${OVERPASS_ATTEMPT_MS}ms` : error.message;
+      console.warn(`[GraphBuilder] ${mirror} failed: ${reason}`);
+    } finally {
+      clearTimeout(timer);
     }
-    if (i < retries) await new Promise(r => setTimeout(r, 3000));
   }
-  throw new Error('All fetch attempts failed');
+
+  return null;
 }
 
 /**
@@ -76,26 +105,13 @@ async function fetchWithRetry(url, query, retries = 5) {
 async function fetchAndBuildGraph() {
   const query = getOSMQuery(UG_BOUNDS);
 
-  let response;
-  try {
-    response = await fetchWithRetry(OVERPASS_PROXY, query);
-  } catch {
-    console.log("[GraphBuilder] All proxy retries exhausted");
+  const data = await fetchOverpassDirect(query);
+  if (!data) {
+    console.warn("[GraphBuilder] All Overpass mirrors failed");
     return null;
   }
 
-  if (!response) {
-    console.warn("[GraphBuilder] No response from Overpass API");
-    return null;
-  }
-
-  const data = await response.json();
-  console.log(`[GraphBuilder] Received ${data.elements?.length || 0} elements`);
-
-  if (!data.elements?.length) {
-    console.warn("[GraphBuilder] No OSM data returned");
-    return null;
-  }
+  console.log(`[GraphBuilder] Received ${data.elements.length} elements`);
 
   let graph = processOSMData(data.elements);
   if (!graph || !Object.keys(graph.nodes).length) {
