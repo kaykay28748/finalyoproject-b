@@ -338,12 +338,18 @@
       "registry",
       "ug registry",
       "student registry",
-      "registrar"
+      "registrar",
+      "university of ghana registry",
+      "academic affairs office"
     ],
-    "lat": 5.6502253,
-    "lng": -0.1953859,
+    "lat": 5.6501606,
+    "lng": -0.1954113,
     "type": "admin",
-    "keywords": ["admissions", "student administration", "student records", "registration"]
+    "keywords": ["admissions", "student administration", "student records", "registration", "academic affairs", "directorate", "office"],
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/University+of+Ghana+Registry/@5.6501606,-0.1954113,17z"
+    }
   },
   {
     "name": "Post Office (Legon)",
@@ -1053,6 +1059,78 @@
       "provider": "OpenStreetMap",
       "element": "node/5978214389",
       "url": "https://www.openstreetmap.org/node/5978214389"
+    }
+  },
+  {
+    "name": "Statistics Department Printing Press",
+    "aliases": ["Statistics Block Printing Press", "Statistics Department print shop", "photocopy at Statistics", "Statistics Block photocopy"],
+    "keywords": ["printing", "print shop", "printing press", "photocopy", "photostat", "copy shop", "binding"],
+    "lat": 5.6538662,
+    "lng": -0.1838368,
+    "type": "service",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Department+of+Statistics/@5.6538662,-0.1838368,17z"
+    }
+  },
+  {
+    "name": "Public Affairs Directorate",
+    "aliases": ["UG Public Affairs", "PAD", "Public Affairs Office"],
+    "keywords": ["directorate", "office", "administration", "media", "communications", "public relations"],
+    "lat": 5.6510429,
+    "lng": -0.195402,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Public+Affairs+Directorate,+University+of+Ghana+Legon/@5.6510429,-0.195402,17z"
+    }
+  },
+  {
+    "name": "Research and Innovation Office Complex",
+    "aliases": ["UG Research and Innovation Office", "ORID", "Office of Research Innovation and Development"],
+    "keywords": ["directorate", "office", "research office", "research", "innovation", "development", "research administration"],
+    "lat": 5.6539439,
+    "lng": -0.192882,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Research+and+Innovation+Office+Complex/@5.6539439,-0.192882,17z"
+    }
+  },
+  {
+    "name": "Physical Development and Municipal Services Directorate",
+    "aliases": ["PDMSD", "Physical Development Directorate", "Municipal Services Directorate"],
+    "keywords": ["directorate", "office", "physical development", "municipal services", "campus services"],
+    "lat": 5.6478622,
+    "lng": -0.1819673,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/PDMSD+-Physical+Development+and+Municipal+Services+Directorate/@5.6478622,-0.1819673,17z"
+    }
+  },
+  {
+    "name": "Internal Audit Directorate",
+    "aliases": ["UG Internal Audit", "Internal Audit Office"],
+    "keywords": ["directorate", "office", "internal audit", "audit", "administration"],
+    "lat": 5.6509564,
+    "lng": -0.1942754,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Internal+Audit+Directorate/@5.6509564,-0.1942754,17z"
+    }
+  },
+  {
+    "name": "Cash Office",
+    "aliases": ["UG Cash Office", "fees payment office", "tuition payment office"],
+    "keywords": ["finance", "fees", "payment", "payments", "cashier"],
+    "lat": 5.6503365,
+    "lng": -0.1942295,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Cash+Office/@5.6503365,-0.1942295,17z"
     }
   }
 ]
