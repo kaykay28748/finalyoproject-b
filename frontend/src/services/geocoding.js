@@ -34,7 +34,7 @@ const CATEGORY_INTENTS = [
   { terms: ["hall", "halls", "hostel", "hostels", "residence", "accommodation", "dorm", "dormitory"], types: ["hall", "accommodation"] },
   { terms: ["academic", "academics", "faculty", "department", "departments"], types: ["academic", "school"] },
   { terms: ["research"], types: ["research"], keywords: ["research office"] },
-  { terms: ["sport", "sports", "gym", "stadium"], types: ["sport"] },
+  { terms: ["sport", "sports", "gym", "stadium"], types: ["sport"], keywords: ["sports office"] },
   { terms: ["worship", "church", "mosque", "chapel"], types: ["worship"] },
   { terms: ["service", "services", "student support"], types: ["service"] },
   { terms: ["transport", "bus", "bus station", "gate", "entrance"], keywords: ["transport"] },

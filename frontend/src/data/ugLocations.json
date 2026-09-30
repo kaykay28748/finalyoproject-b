@@ -1132,5 +1132,29 @@
       "provider": "Google Maps",
       "url": "https://www.google.com/maps/place/Cash+Office/@5.6503365,-0.1942295,17z"
     }
+  },
+  {
+    "name": "Careers and Counselling Directorate",
+    "aliases": ["Careers Directorate", "Counselling Directorate", "UG Career Counselling", "career guidance office"],
+    "keywords": ["directorate", "office", "careers", "counselling", "career guidance", "student support"],
+    "lat": 5.6494523,
+    "lng": -0.1903086,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/Careers+And+Counselling+Directorate/@5.6494523,-0.1903086,17z"
+    }
+  },
+  {
+    "name": "University of Ghana Sports Directorate",
+    "aliases": ["UG Sports Directorate", "Sports Directorate", "University Sports Office"],
+    "keywords": ["directorate", "office", "sports office", "sports"],
+    "lat": 5.6397227,
+    "lng": -0.1814595,
+    "type": "admin",
+    "source": {
+      "provider": "Google Maps",
+      "url": "https://www.google.com/maps/place/University+Of+Ghana+Sports+Directorat/@5.6397227,-0.1814595,17z"
+    }
   }
 ]
