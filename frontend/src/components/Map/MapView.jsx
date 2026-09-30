@@ -1,5 +1,5 @@
 // components/Map/MapView.jsx
-import { MapContainer, useMap, Marker, Polyline } from "react-leaflet";
+import { MapContainer, useMap, Marker, Polyline, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-rotate";
@@ -103,6 +103,96 @@ const MapSnapToNorth = memo(function MapSnapToNorth({ trigger }) {
   }, [trigger, map]);
 
   return null;
+});
+
+const BROWSE_MARKER_COLORS = {
+  food: "#e11d48",
+  health: "#dc2626",
+  admin: "#2563eb",
+  hall: "#d97706",
+  library: "#7c3aed",
+  sport: "#059669",
+  service: "#ea580c",
+  commercial: "#ca8a04",
+};
+
+function createBrowseMarkerIcon(place, index, isSelected) {
+  const color = BROWSE_MARKER_COLORS[place.type] || "#475569";
+  return L.divIcon({
+    className: "browse-map-icon",
+    html: `<span class="browse-map-marker${isSelected ? " browse-map-marker--selected" : ""}" style="--browse-marker-color:${color}">${index + 1}</span>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
+  });
+}
+
+const BrowsePlacesLayer = memo(function BrowsePlacesLayer({
+  places,
+  selectedPlace,
+  onPlaceSelect,
+  onDirections,
+}) {
+  const map = useMap();
+  const fittedPlacesKeyRef = useRef("");
+  const placesKey = places
+    .map((place) => `${place.name}:${place.lat}:${place.lng}`)
+    .sort()
+    .join("|");
+
+  useEffect(() => {
+    if (!places.length) {
+      fittedPlacesKeyRef.current = "";
+      return;
+    }
+    if (fittedPlacesKeyRef.current === placesKey) return;
+    fittedPlacesKeyRef.current = placesKey;
+
+    if (places.length === 1) {
+      map.flyTo([places[0].lat, places[0].lng], Math.max(map.getZoom(), 17), { duration: 0.5 });
+      return;
+    }
+
+    const bounds = L.latLngBounds(places.map((place) => [place.lat, place.lng]));
+    map.fitBounds(bounds, {
+      paddingTopLeft: [24, 150],
+      paddingBottomRight: [72, 24],
+      maxZoom: 16,
+      animate: true,
+      duration: 0.55,
+    });
+  }, [map, places, placesKey]);
+
+  return places.map((place, index) => {
+    const isSelected = selectedPlace?.name === place.name;
+    return (
+      <Marker
+        key={`${place.name}-${place.lat}-${place.lng}`}
+        position={[place.lat, place.lng]}
+        icon={createBrowseMarkerIcon(place, index, isSelected)}
+        zIndexOffset={isSelected ? 700 : 500}
+        bubblingMouseEvents={false}
+        eventHandlers={{ click: () => onPlaceSelect(place) }}
+      >
+        <Tooltip direction="top" offset={[0, -16]}>{place.name}</Tooltip>
+        <Popup>
+          <div className="browse-map-popup">
+            <strong>{place.name}</strong>
+            <span>{place.distance.toFixed(1)} km {place.distanceReference}</span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDirections(place);
+              }}
+            >
+              Directions
+            </button>
+          </div>
+        </Popup>
+      </Marker>
+    );
+  });
 });
 
 // ── MapDragGuard — disables Leaflet drag/touchZoom while legend is being
@@ -266,6 +356,10 @@ export default function MapView({
   activeProfile = "standard",
   vehicleMode = "walk",
   flyTarget,
+  browsePlaces = [],
+  selectedBrowsePlace = null,
+  onBrowsePlaceSelect,
+  onBrowseDirections,
   darkMode,
   waitingForStart,
   useCustomLocation = false,
@@ -506,6 +600,13 @@ export default function MapView({
           />
           <MapClickHandler onMapClick={onMapClick} />
 
+          <BrowsePlacesLayer
+            places={browsePlaces}
+            selectedPlace={selectedBrowsePlace}
+            onPlaceSelect={onBrowsePlaceSelect}
+            onDirections={onBrowseDirections}
+          />
+
           <GpsLocationMarker  location={currentLocation} accuracy={accuracy} routeDirection={currentRouteDirection} smoothedPosition={smoothedRoutePosition} deviceHeading={deviceHeading} />
 
           {currentLocation && (
@@ -596,6 +697,9 @@ export default function MapView({
             activeProfile={activeProfile}
             startPoint={displayStartPoint}
             destPoint={destPoint}
+            browsePlaces={browsePlaces}
+            selectedBrowsePlace={selectedBrowsePlace}
+            onBrowsePlaceSelect={onBrowsePlaceSelect}
             darkMode={darkMode}
             onMapClick={onMapClick}
             weather={weather}

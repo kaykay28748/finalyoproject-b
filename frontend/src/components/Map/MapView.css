@@ -172,6 +172,61 @@
   border-color: #f59e0b;
 }
 
+.leaflet-marker-icon.browse-map-icon {
+  border: 0;
+  background: transparent;
+}
+
+.browse-map-marker {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--browse-marker-color);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.browse-map-marker--selected {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.22), 0 3px 10px rgba(15, 23, 42, 0.4);
+}
+
+.browse-map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  color: #0f172a;
+}
+
+.browse-map-popup strong { font-size: 13px; }
+.browse-map-popup span { color: #64748b; font-size: 11px; }
+
+.browse-map-popup button {
+  align-self: flex-start;
+  min-height: 36px;
+  margin-top: 2px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 18px;
+  background: #1d4ed8;
+  color: #fff;
+  font: 600 12px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.browse-map-popup button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 /* ============================================
    MOBILE RESPONSIVE
    ============================================ */

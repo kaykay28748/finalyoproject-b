@@ -166,6 +166,9 @@ export default function MapLibre3DView({
   activeProfile = "standard",
   startPoint,
   destPoint,
+  browsePlaces = [],
+  selectedBrowsePlace = null,
+  onBrowsePlaceSelect,
   onMapClick,
   weather,
   showHeatmap,
@@ -181,6 +184,7 @@ export default function MapLibre3DView({
   const [mapLoaded, setMapLoaded] = useState(false);
   const heatmapLayerIdRef = useRef(null);
   const heatmapDebounceRef = useRef(null);
+  const fittedBrowsePlacesKeyRef = useRef("");
   const lastRouteKeyRef = useRef('');
   // Holds the latest drawRoutes so the map's own 'load' handler (declared once
   // with empty deps) always calls the CURRENT draw function.
@@ -578,11 +582,91 @@ export default function MapLibre3DView({
       markersRef.current.push(m);
     };
 
+    const addBrowsePlace = (place, index) => {
+      const isSelected = selectedBrowsePlace?.name === place.name;
+      const color = place.type === "food" ? "#e11d48"
+        : place.type === "health" ? "#dc2626"
+          : place.type === "admin" ? "#2563eb"
+            : place.type === "hall" ? "#d97706"
+              : place.type === "library" ? "#7c3aed"
+                : place.type === "sport" ? "#059669"
+                  : "#ea580c";
+      const element = makeMarkerEl(
+        isSelected ? "#1d4ed8" : color,
+        true,
+      );
+      element.style.display = "grid";
+      element.style.placeItems = "center";
+      element.style.color = "#fff";
+      element.style.font = "700 12px/1 system-ui, sans-serif";
+      element.style.cursor = "pointer";
+      element.textContent = String(index + 1);
+      element.title = place.name;
+      element.setAttribute("role", "button");
+      element.setAttribute("aria-label", `Show ${place.name} on map`);
+      element.tabIndex = 0;
+      const selectPlace = (event) => {
+        event.stopPropagation();
+        onBrowsePlaceSelect?.(place);
+      };
+      element.addEventListener("click", selectPlace);
+      element.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        selectPlace(event);
+      });
+
+      const marker = new maplibregl.Marker({ element, anchor: "center" })
+        .setLngLat([place.lng, place.lat])
+        .addTo(mapRef.current);
+      markersRef.current.push(marker);
+    };
+
     if (currentLocation) add(currentLocation, "#2563eb", false);
     // Only show pins if they aren't redundant with the current location dot
     if (startPoint && !isAtCurrent(startPoint)) add(startPoint, "#2563eb", true);
     if (destPoint && !isAtCurrent(destPoint)) add(destPoint, "#22c55e", true); // destPoint here is finalDestPoint from App.jsx
-  }, [currentLocation, startPoint, destPoint, mapLoaded, clearMarkers]);
+    browsePlaces.forEach(addBrowsePlace);
+  }, [currentLocation, startPoint, destPoint, browsePlaces, selectedBrowsePlace, onBrowsePlaceSelect, mapLoaded, clearMarkers]);
+
+  const browsePlacesKey = browsePlaces
+    .map((place) => `${place.name}:${place.lat}:${place.lng}`)
+    .sort()
+    .join("|");
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapLoaded || !map) return;
+    if (!browsePlaces.length) {
+      fittedBrowsePlacesKeyRef.current = "";
+      return;
+    }
+    if (fittedBrowsePlacesKeyRef.current === browsePlacesKey) return;
+    fittedBrowsePlacesKeyRef.current = browsePlacesKey;
+
+    if (browsePlaces.length === 1) {
+      map.flyTo({
+        center: [browsePlaces[0].lng, browsePlaces[0].lat],
+        zoom: Math.max(map.getZoom(), 17),
+        duration: 650,
+      });
+      return;
+    }
+
+    const longitudes = browsePlaces.map((place) => place.lng);
+    const latitudes = browsePlaces.map((place) => place.lat);
+    map.fitBounds(
+      [
+        [Math.min(...longitudes), Math.min(...latitudes)],
+        [Math.max(...longitudes), Math.max(...latitudes)],
+      ],
+      {
+        padding: { top: 160, right: 48, bottom: 300, left: 48 },
+        maxZoom: 16,
+        duration: 700,
+      },
+    );
+  }, [browsePlaces, browsePlacesKey, mapLoaded]);
 
 
 

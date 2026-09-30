@@ -120,6 +120,16 @@ function IconArrowRight() {
   );
 }
 
+const DISCOVERY_CATEGORIES = [
+  { id: "food", label: "Food" },
+  { id: "health", label: "Health" },
+  { id: "printing", label: "Printing" },
+  { id: "admin", label: "Offices" },
+  { id: "hall", label: "Halls" },
+  { id: "library", label: "Library" },
+  { id: "sport", label: "Sports" },
+];
+
 // ──────────────────────────────────────────────────────────────────────────
 
 export default function NavPanel({
@@ -138,6 +148,12 @@ export default function NavPanel({
   activeProfile,
   accuracy,
   locationError,
+  browseCategory,
+  browsePlaces = [],
+  selectedBrowsePlace,
+  onBrowseCategoryChange,
+  onBrowsePlaceSelect,
+  onBrowseDirections,
   isExpanded: externalIsExpanded,
   onExpandRequest,
   onClose,
@@ -510,6 +526,81 @@ export default function NavPanel({
           </div>
         )}
       </div>
+
+      {!isExpanded && !markersVisible && (
+        <div className="nav-discovery-shell">
+          <div className="nav-discovery-categories" role="group" aria-label="Explore campus places">
+            {DISCOVERY_CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                className={`nav-discovery-chip${browseCategory === category.id ? " nav-discovery-chip--active" : ""}`}
+                aria-pressed={browseCategory === category.id}
+                onClick={() => onBrowseCategoryChange(category.id)}
+              >
+                {category.label}
+                {browseCategory === category.id && browsePlaces.length > 0 && (
+                  <span className="nav-discovery-count">{browsePlaces.length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {browseCategory && (
+            <section className="nav-discovery-tray" aria-label={`${DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Campus"} places`}>
+              <div className="nav-discovery-tray-header">
+                <div className="nav-discovery-tray-title">
+                  <strong>{DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Places"}</strong>
+                  <span>{browsePlaces.length} places</span>
+                </div>
+                <button
+                  className="nav-discovery-close"
+                  type="button"
+                  onClick={() => onBrowseCategoryChange(browseCategory)}
+                  aria-label="Close place results"
+                  title="Close results"
+                >
+                  ×
+                </button>
+              </div>
+
+              {browsePlaces.length ? (
+                <div className="nav-discovery-list">
+                  {browsePlaces.map((place, index) => (
+                    <div className="nav-discovery-row" key={`${place.name}-${place.lat}-${place.lng}`}>
+                      <button
+                        type="button"
+                        className={`nav-discovery-place${selectedBrowsePlace?.name === place.name ? " nav-discovery-place--selected" : ""}`}
+                        onClick={() => onBrowsePlaceSelect(place)}
+                        aria-pressed={selectedBrowsePlace?.name === place.name}
+                      >
+                        <span className="nav-discovery-index">{index + 1}</span>
+                        <span className="nav-discovery-place-copy">
+                          <span className="nav-discovery-place-name">{place.name}</span>
+                          <span className="nav-discovery-place-distance">
+                            {place.distance.toFixed(1)} km {place.distanceReference}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        className="nav-discovery-directions"
+                        type="button"
+                        onClick={() => onBrowseDirections(place)}
+                        aria-label={`Directions to ${place.name}`}
+                        title={`Directions to ${place.name}`}
+                      >
+                        <IconDirections className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="nav-discovery-empty">No mapped places in this category yet.</p>
+              )}
+            </section>
+          )}
+        </div>
+      )}
 
       <VoiceSearchModal
         open={voiceModalOpen}

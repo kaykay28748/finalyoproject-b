@@ -3,7 +3,8 @@ import { useState, useCallback, lazy, Suspense, useEffect, useRef, useMemo } fro
 import { useNavigate } from "react-router-dom";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useRealtimeRoutes } from "./hooks/useRealtimeRoutes";
-import { geocode, reverseGeocode } from "./services/geocoding";
+import { geocode, reverseGeocode, searchLocal } from "./services/geocoding";
+import { distanceKm } from "./function/utils/distance";
 import { findNearestNode, findNearestNodeWithSnap } from "./services/routing";
 import { buildGraph } from "./services/graphBuilder";
 import { loadPreferences, savePreferences, loadRouteState, saveRouteState, clearRouteState } from "./services/preferencesStore";
@@ -65,6 +66,8 @@ export default function App() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [selectedHour, setSelectedHour] = useState(undefined);
   const [mapLayer, setMapLayer] = useState("standard");
+  const [browseCategory, setBrowseCategory] = useState(null);
+  const [selectedBrowsePlace, setSelectedBrowsePlace] = useState(null);
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportLocation, setReportLocation] = useState(null);
@@ -76,6 +79,19 @@ export default function App() {
   const legendCollapseRef = useRef(null);
 
   const { location: currentLocation, accuracy, error: locationError, permissionState, requestLocation } = useGeolocation();
+
+  const browsePlaces = useMemo(() => {
+    if (!browseCategory) return [];
+    return searchLocal(browseCategory)
+      .map((place) => ({
+        ...place,
+        distance: currentLocation
+          ? distanceKm(currentLocation.lat, currentLocation.lng, place.lat, place.lng)
+          : place.dist,
+        distanceReference: currentLocation ? "away" : "from campus center",
+      }))
+      .sort((a, b) => a.distance - b.distance);
+  }, [browseCategory, currentLocation]);
 
   // ── GPS heatmap pings ───────────────────────────────────────────
   useGpsPings(currentLocation);
@@ -312,6 +328,8 @@ export default function App() {
   
   const handleNavExpandRequest = useCallback((expanded) => {
     if (expanded) {
+      setBrowseCategory(null);
+      setSelectedBrowsePlace(null);
       // When expanding NavPanel, collapse Legend first (smooth coordination)
       setIsPanelTransitioning(true);
       setIsNavExpanded(true);
@@ -366,10 +384,32 @@ export default function App() {
     logSearch(destText, loc);
   };
 
+  const handleBrowseCategoryChange = (category) => {
+    setBrowseCategory((current) => current === category ? null : category);
+    setSelectedBrowsePlace(null);
+  };
+
+  const handleBrowsePlaceSelect = useCallback((place) => {
+    setSelectedBrowsePlace(place);
+    setFlyTarget({ ...place, zoom: 17, _t: Date.now() });
+  }, []);
+
+  const handleBrowseDirections = (place) => {
+    setBrowseCategory(null);
+    setSelectedBrowsePlace(null);
+    handleDestSelect(place);
+    handleNavExpandRequest(true);
+  };
+
   const handleMapClick = useCallback(async (latlng) => {
     // Close NavPanel if it's open (clicking away to dismiss)
     if (isNavExpanded) {
       setIsNavExpanded(false);
+      return;
+    }
+
+    if (browseCategory) {
+      setSelectedBrowsePlace(null);
       return;
     }
 
@@ -397,7 +437,7 @@ export default function App() {
       setIsNavExpanded(true);
       logSearch(`Map click at ${latlng.lat}, ${latlng.lng}`, loc);
     }
-  }, [waitingForStart, isRouteLocked, isLegendExpanded, isNavExpanded]);
+  }, [waitingForStart, isRouteLocked, isLegendExpanded, isNavExpanded, browseCategory]);
 
   const handleCustomLocationDragEnd = useCallback(async (e) => {
     const { lat, lng } = e.target.getLatLng();
@@ -412,6 +452,8 @@ export default function App() {
   }, [startPoint, startText]);
 
   const handleShowOnMap = async () => {
+    setBrowseCategory(null);
+    setSelectedBrowsePlace(null);
     setIsResolving(true);
     let resolvedStart = effectiveStartPoint;
     let resolvedDest  = destPoint;
@@ -504,6 +546,8 @@ export default function App() {
   };
 
   const handleReset = () => {
+    setBrowseCategory(null);
+    setSelectedBrowsePlace(null);
     setDestPoint(null);
     setDestText("");
     setMarkersVisible(false);
@@ -589,6 +633,12 @@ export default function App() {
           accuracy={accuracy}
           activeProfile={activeProfile}
           locationError={locationError}
+          browseCategory={browseCategory}
+          browsePlaces={browsePlaces}
+          selectedBrowsePlace={selectedBrowsePlace}
+          onBrowseCategoryChange={handleBrowseCategoryChange}
+          onBrowsePlaceSelect={handleBrowsePlaceSelect}
+          onBrowseDirections={handleBrowseDirections}
           isExpanded={isNavExpanded}
           onExpandRequest={handleNavExpandRequest}
         />
@@ -604,6 +654,10 @@ export default function App() {
             destText={destText}
             markersVisible={markersVisible}
             flyTarget={flyTarget}
+            browsePlaces={browsePlaces}
+            selectedBrowsePlace={selectedBrowsePlace}
+            onBrowsePlaceSelect={handleBrowsePlaceSelect}
+            onBrowseDirections={handleBrowseDirections}
             darkMode={darkMode}
             mapLayer={mapLayer}
             onMapLayerChange={setMapLayer}

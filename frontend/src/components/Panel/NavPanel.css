@@ -1229,3 +1229,275 @@
 }
 
 }
+
+/* ─── Campus discovery ──────────────────────────────────────────────────── */
+.nav-discovery-shell {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 70px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: calc(100% - 24px);
+  max-width: 520px;
+  max-height: calc(100dvh - env(safe-area-inset-top) - 84px);
+  z-index: 1003;
+  pointer-events: none;
+}
+
+.nav-discovery-categories {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 1px 5px;
+  scrollbar-width: none;
+  pointer-events: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-discovery-categories::-webkit-scrollbar,
+.nav-discovery-list::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-discovery-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #334155;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.12);
+  font: 600 13px/1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.nav-discovery-chip:hover { transform: translateY(-1px); }
+.nav-discovery-chip:active { transform: scale(0.97); }
+.nav-discovery-chip:focus-visible,
+.nav-discovery-close:focus-visible,
+.nav-discovery-place:focus-visible,
+.nav-discovery-directions:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.nav-discovery-chip--active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.nav-discovery-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-discovery-tray {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(40dvh, 340px);
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  color: #0f172a;
+  pointer-events: auto;
+  animation: nav-discovery-in 0.18s ease-out both;
+}
+
+.nav-discovery-tray-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 8px 12px 8px 16px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.nav-discovery-tray-title {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+}
+
+.nav-discovery-tray-title strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-discovery-tray-title span {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-discovery-close,
+.nav-discovery-directions {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.nav-discovery-close { font-size: 24px; line-height: 1; }
+.nav-discovery-close:hover,
+.nav-discovery-directions:hover { background: rgba(15, 23, 42, 0.07); }
+
+.nav-discovery-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.nav-discovery-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 58px;
+  padding: 4px 8px 4px 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.nav-discovery-row:last-child { border-bottom: 0; }
+
+.nav-discovery-place {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-discovery-place:hover,
+.nav-discovery-place--selected { background: rgba(37, 99, 235, 0.08); }
+
+.nav-discovery-index {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 1px 5px rgba(15, 23, 42, 0.22);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-discovery-place-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nav-discovery-place-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-discovery-place-distance {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.nav-discovery-directions {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
+.nav-discovery-empty {
+  margin: 0;
+  padding: 18px 16px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.ug-root.dark .nav-discovery-chip {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(28, 28, 30, 0.96);
+  color: #e2e8f0;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+}
+
+.ug-root.dark .nav-discovery-chip--active {
+  border-color: #3b82f6;
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.ug-root.dark .nav-discovery-tray {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(28, 28, 30, 0.98);
+  color: #f8fafc;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.ug-root.dark .nav-discovery-tray-header,
+.ug-root.dark .nav-discovery-row { border-color: rgba(255, 255, 255, 0.08); }
+.ug-root.dark .nav-discovery-tray-title span,
+.ug-root.dark .nav-discovery-place-distance,
+.ug-root.dark .nav-discovery-empty { color: #94a3b8; }
+.ug-root.dark .nav-discovery-close,
+.ug-root.dark .nav-discovery-directions { color: #93c5fd; }
+.ug-root.dark .nav-discovery-close:hover,
+.ug-root.dark .nav-discovery-directions:hover,
+.ug-root.dark .nav-discovery-place:hover,
+.ug-root.dark .nav-discovery-place--selected { background: rgba(96, 165, 250, 0.14); }
+
+@keyframes nav-discovery-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (min-width: 901px) {
+  .nav-discovery-shell { max-width: 650px; }
+}
