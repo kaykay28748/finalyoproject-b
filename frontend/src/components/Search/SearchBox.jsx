@@ -91,7 +91,7 @@ export default function SearchBox({
 
     cancelPending();
 
-    if (val.length < 4) {
+    if (val.length < 2) {
       setSuggestions([]);
       setLoading(false);
       return;
@@ -178,7 +178,7 @@ export default function SearchBox({
 
   const showRecents = value.length < 1 && recentSearches.length > 0;
   const showSuggestions = suggestions.length > 0;
-  const showEmpty = !loading && !showSuggestions && value.length >= 4 && !showCurrentLocationOption;
+  const showEmpty = !loading && !showSuggestions && value.length >= 2 && !showCurrentLocationOption;
 
   const dropdownVisible =
     showDropdown &&

@@ -20,23 +20,72 @@ const apiCache = new Map();
 // being baked into the search box.
 const METRO_MAX_RADIUS_KM = 50;
 
+const CATEGORY_INTENTS = [
+  { terms: ["food", "foods", "eat", "eats", "eating", "meal", "meals", "eatery", "eateries", "restaurant", "restaurants", "canteen", "canteens", "cafeteria", "cafeterias", "dining", "food court"], types: ["food"] },
+  { terms: ["pharmacy", "pharmacies", "chemist", "chemists", "drugstore", "drug store", "medicine", "medicines"], keywords: ["pharmacy"] },
+  { terms: ["health", "medical", "clinic", "clinics", "hospital", "hospitals"], types: ["health"] },
+  { terms: ["admission", "admissions", "registrar", "student administration", "student records", "records office"], keywords: ["admissions"] },
+  { terms: ["admin", "administration", "student services"], types: ["admin"] },
+  { terms: ["library", "libraries"], types: ["library"] },
+  { terms: ["bank", "banks", "banking", "atm", "cash"], keywords: ["bank"] },
+  { terms: ["shop", "shopping", "supermarket", "groceries", "bookshop", "bookstore", "book store"], keywords: ["shopping"] },
+  { terms: ["hall", "halls", "hostel", "hostels", "residence", "accommodation", "dorm", "dormitory"], types: ["hall", "accommodation"] },
+  { terms: ["academic", "academics", "faculty", "department", "departments"], types: ["academic", "school"] },
+  { terms: ["research"], types: ["research"] },
+  { terms: ["sport", "sports", "gym", "stadium"], types: ["sport"] },
+  { terms: ["worship", "church", "mosque", "chapel"], types: ["worship"] },
+  { terms: ["service", "services", "student support"], types: ["service"] },
+  { terms: ["transport", "bus", "bus station", "gate", "entrance"], keywords: ["transport"] },
+];
+
+const QUERY_FILLER_WORDS = new Set([
+  "a", "all", "am", "and", "campus", "find", "for", "i", "in", "location", "locations", "me", "near", "nearby", "of", "on", "place", "places", "please", "show", "the", "to", "want", "where",
+]);
+
+function normalizeSearchText(value) {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findCategoryIntent(query) {
+  const normalized = normalizeSearchText(query);
+  const intentQuery = normalized
+    .split(/\s+/)
+    .filter((word) => !QUERY_FILLER_WORDS.has(word))
+    .join(" ");
+  return CATEGORY_INTENTS.find(({ terms }) =>
+    terms.some((term) => normalizeSearchText(term) === intentQuery)
+  );
+}
+
+function matchesCategoryIntent(location, intent) {
+  return (
+    intent.types?.includes(location.type) ||
+    intent.keywords?.some((keyword) =>
+      (location.keywords || []).some((value) => normalizeSearchText(value) === keyword)
+    )
+  );
+}
+
 // ── Local fuzzy search ───────────────────────────────────────────────────────
 
 function scoreLocalMatch(location, query) {
-  const q = query.toLowerCase().trim();
+  const q = normalizeSearchText(query);
   const name = location.name.toLowerCase();
   const aliases = location.aliases || [];
+  const keywords = location.keywords || [];
   if (name === q) return 100;
   if (name.startsWith(q)) return 90;
   if (aliases.some((a) => a === q)) return 85;
   if (aliases.some((a) => a.startsWith(q))) return 80;
+  if (keywords.some((keyword) => normalizeSearchText(keyword) === q)) return 65;
   if (name.includes(` ${q}`) || name.includes(`${q} `)) return 70;
   if (name.includes(q)) return 60;
   if (aliases.some((a) => a.includes(q))) return 50;
+  if (keywords.some((keyword) => normalizeSearchText(keyword).includes(q))) return 45;
   const tokens = q.split(" ").filter((t) => t.length >= 2);
   if (tokens.length > 1) {
     const hits = tokens.filter(
-      (t) => name.includes(t) || aliases.some((a) => a.includes(t))
+      (t) => name.includes(t) || aliases.some((a) => a.includes(t)) || keywords.some((keyword) => normalizeSearchText(keyword).includes(t))
     ).length;
     if (hits === tokens.length) return 45;
     if (hits > 0) return 30;
@@ -46,30 +95,38 @@ function scoreLocalMatch(location, query) {
 
 export function searchLocal(query) {
   if (!query || query.trim().length < 2) return [];
-  const cleanQuery = query.trim().toLowerCase();
+  const cleanQuery = normalizeSearchText(query);
+  const categoryIntent = findCategoryIntent(cleanQuery);
   const queryWords = cleanQuery.split(/\s+/);
 
-  let allWordsValid = true;
-  for (const word of queryWords) {
-    if (word.length < 3) continue;
-    const wordExists = ugLocations.some(
-      (loc) =>
-        loc.name.toLowerCase().includes(word) ||
-        (loc.aliases && loc.aliases.some((alias) => alias.toLowerCase().includes(word)))
+  if (!categoryIntent) {
+    const searchableValues = ugLocations.flatMap((loc) => [
+      loc.name,
+      ...(loc.aliases || []),
+      ...(loc.keywords || []),
+    ]).map((value) => value.toLowerCase());
+    const allWordsValid = queryWords.every((word) =>
+      word.length < 3 || searchableValues.some((value) => value.includes(word))
     );
-    if (!wordExists) {
-      allWordsValid = false;
-      break;
-    }
+    if (!allWordsValid) return [];
   }
 
-  if (!allWordsValid) return [];
-
   return ugLocations
-    .map((loc) => ({ ...loc, score: scoreLocalMatch(loc, cleanQuery) }))
+    .map((loc) => ({
+      ...loc,
+      score: categoryIntent
+        ? matchesCategoryIntent(loc, categoryIntent)
+          ? Math.max(scoreLocalMatch(loc, cleanQuery), 55)
+          : 0
+        : scoreLocalMatch(loc, cleanQuery),
+    }))
     .filter((loc) => loc.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6)
+    .sort((a, b) =>
+      b.score - a.score ||
+      distanceKm(UG_CENTER.lat, UG_CENTER.lng, a.lat, a.lng) -
+        distanceKm(UG_CENTER.lat, UG_CENTER.lng, b.lat, b.lng)
+    )
+    .slice(0, categoryIntent ? 20 : 6)
     .map((loc) => ({
       name: loc.name,
       lat: loc.lat,
@@ -124,7 +181,7 @@ export async function geocode(query, signal) {
   if (!query || query.trim().length < 3) return [];
 
   const localResults = searchLocal(query);
-  if (localResults.length >= 2) return localResults;
+  if (localResults.length >= 2 || findCategoryIntent(query)) return localResults;
 
   const cacheKey = query.trim().toLowerCase();
   if (apiCache.has(cacheKey)) return apiCache.get(cacheKey);

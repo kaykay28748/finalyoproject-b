@@ -160,7 +160,8 @@
     ],
     "lat": 5.6469641,
     "lng": -0.1878,
-    "type": "admin"
+    "type": "admin",
+    "keywords": ["student services", "student support"]
   },
   {
     "name": "UG Medical Centre",
@@ -341,7 +342,8 @@
     ],
     "lat": 5.6502253,
     "lng": -0.1953859,
-    "type": "admin"
+    "type": "admin",
+    "keywords": ["admissions", "student administration", "student records", "registration"]
   },
   {
     "name": "Post Office (Legon)",
@@ -366,7 +368,13 @@
     ],
     "lat": 5.6540219,
     "lng": -0.1790383,
-    "type": "service"
+    "type": "service",
+    "keywords": ["bank", "banking", "atm", "cash"],
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/665125613",
+      "url": "https://www.openstreetmap.org/way/665125613"
+    }
   },
   {
     "name": "GCB Bank (Legon)",
@@ -377,7 +385,13 @@
     ],
     "lat": 5.646781,
     "lng": -0.1875734,
-    "type": "service"
+    "type": "service",
+    "keywords": ["bank", "banking", "atm", "cash"],
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/5808035307",
+      "url": "https://www.openstreetmap.org/node/5808035307"
+    }
   },
   {
     "name": "Ecobank (Legon)",
@@ -388,7 +402,8 @@
     ],
     "lat": 5.6425461,
     "lng": -0.1848924,
-    "type": "service"
+    "type": "service",
+    "keywords": ["bank", "banking", "atm", "cash"]
   },
   {
     "name": "Legon City Mall",
@@ -401,7 +416,8 @@
     ],
     "lat": 5.6534633,
     "lng": -0.1787607,
-    "type": "commercial"
+    "type": "commercial",
+    "keywords": ["shopping", "shops", "mall", "food", "restaurants"]
   },
   {
     "name": "Papaye (Legon)",
@@ -411,7 +427,13 @@
     ],
     "lat": 5.6670197,
     "lng": -0.1870428,
-    "type": "food"
+    "type": "food",
+    "keywords": ["food", "eatery", "restaurant", "fast food", "lunch"],
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/6968585523",
+      "url": "https://www.openstreetmap.org/node/6968585523"
+    }
   },
   {
     "name": "Night Market",
@@ -421,9 +443,15 @@
       "food stalls",
       "night food"
     ],
-    "lat": 5.642410,
-    "lng": -0.186274,
-    "type": "food"
+    "lat": 5.6420766,
+    "lng": -0.1856037,
+    "type": "food",
+    "keywords": ["food", "eatery", "restaurant", "food court", "night food"],
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/773864855",
+      "url": "https://www.openstreetmap.org/way/773864855"
+    }
   },
   {
     "name": "ICT Centre",
@@ -444,11 +472,18 @@
       "pharmacy",
       "ug pharmacy",
       "chemist",
-      "drug store"
+      "drug store",
+      "st kem pharmacy"
     ],
     "lat": 5.6680847,
     "lng": -0.1818992,
-    "type": "health"
+    "type": "health",
+    "keywords": ["pharmacy", "medicine", "prescription", "drugstore"],
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/5794952811",
+      "url": "https://www.openstreetmap.org/node/5794952811"
+    }
   },
   {
     "name": "University Road",
@@ -671,5 +706,304 @@
       "djh"
     ]
       
+  },
+  {
+    "name": "University of Ghana Hospital",
+    "aliases": ["UG Hospital", "University Hospital", "Legon hospital"],
+    "keywords": ["health", "medical", "hospital", "emergency"],
+    "lat": 5.6517246,
+    "lng": -0.1781069,
+    "type": "health",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/278268702",
+      "url": "https://www.openstreetmap.org/way/278268702"
+    }
+  },
+  {
+    "name": "Elizabeth Sey Pharmacy",
+    "aliases": ["Sey Pharmacy", "pharmacy near Elizabeth Sey Hall"],
+    "keywords": ["pharmacy", "medicine", "prescription", "drugstore"],
+    "lat": 5.6354138,
+    "lng": -0.1874682,
+    "type": "health",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/7147467169",
+      "url": "https://www.openstreetmap.org/node/7147467169"
+    }
+  },
+  {
+    "name": "Zoe Pharmacy",
+    "aliases": ["Zoe chemist"],
+    "keywords": ["pharmacy", "medicine", "prescription", "drugstore"],
+    "lat": 5.6674763,
+    "lng": -0.1856089,
+    "type": "health",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/7187301603",
+      "url": "https://www.openstreetmap.org/node/7187301603"
+    }
+  },
+  {
+    "name": "Central Cafeteria",
+    "aliases": ["UG Central Cafeteria", "central canteen", "CC"],
+    "keywords": ["food", "eatery", "restaurant", "canteen", "cafeteria", "dining", "lunch"],
+    "lat": 5.6469687,
+    "lng": -0.1870849,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/278303032",
+      "url": "https://www.openstreetmap.org/way/278303032"
+    }
+  },
+  {
+    "name": "Mensah Sarbah Dining Hall",
+    "aliases": ["Sarbah Dining Hall", "Mensah Sarbah canteen"],
+    "keywords": ["food", "eatery", "restaurant", "canteen", "cafeteria", "dining", "lunch"],
+    "lat": 5.6453777,
+    "lng": -0.1870763,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/300288056",
+      "url": "https://www.openstreetmap.org/way/300288056"
+    }
+  },
+  {
+    "name": "Bush Canteen",
+    "aliases": ["Bush food court", "Bush cafeteria"],
+    "keywords": ["food", "eatery", "restaurant", "canteen", "cafeteria", "dining", "lunch"],
+    "lat": 5.6455967,
+    "lng": -0.1800598,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/628957891",
+      "url": "https://www.openstreetmap.org/way/628957891"
+    }
+  },
+  {
+    "name": "Commonwealth Hall Dining Hall",
+    "aliases": ["Commonwealth Dining Hall", "Commonwealth canteen", "Vandal City dining"],
+    "keywords": ["food", "eatery", "restaurant", "canteen", "cafeteria", "dining", "lunch"],
+    "lat": 5.6513099,
+    "lng": -0.1925829,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/6761602281",
+      "url": "https://www.openstreetmap.org/node/6761602281"
+    }
+  },
+  {
+    "name": "University of Ghana Bookshop",
+    "aliases": ["UG Bookshop", "university bookshop", "campus bookshop"],
+    "keywords": ["shopping", "bookshop", "bookstore", "books", "stationery"],
+    "lat": 5.651119,
+    "lng": -0.1866546,
+    "type": "service",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/278303014",
+      "url": "https://www.openstreetmap.org/way/278303014"
+    }
+  },
+  {
+    "name": "All Needs Supermarket",
+    "aliases": ["All Needs", "campus supermarket", "grocery store"],
+    "keywords": ["shopping", "supermarket", "groceries", "food", "convenience store"],
+    "lat": 5.6428216,
+    "lng": -0.1861225,
+    "type": "commercial",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/353697483",
+      "url": "https://www.openstreetmap.org/way/353697483"
+    }
+  },
+  {
+    "name": "Zenith Bank (Legon)",
+    "aliases": ["Zenith Bank", "Zenith ATM"],
+    "keywords": ["bank", "banking", "atm", "cash"],
+    "lat": 5.6468339,
+    "lng": -0.1875034,
+    "type": "service",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/5808039515",
+      "url": "https://www.openstreetmap.org/node/5808039515"
+    }
+  },
+  {
+    "name": "Access Bank (Legon)",
+    "aliases": ["Access Bank", "Access ATM"],
+    "keywords": ["bank", "banking", "atm", "cash"],
+    "lat": 5.6471783,
+    "lng": -0.1875033,
+    "type": "service",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/5810720358",
+      "url": "https://www.openstreetmap.org/node/5810720358"
+    }
+  },
+  {
+    "name": "James Topp Nelson Yankah Hall",
+    "aliases": ["J.T. Nelson Yankah Hall", "Nelson Yankah Hall", "JTNY Hall"],
+    "keywords": ["hall", "hostel", "residence", "accommodation"],
+    "lat": 5.6662587,
+    "lng": -0.1820871,
+    "type": "hall",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/286261174",
+      "url": "https://www.openstreetmap.org/way/286261174"
+    }
+  },
+  {
+    "name": "Pentagon Hall Block A",
+    "aliases": ["Pentagon A", "Pentagon Block A"],
+    "keywords": ["hall", "hostel", "residence", "accommodation"],
+    "lat": 5.6576524,
+    "lng": -0.1820183,
+    "type": "hall",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/368856520",
+      "url": "https://www.openstreetmap.org/way/368856520"
+    }
+  },
+  {
+    "name": "Pentagon Hall Block B",
+    "aliases": ["Pentagon B", "Pentagon Block B"],
+    "keywords": ["hall", "hostel", "residence", "accommodation"],
+    "lat": 5.6589034,
+    "lng": -0.1821107,
+    "type": "hall",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/425293296",
+      "url": "https://www.openstreetmap.org/way/425293296"
+    }
+  },
+  {
+    "name": "Pentagon Hall Block C",
+    "aliases": ["Pentagon C", "Pentagon Block C"],
+    "keywords": ["hall", "hostel", "residence", "accommodation"],
+    "lat": 5.6582999,
+    "lng": -0.180939,
+    "type": "hall",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/463637990",
+      "url": "https://www.openstreetmap.org/way/463637990"
+    }
+  },
+  {
+    "name": "University of Ghana Botanical Gardens",
+    "aliases": ["UG Botanical Gardens", "Legon Botanical Gardens", "botanical garden"],
+    "keywords": ["park", "nature", "recreation", "landmark"],
+    "lat": 5.660839,
+    "lng": -0.1865762,
+    "type": "landmark",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/335456879",
+      "url": "https://www.openstreetmap.org/way/335456879"
+    }
+  },
+  {
+    "name": "UGBS Graduate Campus",
+    "aliases": ["UGBS Graduate", "Business School Graduate Campus"],
+    "keywords": ["academic", "business school", "graduate campus", "university"],
+    "lat": 5.6587369,
+    "lng": -0.1776197,
+    "type": "academic",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/797937346",
+      "url": "https://www.openstreetmap.org/way/797937346"
+    }
+  },
+  {
+    "name": "Legon Hospital Bus Station",
+    "aliases": ["Legon Hospital Bus Stop", "University Hospital Bus Station"],
+    "keywords": ["transport", "bus", "station", "tro tro"],
+    "lat": 5.6495321,
+    "lng": -0.1791633,
+    "type": "service",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/1229963547",
+      "url": "https://www.openstreetmap.org/way/1229963547"
+    }
+  },
+  {
+    "name": "Commonwealth Food Vendors",
+    "aliases": ["Commonwealth food stalls", "Vandal City food vendors"],
+    "keywords": ["food", "eatery", "food stalls", "snacks", "dining"],
+    "lat": 5.6510658,
+    "lng": -0.192115,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/6761602282",
+      "url": "https://www.openstreetmap.org/node/6761602282"
+    }
+  },
+  {
+    "name": "Abrefis Kitchen",
+    "aliases": ["Abrefis"],
+    "keywords": ["food", "eatery", "restaurant", "local food", "lunch"],
+    "lat": 5.6706862,
+    "lng": -0.1890753,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/6351804724",
+      "url": "https://www.openstreetmap.org/node/6351804724"
+    }
+  },
+  {
+    "name": "Didi Jollof",
+    "aliases": ["Didi Jollof Legon"],
+    "keywords": ["food", "eatery", "restaurant", "jollof", "lunch"],
+    "lat": 5.6402783,
+    "lng": -0.1863045,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/1365554861",
+      "url": "https://www.openstreetmap.org/way/1365554861"
+    }
+  },
+  {
+    "name": "Library Pub",
+    "aliases": ["Library Pub Legon", "restaurant near Balme Library"],
+    "keywords": ["food", "eatery", "restaurant", "pub", "dining"],
+    "lat": 5.6407431,
+    "lng": -0.1761411,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "way/892422134",
+      "url": "https://www.openstreetmap.org/way/892422134"
+    }
+  },
+  {
+    "name": "Illy",
+    "aliases": ["Illy cafe", "Illy Legon"],
+    "keywords": ["food", "eatery", "cafe", "coffee", "snacks"],
+    "lat": 5.6689003,
+    "lng": -0.1883098,
+    "type": "food",
+    "source": {
+      "provider": "OpenStreetMap",
+      "element": "node/5978214389",
+      "url": "https://www.openstreetmap.org/node/5978214389"
+    }
   }
 ]

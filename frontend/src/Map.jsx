@@ -7,6 +7,8 @@ import "leaflet/dist/leaflet.css";
 // ─── Tile layers ──────────────────────────────────────────────────────────────
 const TILE_LIGHT = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_DARK  = "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const STADIA_ATTRIBUTION = '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>';
 
 // ─── Marker icons ─────────────────────────────────────────────────────────────
 const makePin = (color, label) => L.divIcon({
@@ -122,7 +124,10 @@ async function reverseGeocode(lat, lng) {
 
 // ─── Map helpers ──────────────────────────────────────────────────────────────
 function TileLayerSwitcher({ darkMode }) {
-  return <TileLayer url={darkMode ? TILE_DARK : TILE_LIGHT} />;
+  return <TileLayer
+    url={darkMode ? TILE_DARK : TILE_LIGHT}
+    attribution={darkMode ? STADIA_ATTRIBUTION : OSM_ATTRIBUTION}
+  />;
 }
 
 // Smoothly flies map to a target location

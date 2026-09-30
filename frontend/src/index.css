@@ -109,7 +109,6 @@ html, body, #root {
 .leaflet-control-zoom {
   display: none !important;
 }
-.leaflet-control-attribution { display: none; }
 
 .leaflet-container {
   will-change: auto;
