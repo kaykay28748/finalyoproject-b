@@ -1258,7 +1258,7 @@
 
 .nav-discovery-label {
   padding-left: 4px;
-  color: #64748b;
+  color: var(--sub);
   font: 600 11px/1.2 var(--font-sans);
 }
 
@@ -1378,6 +1378,10 @@
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.97);
   box-shadow: var(--shadow-card);
+  /* Declared, not inherited. .nav-discovery-selection-name is `color: inherit`
+     and this pill's dark override only set border/background, so the name
+     resolved to black on a near-black pill (1.23:1). */
+  color: var(--text);
   pointer-events: auto;
   animation: nav-discovery-in 0.18s ease-out both;
 }
@@ -1649,7 +1653,8 @@ max-width: min(42vw, 240px);
   color: var(--accent);
 }
 
-.ug-root.dark .nav-discovery-label { color: #94a3b8; }
+/* Removed: .ug-root.dark .nav-discovery-label { color: #94a3b8; } -- the base
+   rule now uses var(--sub), which re-themes itself (7.71:1 in dark). */
 
 .ug-root.dark .nav-discovery-summary { color: #cbd5e1; }
 
@@ -1692,7 +1697,9 @@ max-width: min(42vw, 240px);
 .ug-root.dark .nav-discovery-place:hover,
 .ug-root.dark .nav-discovery-place--selected { background: var(--accent-tint); }
 
-.ug-root.dark .nav-discovery-index { color: #78716c; }
+/* Was `color: #78716c` here -- a light-mode gray, only 3.55:1 on --card. The
+   base rule already uses var(--sub), which re-themes itself, so the override
+   was redundant as well as unreadable. */
 .ug-root.dark .nav-discovery-row:hover .nav-discovery-index,
 .ug-root.dark .nav-discovery-place--selected .nav-discovery-index { color: var(--accent); }
 

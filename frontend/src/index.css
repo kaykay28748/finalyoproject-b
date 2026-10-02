@@ -314,6 +314,12 @@ html, body, #root {
   --disabled-bg:     #e2e0d8;
   --disabled-color:  #78716c;
   --ug-legend-width: 440px;
+
+  /* Inherit the theme ink instead of the browser default. Without this, any
+     element that relies on `color: inherit` (rather than declaring its own)
+     resolves to black -- which is 1.2:1 against --card in dark mode and reads
+     as blank. That is what made .nav-discovery-selection-name vanish. */
+  color: var(--text);
 }
 
 /* ─── CSS variables — dark mode ──────────────────────────────────────────────*/
