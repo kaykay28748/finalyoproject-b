@@ -260,12 +260,44 @@ html, body, #root {
 }
 
 /* ─── CSS variables — light mode ─────────────────────────────────────────────*/
+
+/* Shared defaults sit on :root, not .ug-root, so anything rendered outside the
+   app wrapper still resolves them. Two consumers depend on this: the search
+   dropdown (createPortal -> document.body) and the auth routes. AuthPage.css
+   redefines --surface/--ink/--line inside .auth-container-split, so it keeps
+   its own palette and is unaffected by the --surface default below.
+
+   Several tokens were referenced but never declared anywhere, which silently
+   invalidated the declarations using them and fell back to `inherit`:
+     --text-secondary  NavPanel.css:802   (From/To field labels)
+     --text-primary    MapView.css:58,302,324,585
+     --bg-secondary    LegendProfile.css:18, WeatherBanner.css:12
+     --hover-bg        LegendProfile.css:30, MapView.css:64,134,590, SearchBox.css:406
+     --surface         Legend.css:1049,1210
+     --accent          Legend.css:1211     (--accent-color at SearchBox.css:91)
+   They are declared once here as aliases so every call site resolves. */
+:root {
+  --text-primary:   #1e293b;
+  --text-secondary: #6b6560;
+  --bg-secondary:   rgba(255, 253, 250, 0.97);
+  --hover-bg:       #ece8e0;
+  --surface:        rgba(255, 253, 250, 0.88);
+  --accent:         #1e293b;
+  --accent-color:   #1e293b;
+  --accent-tint:    rgba(30, 41, 59, 0.07);
+  --accent-tint-hi: rgba(30, 41, 59, 0.12);
+  --accent-line:    rgba(30, 41, 59, 0.22);
+  --accent-ring:    #44403c;
+}
+
 .ug-root {
   --bg:              #f3f0ea;
   --panel:           rgba(255, 253, 250, 0.97);
   --card:            rgba(255, 253, 250, 0.88);
   --text:            #1e293b;
-  --sub:             #9ca3af;
+  /* Warm neutral rather than the old cool #9ca3af: 2.23:1 on --bg failed WCAG AA.
+     This is 5.05:1 on --bg and 5.66:1 on --panel. */
+  --sub:             #6b6560;
   --border:          #e5e0d8;
   --input-bg:        rgba(255, 253, 250, 0.9);
   --drop-bg:         #fffdfa;
@@ -280,7 +312,7 @@ html, body, #root {
   --shadow-card:     0 8px 32px rgba(0, 0, 0, 0.07);
   --shadow-zoom:     0 4px 16px rgba(0, 0, 0, 0.08);
   --disabled-bg:     #e2e0d8;
-  --disabled-color:  #a3a3a3;
+  --disabled-color:  #78716c;
   --ug-legend-width: 440px;
 }
 
@@ -290,7 +322,8 @@ html, body, #root {
   --panel:           rgba(22, 22, 22, 0.97);
   --card:            rgba(28, 28, 28, 0.85);
   --text:            #e5e7eb;
-  --sub:             #6b7280;
+  /* 7.71:1 on --bg, 6.76:1 on --card. The old #6b7280 managed only 4.02:1. */
+  --sub:             #a8a29e;
   --border:          #2a2a2a;
   --input-bg:        rgba(18, 18, 18, 0.7);
   --drop-bg:         #141414;
@@ -305,7 +338,21 @@ html, body, #root {
   --shadow-card:     0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-zoom:     0 4px 16px rgba(0, 0, 0, 0.5);
   --disabled-bg:     #1e1e1e;
-  --disabled-color:  #6b7280;
+  --disabled-color:  #8a8580;
+
+  /* "Ink" inverts: the accent is the lightest warm neutral, so a selected
+     control reads as lit rather than filled. */
+  --text-primary:    #e5e7eb;
+  --text-secondary:  #a8a29e;
+  --bg-secondary:    rgba(22, 22, 22, 0.97);
+  --hover-bg:        #1e1e1e;
+  --surface:         rgba(28, 28, 28, 0.85);
+  --accent:          #e7e5e4;
+  --accent-color:    #e7e5e4;
+  --accent-tint:     rgba(231, 229, 228, 0.1);
+  --accent-tint-hi:  rgba(231, 229, 228, 0.16);
+  --accent-line:     rgba(231, 229, 228, 0.26);
+  --accent-ring:     #a8a29e;
 }
 
 /* ─── Current location dot ───────────────────────────────────────────────────*/

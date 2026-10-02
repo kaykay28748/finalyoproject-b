@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { useWeather } from '../../hooks/useWeather';
 import { useVoiceGuidance } from '../../hooks/useVoiceGuidance';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useDarkMode } from '../../hooks/useDarkMode';
 import { fetchForecast } from '../../services/weatherService';
 import './WeatherBanner.css';
 
@@ -49,8 +50,9 @@ function ForecastPopup({ onClose }) {
   const [fetchError, setFetchError] = useState(false);
   const popupRef = useRef(null);
 
-  // Senior Fix: Detect theme directly since the portal renders outside .ug-root
-  const isDark = document.querySelector('.ug-root.dark') !== null;
+  // Detect theme from the DOM: the portal renders outside .ug-root, so the
+  // .ug-root.dark ancestor selector can never reach it.
+  const isDark = useDarkMode();
 
   // Fetch on mount
   useEffect(() => {

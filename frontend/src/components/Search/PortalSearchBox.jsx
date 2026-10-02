@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useHaptics } from "../../hooks/useHaptics";
+import { useDarkMode } from "../../hooks/useDarkMode";
 import { geocode, searchLocal } from "../../services/geocoding";
 import { saveRecentSearch, getRecentSearches, clearRecentSearches } from "../../services/recentSearches";
 import "./SearchBox.css";
@@ -49,6 +50,11 @@ export default function PortalSearchBox({
   const [recentSearches, setRecentSearches] = useState([]);
   const [showAllRecent, setShowAllRecent] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+
+  // The dropdown is portaled onto document.body, so `.ug-root.dark` is not an
+  // ancestor of it and the dark rules in SearchBox.css could never match. Carry
+  // the theme on the element itself instead.
+  const isDark = useDarkMode();
 
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -274,7 +280,7 @@ export default function PortalSearchBox({
       {dropdownVisible && createPortal(
         <div
           ref={dropdownRef}
-          className="portal-search-dropdown"
+          className={`portal-search-dropdown${isDark ? " portal-search-dropdown--dark" : ""}`}
           style={{
             position: "fixed",
             top: dropdownPosition.top,

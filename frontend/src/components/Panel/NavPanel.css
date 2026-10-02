@@ -298,7 +298,7 @@
 }
 
 .nav-glass-btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -376,7 +376,7 @@
 }
 
 .nav-directions-btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -575,7 +575,7 @@
 }
 
 .nav-compact-location:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -702,7 +702,7 @@
 }
 
 .nav-where-to:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -1096,7 +1096,7 @@
 }
 
 .nav-avatar-btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
@@ -1293,15 +1293,21 @@
 .nav-discovery-close:focus-visible,
 .nav-discovery-place:focus-visible,
 .nav-discovery-directions:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent-ring);
   outline-offset: 2px;
 }
 
+/* Active state is a tinted band plus a single ink border, not a saturated fill.
+   The filled blue pill read as a third nested surface next to the cream panel
+   and clashed with the warm-neutral palette. This matches the treatment already
+   used for selected place rows below, so the chip and the list agree. */
 .nav-discovery-chip--active {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-  color: #fff;
+  background: var(--accent-tint-hi);
+  border-color: var(--accent);
+  color: var(--accent);
 }
+
+.nav-discovery-chip--active:hover { background: var(--accent-tint-hi); }
 
 .nav-discovery-chip-icon {
   width: 17px;
@@ -1316,8 +1322,12 @@
   height: 20px;
   padding: 0 5px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.22);
-  font-size: 11px;
+  /* Neutral by default so it stays legible on both the white chip and the
+     tinted active chip; the white scrim only made sense over a dark fill. */
+  background: rgba(15, 23, 42, 0.07);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1352,9 +1362,9 @@
 .nav-discovery-list-toggle svg { width: 15px; height: 15px; }
 .nav-discovery-list-toggle:hover { background: #f1f5f9; }
 .nav-discovery-list-toggle--active {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
-  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent-tint-hi);
+  color: var(--accent);
 }
 
 .nav-discovery-selection {
@@ -1367,7 +1377,7 @@
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
+  box-shadow: var(--shadow-card);
   pointer-events: auto;
   animation: nav-discovery-in 0.18s ease-out both;
 }
@@ -1391,9 +1401,11 @@
 
 .nav-discovery-selection-name {
   overflow: hidden;
-  max-width: 42vw;
+/* Capped so the pill cannot run off a narrow screen; the >=901px breakpoint
+     below tightens it further. */
+max-width: min(42vw, 240px);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1473,6 +1485,25 @@
 .nav-discovery-close:hover,
 .nav-discovery-directions:hover { background: rgba(15, 23, 42, 0.07); }
 
+/* Inside the selection pill the two actions render at 32px so the pill stays
+   ~44px tall instead of being stretched to fit 44px buttons. The touch target
+   is kept at the 44px minimum by an invisible ::before ring rather than by
+   inflating the button itself. Scoped to the pill — the tray rows still want
+   the full-size 44px control. */
+.nav-discovery-selection .nav-discovery-close,
+.nav-discovery-selection .nav-discovery-directions {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.nav-discovery-selection .nav-discovery-close::before,
+.nav-discovery-selection .nav-discovery-directions::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
 .nav-discovery-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -1513,12 +1544,12 @@
 }
 
 .nav-discovery-place:hover,
-.nav-discovery-place--selected { background: rgba(37, 99, 235, 0.07); }
+.nav-discovery-place--selected { background: var(--accent-tint); }
 
 /* Selection is marked with one accent edge and a tinted band rather than a
    filled chip, so the list keeps reading as one continuous surface. */
 .nav-discovery-row:has(.nav-discovery-place--selected) {
-  box-shadow: inset 3px 0 0 #2563eb;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 /* The rank was a white-ringed blue disc with its own shadow — a third nested
@@ -1526,15 +1557,16 @@
 .nav-discovery-index {
   flex: 0 0 auto;
   width: 16px;
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--sub);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .nav-discovery-row:hover .nav-discovery-index,
-.nav-discovery-place--selected .nav-discovery-index { color: #2563eb; }
+.nav-discovery-place--selected .nav-discovery-index { color: var(--accent); }
 
 .nav-discovery-place-copy {
   display: flex;
@@ -1552,9 +1584,14 @@
   white-space: nowrap;
 }
 
+/* Distance is tabular data, not prose: mono + tabular-nums stops the label
+   shifting width as the value changes while browsing the list. */
 .nav-discovery-place-distance {
-  color: #64748b;
-  font-size: 11px;
+  color: var(--sub);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
@@ -1582,12 +1619,12 @@
 
 .nav-discovery-row:hover .nav-discovery-directions {
   background: rgba(15, 23, 42, 0.06);
-  color: #1d4ed8;
+  color: var(--accent);
 }
 
 .nav-discovery-row:focus-within .nav-discovery-directions {
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  background: var(--accent-tint);
+  color: var(--accent);
 }
 
 .nav-discovery-empty {
@@ -1604,10 +1641,12 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
 }
 
+/* Ink border reads as "on" against the dark chip surface. No fill — a light fill
+   would be the loudest element on the map. */
 .ug-root.dark .nav-discovery-chip--active {
-  border-color: #3b82f6;
-  background: #1d4ed8;
-  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent-tint-hi);
+  color: var(--accent);
 }
 
 .ug-root.dark .nav-discovery-label { color: #94a3b8; }
@@ -1623,9 +1662,9 @@
 
 .ug-root.dark .nav-discovery-list-toggle:hover { background: rgba(255, 255, 255, 0.12); }
 .ug-root.dark .nav-discovery-list-toggle--active {
-  border-color: #3b82f6;
-  background: #1d4ed8;
-  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent-tint-hi);
+  color: var(--accent);
 }
 
 .ug-root.dark .nav-discovery-selection {
@@ -1645,26 +1684,26 @@
 .ug-root.dark .nav-discovery-row { border-color: rgba(255, 255, 255, 0.08); }
 .ug-root.dark .nav-discovery-tray-title span,
 .ug-root.dark .nav-discovery-place-distance,
-.ug-root.dark .nav-discovery-empty { color: #94a3b8; }
+.ug-root.dark .nav-discovery-empty { color: var(--sub); }
 .ug-root.dark .nav-discovery-close,
-.ug-root.dark .nav-discovery-directions { color: #93c5fd; }
+.ug-root.dark .nav-discovery-directions { color: var(--sub); }
 .ug-root.dark .nav-discovery-close:hover,
 .ug-root.dark .nav-discovery-directions:hover,
 .ug-root.dark .nav-discovery-place:hover,
-.ug-root.dark .nav-discovery-place--selected { background: rgba(96, 165, 250, 0.14); }
+.ug-root.dark .nav-discovery-place--selected { background: var(--accent-tint); }
 
-.ug-root.dark .nav-discovery-index { color: #64748b; }
+.ug-root.dark .nav-discovery-index { color: #78716c; }
 .ug-root.dark .nav-discovery-row:hover .nav-discovery-index,
-.ug-root.dark .nav-discovery-place--selected .nav-discovery-index { color: #93c5fd; }
+.ug-root.dark .nav-discovery-place--selected .nav-discovery-index { color: var(--accent); }
 
 .ug-root.dark .nav-discovery-row:has(.nav-discovery-place--selected) {
-  box-shadow: inset 3px 0 0 #3b82f6;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.ug-root.dark .nav-discovery-row .nav-discovery-directions { color: #94a3b8; }
+.ug-root.dark .nav-discovery-row .nav-discovery-directions { color: var(--sub); }
 
 .ug-root.dark .nav-discovery-row:hover .nav-discovery-directions { background: rgba(255, 255, 255, 0.1); }
-.ug-root.dark .nav-discovery-row:focus-within .nav-discovery-directions { background: rgba(96, 165, 250, 0.18); }
+.ug-root.dark .nav-discovery-row:focus-within .nav-discovery-directions { background: var(--accent-tint-hi); }
 
 @keyframes nav-discovery-in {
   from { opacity: 0; transform: translateY(-5px); }
