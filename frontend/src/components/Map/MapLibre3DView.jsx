@@ -338,7 +338,7 @@ export default function MapLibre3DView({
           // handed straight to a canvas font string. Because the @font-face
           // rules live in src/index.css, canvas resolves the webfont once it
           // has loaded.
-          localFontFamily: '"Space Grotesk", system-ui, sans-serif',
+          localFontFamily: '"Schibsted Grotesk", system-ui, sans-serif',
           collectResourceTiming: false,
         });
 
