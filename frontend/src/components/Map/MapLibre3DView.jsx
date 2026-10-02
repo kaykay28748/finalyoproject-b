@@ -334,7 +334,11 @@ export default function MapLibre3DView({
           failIfMissingGlyphs: false,
           preserveDrawingBuffer: false,
           maxWorkerCount: 2,
-          localFontFamily: "system-ui, sans-serif",
+          // MapLibre needs a literal stack here, not var(--font-sans) — it is
+          // handed straight to a canvas font string. Because the @font-face
+          // rules live in src/index.css, canvas resolves the webfont once it
+          // has loaded.
+          localFontFamily: '"Space Grotesk", system-ui, sans-serif',
           collectResourceTiming: false,
         });
 

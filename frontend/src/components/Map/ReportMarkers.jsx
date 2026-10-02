@@ -106,7 +106,7 @@ function ReportMarkers() {
             icon={createReportIcon(report.verdict, report.severity)}
           >
             <Popup>
-              <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 220, lineHeight: 1.4 }}>
+              <div style={{ maxWidth: 220, lineHeight: 1.4 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
                   {cfg.emoji} {ISSUE_LABELS[report.issue_type] || report.issue_type}
                 </div>

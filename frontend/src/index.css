@@ -3,24 +3,75 @@
 input::placeholder { opacity: 0.5; }
 
 /* ─── Typography ─────────────────────────────────────────────────────────────
-   One family across the whole product.
+   Two self-hosted families, declared once and referenced everywhere else.
 
-   `Outfit` is the ONLY webfont we load (see index.html). The stylesheets used
-   to ask for 'Inter', 'Syne', 'DM Sans' and 'SF Pro Text' in ~50 rules, none of
-   which were ever fetched — so each one silently fell back to whatever generic
-   sans-serif the OS resolved, and that varied per rule. That mismatch is what
-   made the UI look typographically inconsistent. Declare the stack once and
-   reference the token everywhere else.
+   Fonts live in src/assets/fonts and are bundled by Vite — no third-party CDN,
+   no silent fallback when fonts.googleapis.com is unreachable (campus/corporate
+   firewall, Render egress, offline dev). Outfit was previously pulled from
+   Google at runtime and, with `display=swap`, vanished without an error whenever
+   that request failed.
+
+   The stylesheets used to ask for 'Inter', 'Syne', 'DM Sans' and 'SF Pro Text'
+   in ~50 rules, none of which were ever fetched — so each one silently fell
+   back to whatever generic sans-serif the OS resolved, and that varied per
+   rule. That mismatch is what made the UI look typographically inconsistent.
 
    Tokens sit on :root rather than .ug-root so the portaled forecast popup and
    the auth / admin / profile routes — all of which render outside .ug-root —
    inherit the same stack as the map.
 ───────────────────────────────────────────────────────────────────────────*/
+
+/* Space Grotesk — variable, latin subset. One file covers weights 300-700. */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/space-grotesk-latin-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* IBM Plex Mono — static per weight, latin subset. */
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/ibm-plex-mono-400-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./assets/fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-  --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --font-sans: "Space Grotesk", "Outfit", system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, "Liberation Mono", monospace;
 
   /* Type scale — prefer these over ad-hoc px values in new/edited UI so
      vertical rhythm stays consistent across breakpoints. */
@@ -105,7 +156,25 @@ html, body, #root {
   to   { opacity: 1; }
 }
 
-/* ─── Leaflet overrides ──────────────────────────────────────────────────────*/
+/* ─── Leaflet overrides ──────────────────────────────────────────────────────
+   `.leaflet-container` carries a hard-coded
+   `font-family: "Helvetica Neue", Arial, Helvetica, sans-serif`
+   (leaflet.css:275). MapView is a lazy chunk (App.jsx:23 -> MapView.jsx:4
+   imports leaflet.css), so that rule is injected into the document AFTER this
+   stylesheet. Both selectors are 0-1-0, so source order alone decides — and
+   Leaflet won, rendering every popup, tooltip and control in Arial while the
+   rest of the app rendered in the webfont.
+
+   Repeating the class lifts this to 0-2-0 so it wins on specificity alone and
+   the fix stops depending on chunk load order.
+───────────────────────────────────────────────────────────────────────────*/
+.leaflet-container.leaflet-container,
+.leaflet-container.leaflet-container .leaflet-popup,
+.leaflet-container.leaflet-container .leaflet-tooltip,
+.leaflet-container.leaflet-container .leaflet-control {
+  font-family: var(--font-sans);
+}
+
 .leaflet-control-zoom {
   display: none !important;
 }

@@ -69,7 +69,7 @@ function createPulsingIcon(speed, heading, isLowAccuracy = false, routeDirection
       padding: 2px 8px;
       border-radius: 20px;
       white-space: nowrap;
-      font-family: monospace;
+      font-family: var(--font-mono);
       backdrop-filter: blur(4px);
       letter-spacing: 0.5px;
     ">

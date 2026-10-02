@@ -22,24 +22,13 @@
     <meta name="description" content="Context-aware, pedestrian-first navigation that adapts dynamically. Find optimal routes based on your needs, safety, and real-time conditions." />
 
     <!-- Preconnect to external origins to reduce connection latency -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://overpass-api.de" />
     <link rel="preconnect" href="https://nominatim.openstreetmap.org" />
 
-    <!-- Single webfont for the whole product. Outfit is the only family loaded;
-         the stacks in src/index.css (--font-sans / --font-mono) are the single
-         source of truth. font-display=swap prevents it blocking render. The
-         800 weight backs the one display-heading rule that uses it. -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
-      rel="preload"
-      as="style"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fonts are self-hosted in src/assets/fonts and bundled by Vite (see the
+         @font-face block in src/index.css). They used to come from the Google
+         Fonts CDN via <link>; with display=swap that failed silently whenever
+         the CDN was unreachable, dropping the whole UI to a generic fallback. -->
   </head>
   <body>
     <div id="root"></div>

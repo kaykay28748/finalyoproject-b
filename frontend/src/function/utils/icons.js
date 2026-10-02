@@ -15,7 +15,7 @@ export const makeHeroPin = (color, icon, label) =>
     html: `
       <div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
         <div style="background:${color};color:#fff;font-size:11px;font-weight:700;
-          font-family:'Outfit',sans-serif;padding:4px 8px;border-radius:6px;
+          font-family:var(--font-sans);padding:4px 8px;border-radius:6px;
           margin-bottom:2px;white-space:nowrap;letter-spacing:0.5px;">
           ${label}
         </div>
