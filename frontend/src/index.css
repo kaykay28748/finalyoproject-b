@@ -69,6 +69,26 @@ input::placeholder { opacity: 0.5; }
   --text-xl:   18px;
   --text-2xl:  20px;
   --text-3xl:  24px;
+
+  /* Motion scale. Durations are chosen by distance travelled and by when the
+     user expects the system to have responded, not by taste:
+       press  < perception of lag (~100ms) or the button feels broken
+       state  long enough to follow with the eye, short enough not to wait on
+       enter  slowest; entrances need time to be read
+       exit   faster than enter; leaving should never hold the user back
+     Easings are split by role. Anything that moves *into* place decelerates
+     (--ease-out); anything leaving accelerates away (--ease-in); in-place state
+     swaps use the symmetric standard curve. */
+  --dur-press:  90ms;
+  --dur-state:  180ms;
+  --dur-enter:  280ms;
+  --dur-exit:   160ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+  /* Per-item offset for list entrances. Capped in CSS so a long list does not
+     leave the last row still waiting. */
+  --stagger:     24ms;
 }
 
 /* Global baseline: anything without an explicit font-family — the portaled
@@ -257,6 +277,37 @@ html, body, #root {
 .nav-logout-btn,
 .nav-reset-btn {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* The discovery chips were missing from the list above, so they inherited the
+   generic colour-only transition: `.ug-root *` ties `.nav-discovery-chip` on
+   specificity and wins on source order, which silently stripped `transform`
+   from the chip. Without it the press scale and the hover lift had no
+   transition at all and snapped, which is most of why the click felt dead.
+   Needs !important here for the same reason its neighbours need it. */
+.nav-discovery-chip,
+.nav-discovery-list-toggle {
+  transition:
+    background-color var(--dur-state) var(--ease-standard),
+    color var(--dur-state) var(--ease-standard),
+    border-color var(--dur-state) var(--ease-standard),
+    box-shadow var(--dur-state) var(--ease-standard),
+    transform var(--dur-press) var(--ease-out) !important;
+}
+
+/* Reduced-motion for those two lives here, not in NavPanel.css: this rule is
+   !important, so a same-specificity override elsewhere loses on source order.
+   Travel is removed but colour still changes, just without interpolation. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-discovery-chip,
+  .nav-discovery-list-toggle {
+    transition:
+      background-color 0.01ms linear,
+      color 0.01ms linear,
+      border-color 0.01ms linear,
+      box-shadow 0.01ms linear,
+      transform 0.01ms linear !important;
+  }
 }
 
 /* ─── CSS variables — light mode ─────────────────────────────────────────────*/

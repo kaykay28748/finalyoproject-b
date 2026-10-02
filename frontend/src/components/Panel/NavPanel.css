@@ -1284,11 +1284,21 @@
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
-  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  /* Split by role. Colour and state get the standard curve at --dur-state, but
+     the press transform uses --dur-press: at 160ms the release visibly trailed
+     the finger, which reads as input lag rather than as feedback. Transform
+     also must not share a curve with colour, or the chip feels like it is
+     morphing rather than being pressed. */
+  transition:
+    background-color var(--dur-state) var(--ease-standard),
+    color var(--dur-state) var(--ease-standard),
+    border-color var(--dur-state) var(--ease-standard),
+    box-shadow var(--dur-state) var(--ease-standard),
+    transform var(--dur-press) var(--ease-out);
 }
 
 .nav-discovery-chip:hover { transform: translateY(-1px); }
-.nav-discovery-chip:active { transform: scale(0.97); }
+.nav-discovery-chip:active { transform: scale(0.96); }
 .nav-discovery-chip:focus-visible,
 .nav-discovery-close:focus-visible,
 .nav-discovery-place:focus-visible,
@@ -1305,9 +1315,16 @@
   background: var(--accent-tint-hi);
   border-color: var(--accent);
   color: var(--accent);
+  /* Selection is carried by depth as well as tint. Without the lift the chip
+     changes colour but not presence, so it reads as "toggled" rather than
+     "chosen". Shadow is in the transition list, so it eases with the rest. */
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
 }
 
-.nav-discovery-chip--active:hover { background: var(--accent-tint-hi); }
+.nav-discovery-chip--active:hover {
+  background: var(--accent-tint-hi);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+}
 
 .nav-discovery-chip-icon {
   width: 17px;
@@ -1329,6 +1346,10 @@
   font-size: 10px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  /* The count mounts the instant the category resolves, so without an
+     entrance it appears as a flicker mid-word. Scaling from the centre keeps
+     the growth anchored to the chip instead of pushing the label sideways. */
+  animation: nav-discovery-count-in var(--dur-enter) var(--ease-out) both;
 }
 
 .nav-discovery-summary {
@@ -1383,7 +1404,7 @@
      resolved to black on a near-black pill (1.23:1). */
   color: var(--text);
   pointer-events: auto;
-  animation: nav-discovery-in 0.18s ease-out both;
+  animation: nav-discovery-in var(--dur-enter) var(--ease-out) both;
 }
 
 .nav-discovery-selection-place {
@@ -1435,7 +1456,7 @@ max-width: min(42vw, 240px);
   color: #0f172a;
   font-family: var(--font-sans);
   pointer-events: auto;
-  animation: nav-discovery-sheet-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: nav-discovery-sheet-in var(--dur-enter) var(--ease-out) both;
 }
 
 .nav-discovery-tray-header {
@@ -1452,6 +1473,9 @@ max-width: min(42vw, 240px);
   align-items: baseline;
   gap: 9px;
   min-width: 0;
+  /* Re-keyed on browseCategory alongside the list, so the heading swaps with
+     the rows rather than updating one frame before them. */
+  animation: nav-discovery-swap var(--dur-state) var(--ease-out) both;
 }
 
 .nav-discovery-tray-title strong {
@@ -1514,6 +1538,11 @@ max-width: min(42vw, 240px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
+  /* Re-keyed on browseCategory, so choosing a different category replays this
+     instead of swapping the rows in place with no transition at all. Kept
+     short (--dur-state) so it resolves before the row stagger is under way
+     and the two opacity ramps do not fight each other. */
+  animation: nav-discovery-swap var(--dur-state) var(--ease-out) both;
 }
 
 /* The tray is a single card. Its rows are flat, full-bleed bands separated by
@@ -1525,7 +1554,26 @@ max-width: min(42vw, 240px);
   gap: 0;
   min-height: 56px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  /* Staggered entrance. Rows arriving simultaneously read as a dump; a short
+     offset per row reads as one deliberate gesture. Only transform/opacity
+     animate, so the stagger never triggers layout. */
+  animation: nav-discovery-row-in var(--dur-enter) var(--ease-out) both;
 }
+
+/* 20ms per row, capped at 10. Past roughly 200ms of total offset the eye stops
+   reading the sequence as "revealed" and starts waiting for it, so a long
+   category must not leave its tail still animating after the tray is legible. */
+.nav-discovery-list > .nav-discovery-row:nth-child(1)  { animation-delay: 0ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(2)  { animation-delay: 20ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(3)  { animation-delay: 40ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(4)  { animation-delay: 60ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(5)  { animation-delay: 80ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(6)  { animation-delay: 100ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(7)  { animation-delay: 120ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(8)  { animation-delay: 140ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(9)  { animation-delay: 160ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(10) { animation-delay: 180ms; }
+.nav-discovery-list > .nav-discovery-row:nth-child(n+11) { animation-delay: 180ms; }
 
 .nav-discovery-row:last-child { border-bottom: 0; }
 
@@ -1651,6 +1699,10 @@ max-width: min(42vw, 240px);
   border-color: var(--accent);
   background: var(--accent-tint-hi);
   color: var(--accent);
+  /* Must be restated here: .ug-root.dark .nav-discovery-chip is 0-2-0 and would
+     otherwise win over .nav-discovery-chip--active, leaving selection without
+     any depth cue in dark mode. */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 
 /* Removed: .ug-root.dark .nav-discovery-label { color: #94a3b8; } -- the base
@@ -1718,8 +1770,42 @@ max-width: min(42vw, 240px);
 }
 
 @keyframes nav-discovery-sheet-in {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Content swap within a surface that is already mounted (title, list body).
+   Smaller travel than an entrance: the container is stationary here, so a
+   large offset would read as the whole panel jumping. */
+@keyframes nav-discovery-swap {
+  from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nav-discovery-row-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scales from the centre (the badge is an inline-grid with place-items: center)
+   so the count grows out of the chip instead of shoving the label sideways. */
+@keyframes nav-discovery-count-in {
+  from { opacity: 0; transform: scale(0.55); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* The discovery tray is the one surface in the app that moves substantially on
+   interaction, so it must opt out explicitly. Chip/toggle transitions are
+   handled in index.css — that rule is !important and would win here. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-discovery-tray,
+  .nav-discovery-list,
+  .nav-discovery-row,
+  .nav-discovery-tray-title,
+  .nav-discovery-count,
+  .nav-discovery-selection {
+    animation: none !important;
+  }
 }
 
 @media (min-width: 901px) {
@@ -1738,7 +1824,7 @@ max-width: min(42vw, 240px);
     border-bottom: 1px solid rgba(15, 23, 42, 0.1);
     border-radius: 18px;
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
-    animation: nav-discovery-in 0.18s ease-out both;
+    animation: nav-discovery-in var(--dur-enter) var(--ease-out) both;
   }
 
   .nav-discovery-selection-name { max-width: 190px; }

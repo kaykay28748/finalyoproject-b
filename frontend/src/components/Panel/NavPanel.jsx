@@ -625,7 +625,7 @@ export default function NavPanel({
       {browseCategory && browseListOpen && (
         <section id="nav-discovery-tray" className="nav-discovery-tray" aria-label={`${DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Campus"} places`}>
           <div className="nav-discovery-tray-header">
-            <div className="nav-discovery-tray-title">
+            <div className="nav-discovery-tray-title" key={`title-${browseCategory}`}>
               <strong>{DISCOVERY_CATEGORIES.find((category) => category.id === browseCategory)?.label || "Places"}</strong>
               <span>{browsePlaces.length} places</span>
             </div>
@@ -641,7 +641,7 @@ export default function NavPanel({
           </div>
 
           {browsePlaces.length ? (
-            <div className="nav-discovery-list">
+            <div className="nav-discovery-list" key={`list-${browseCategory}`}>
               {browsePlaces.map((place, index) => (
                 <div className="nav-discovery-row" key={`${place.name}-${place.lat}-${place.lng}`}>
                   <button
