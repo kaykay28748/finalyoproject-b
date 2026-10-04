@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuthContext } from "../../context/AuthContext";
 import { useHaptics } from "../../hooks/useHaptics";
 import { supabase } from "../../lib/supabase";
+import AuthRouteMotion from "./AuthRouteMotion";
 import "./AuthPage.css";
 
 export default function RegisterPage({ onSwitchToLogin }) {
@@ -112,7 +113,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
     return (
       <div className="auth-container-split">
         <div className="auth-hero">
-          <div className="auth-hero-bg">TG</div>
+          <AuthRouteMotion isStatic />
           <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
           <h1>
             Verify your
@@ -171,7 +172,7 @@ export default function RegisterPage({ onSwitchToLogin }) {
     <div className="auth-container-split">
       {/* Left side — Hero */}
       <div className="auth-hero">
-        <div className="auth-hero-bg">TG</div>
+        <AuthRouteMotion isStatic={success} />
         <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
         <h1>
           Start your

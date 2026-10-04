@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHaptics } from "../../hooks/useHaptics";
 import { supabase } from "../../lib/supabase";
+import AuthRouteMotion from "./AuthRouteMotion";
 import "./AuthPage.css";
 
 export default function ResetPasswordPage() {
@@ -122,7 +123,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="auth-container-split">
         <div className="auth-hero">
-          <div className="auth-hero-bg">TG</div>
+          <AuthRouteMotion isStatic />
           <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
           <h1>Loading...</h1>
         </div>
@@ -144,7 +145,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="auth-container-split">
         <div className="auth-hero">
-          <div className="auth-hero-bg">TG</div>
+          <AuthRouteMotion isStatic />
           <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
           <h1>Invalid or<br />expired link</h1>
           <p>Please request a new password reset link.</p>
@@ -180,7 +181,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-container-split">
       <div className="auth-hero">
-        <div className="auth-hero-bg">UG</div>
+        <AuthRouteMotion isStatic />
         <img src="/icon-512.png" alt="UG Navigator" width={80} height={80} fetchpriority="high" />
         <h1>
           Create new

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useHaptics } from "../../hooks/useHaptics";
 import { API_URL } from "../../config";
+import AuthRouteMotion from "./AuthRouteMotion";
 import "./AuthPage.css";
 
 export default function ForgotPasswordPage({ onBackToLogin }) {
@@ -72,7 +73,7 @@ export default function ForgotPasswordPage({ onBackToLogin }) {
   return (
     <div className="auth-container-split">
       <div className="auth-hero">
-        <div className="auth-hero-bg">TG</div>
+        <AuthRouteMotion isStatic />
         <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
         <h1>
           Forgot

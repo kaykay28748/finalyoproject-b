@@ -1,8 +1,8 @@
-export default function AuthRouteMotion() {
+export default function AuthRouteMotion({ isStatic = false }) {
   const routePath = "M 64 218 C 126 214, 115 163, 190 164 S 257 171, 282 130 S 337 78, 395 105 S 468 135, 510 91 S 557 76, 590 72";
 
   return (
-    <div className="auth-route-motion" aria-hidden="true">
+    <div className={`auth-route-motion${isStatic ? " auth-route-motion--static" : ""}`} aria-hidden="true">
       <svg viewBox="0 0 640 280" focusable="false">
         <path className="auth-route-street" d="M 18 172 C 92 158, 112 111, 178 104 S 258 123, 317 76 S 404 42, 474 56 S 563 35, 626 24" />
         <path className="auth-route-street" d="M 28 254 C 91 218, 139 235, 198 207 S 269 188, 324 214 S 406 237, 467 199 S 552 175, 620 190" />

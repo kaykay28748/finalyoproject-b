@@ -189,6 +189,23 @@
   display: none;
 }
 
+.auth-route-motion--static .auth-route-line {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+
+.auth-route-motion--static .auth-route-traveler {
+  display: none;
+}
+
+.auth-route-motion--static .auth-route-traveler-static {
+  display: inline;
+}
+
+.auth-route-motion--static .auth-route-leg {
+  animation: none;
+}
+
 .auth-route-person {
   fill: none;
   stroke: #effffb;
