@@ -72,8 +72,12 @@
   letter-spacing: -0.02em;
 }
 
-.admin-logo svg {
+.admin-logo-mark {
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .admin-sidebar-subtitle {
