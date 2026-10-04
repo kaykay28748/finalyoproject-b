@@ -4,13 +4,44 @@ import './FloatingButtonGroup.css';
 const FloatingButtonGroup = ({ buttons }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [openPopoverIndex, setOpenPopoverIndex] = useState(null);
+  const [showSecondary, setShowSecondary] = useState(false);
   const containerRef = useRef(null);
 
   const closePopover = useCallback(() => {
     setOpenPopoverIndex(null);
   }, []);
 
+  const visibleButtons = showSecondary
+    ? buttons
+    : buttons.filter((button) => !button.secondary);
+
+  const hasSecondaryButtons = buttons.some((button) => button.secondary);
+
+  const renderedButtons = hasSecondaryButtons
+    ? [
+        ...visibleButtons,
+        {
+          id: 'more-toggle',
+          label: showSecondary ? 'Less' : 'More',
+          onClick: () => setShowSecondary((prev) => !prev),
+          variant: 'secondary',
+          icon: (
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="5" cy="12" r="1.7" />
+              <circle cx="12" cy="12" r="1.7" />
+              <circle cx="19" cy="12" r="1.7" />
+            </svg>
+          ),
+          toggle: true,
+        },
+      ]
+    : visibleButtons;
+
   const handleClick = useCallback((button, index) => {
+    if (button.toggle) {
+      button.onClick?.();
+      return;
+    }
     if (button.popover) {
       setOpenPopoverIndex(prev => prev === index ? null : index);
     }
@@ -33,9 +64,9 @@ const FloatingButtonGroup = ({ buttons }) => {
 
   return (
     <div className="floating-glass-container" ref={containerRef} role="toolbar" aria-label="Map controls">
-      {buttons.map((button, index) => (
+      {renderedButtons.map((button, index) => (
         <div
-          key={index}
+          key={button.id ?? index}
           className={`floating-glass-item${button.variant ? ` floating-glass-item--${button.variant}` : ''}${button.active ? ' floating-glass-item--active' : ''}`}
           onMouseEnter={() => setHoveredIndex(index)}
           onMouseLeave={() => setHoveredIndex(null)}
@@ -62,7 +93,7 @@ const FloatingButtonGroup = ({ buttons }) => {
             {button.icon}
           </span>
 
-          {hoveredIndex === index && openPopoverIndex !== index && (
+          {hoveredIndex === index && openPopoverIndex !== index && !button.toggle && (
             <div className="floating-glass-tooltip" role="tooltip">
               <span className="tooltip-arrow" aria-hidden="true" />
               {button.label}

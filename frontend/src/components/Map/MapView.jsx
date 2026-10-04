@@ -749,6 +749,7 @@ export default function MapView({
             label: currentLayer.label,
             onClick: () => {},
             active: false,
+            secondary: true,
             popover: (
               <div>
                 {LAYERS.map((l) => (
@@ -781,6 +782,7 @@ export default function MapView({
             label: "Heatmap",
             onClick: () => { if (showHeatmap) onToggleHeatmap(); },
             active: showHeatmap,
+            secondary: true,
             popover: !showHeatmap ? ({ closePopover }) => (
               <div>
                 {TIME_SLOTS.map((slot) => (
@@ -817,6 +819,7 @@ export default function MapView({
             label: isHeadingUp ? "Heading-up" : "North-up",
             onClick: handleCompassClick,
             active: isHeadingUp,
+            secondary: true,
           },
           {
             icon: (
@@ -829,6 +832,7 @@ export default function MapView({
             label: "Report Issue",
             onClick: onOpenReportModal,
             active: false,
+            secondary: true,
           },
         ]}
       />
