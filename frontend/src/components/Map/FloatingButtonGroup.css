@@ -54,16 +54,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   background: transparent;
   transition:
     background 0.2s ease,
-    transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1);
+    transform 0.35s cubic-bezier(0.34, 1.5, 0.64, 1),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.floating-glass-item--primary {
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  background: rgba(37, 99, 235, 0.04);
+  border: 1px solid rgba(37, 99, 235, 0.10);
+}
+
+.floating-glass-item--active {
+  background: rgba(37, 99, 235, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.floating-glass-item--primary.floating-glass-item--active {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .floating-glass-item:nth-child(1) { animation: item-in 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) 0.06s both; }
@@ -74,6 +97,10 @@
 
 .floating-glass-item:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+.floating-glass-item--primary:hover {
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .floating-glass-item:active {

@@ -727,6 +727,7 @@ export default function MapView({
             label: isRecenterZoomed ? "Zoom Out" : "Recenter",
             onClick: onRecenter,
             active: false,
+            variant: "primary",
           },
           {
             icon: is3DMode ? (
@@ -737,6 +738,7 @@ export default function MapView({
             label: is3DMode ? "Switch to 2D" : "Switch to 3D",
             onClick: handleToggle3D,
             active: is3DMode,
+            variant: "primary",
           },
           {
             icon: (

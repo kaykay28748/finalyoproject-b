@@ -36,7 +36,7 @@ const FloatingButtonGroup = ({ buttons }) => {
       {buttons.map((button, index) => (
         <div
           key={index}
-          className="floating-glass-item"
+          className={`floating-glass-item${button.variant ? ` floating-glass-item--${button.variant}` : ''}${button.active ? ' floating-glass-item--active' : ''}`}
           onMouseEnter={() => setHoveredIndex(index)}
           onMouseLeave={() => setHoveredIndex(null)}
           onClick={(e) => {
