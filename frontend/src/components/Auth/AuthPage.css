@@ -141,6 +141,85 @@
   50% { transform: translateY(-8px) rotate(1deg); }
 }
 
+.auth-route-motion {
+  position: absolute;
+  z-index: 0;
+  right: 2%;
+  bottom: 0;
+  width: min(68%, 560px);
+  height: auto;
+  opacity: 0.72;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.auth-route-motion svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.auth-route-street {
+  fill: none;
+  stroke: rgba(220, 246, 247, 0.12);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.auth-route-line {
+  fill: none;
+  stroke: #8de0d0;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: authRouteDraw 1.2s var(--ease) 0.3s forwards;
+}
+
+.auth-route-marker {
+  fill: #a9e8dc;
+}
+
+.auth-route-marker-halo {
+  fill: rgba(141, 224, 208, 0.16);
+}
+
+.auth-route-traveler-static {
+  display: none;
+}
+
+.auth-route-person {
+  fill: none;
+  stroke: #effffb;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auth-route-person-head {
+  fill: #effffb;
+}
+
+.auth-route-leg {
+  transform-box: fill-box;
+  transform-origin: 0 0;
+  animation: authWalk 0.55s ease-in-out infinite alternate;
+}
+
+.auth-route-leg--back {
+  animation-delay: -0.275s;
+}
+
+@keyframes authRouteDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes authWalk {
+  from { transform: rotate(-16deg); }
+  to { transform: rotate(16deg); }
+}
+
 .auth-hero img {
   position: relative;
   z-index: 1;
@@ -756,6 +835,12 @@
   .auth-hero img { margin-bottom: 20px; }
   .auth-hero h1 { max-width: 280px; }
   .auth-form-panel { padding: 40px 28px 52px; }
+  .auth-route-motion {
+    right: 0;
+    bottom: 0;
+    width: min(48%, 320px);
+    opacity: 0.48;
+  }
 }
 
 @media (max-width: 480px) {
@@ -770,8 +855,13 @@
   .auth-form-panel { padding: 28px 20px 40px; }
   .auth-form-header { margin-bottom: 24px; }
   .auth-form-header h2 { font-size: 28px; }
+  .auth-route-motion { width: 46%; opacity: 0.38; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .auth-route-line { animation: none; stroke-dashoffset: 0; }
+  .auth-route-traveler { display: none; }
+  .auth-route-traveler-static { display: inline; }
+  .auth-route-leg { animation: none; }
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
 import { useHaptics } from "../../hooks/useHaptics";
+import AuthRouteMotion from "./AuthRouteMotion";
 import "./AuthPage.css";
 
 export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
@@ -46,7 +47,7 @@ export default function LoginPage({ onSwitchToRegister, onForgotPassword }) {
   return (
     <div className="auth-container-split">
       <div className="auth-hero">
-        <div className="auth-hero-bg">TG</div>
+        <AuthRouteMotion />
         <img src="/icon-512.png" alt="TransitGuide" width={80} height={80} fetchpriority="high" />
         <h1>
           Navigate
