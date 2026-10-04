@@ -187,6 +187,7 @@ export default function AdminDashboard() {
   const [pendingCount,     setPendingCount]      = useState(null);
   const [isLoading,        setIsLoading]        = useState(true);
   const [error,            setError]            = useState('');
+  const [failedSections,   setFailedSections]   = useState([]);
   const [lastUpdated,      setLastUpdated]      = useState(null);
   const [activeTab,        setActiveTab]        = useState('overview');
   const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
@@ -262,11 +263,33 @@ export default function AdminDashboard() {
         return;
       }
 
-      const statsData    = statsRes.ok    ? await statsRes.json()    : {};
-      const usersData    = usersRes.ok    ? await usersRes.json()    : { users: [] };
-      const activityData = activityRes.ok ? await activityRes.json() : { activity: [] };
+      const failedSections = [];
+      const readPayload = async (response, section, isValid) => {
+        if (!response.ok) {
+          failedSections.push(section);
+          return undefined;
+        }
 
-      const parsedActivity = (activityData.activity || []).map(item => {
+        try {
+          const payload = await response.json();
+          if (!isValid(payload)) {
+            failedSections.push(section);
+            return undefined;
+          }
+          return payload;
+        } catch {
+          failedSections.push(section);
+          return undefined;
+        }
+      };
+
+      const [statsData, usersData, activityData] = await Promise.all([
+        readPayload(statsRes, 'statistics', payload => payload && typeof payload === 'object' && !Array.isArray(payload)),
+        readPayload(usersRes, 'users', payload => Array.isArray(payload?.users)),
+        readPayload(activityRes, 'activity', payload => Array.isArray(payload?.activity)),
+      ]);
+
+      const parsedActivity = (activityData?.activity || []).map(item => {
         let parsedMeta = {};
         try {
           if (item.metadata) {
@@ -276,14 +299,21 @@ export default function AdminDashboard() {
         return { ...item, parsedMetadata: parsedMeta };
       });
 
-      setStats(statsData);
-      setUsers(usersData.users || []);
-      setActivity(parsedActivity);
-      setLastUpdated(new Date());
-      setError('');
+      if (statsData !== undefined) setStats(statsData);
+      if (usersData !== undefined) setUsers(usersData.users);
+      if (activityData !== undefined) setActivity(parsedActivity);
+      setFailedSections(failedSections);
+
+      if (failedSections.length > 0) {
+        setError(`Could not refresh ${failedSections.join(', ')}. Showing last successful data where available.`);
+      } else {
+        setLastUpdated(new Date());
+        setError('');
+      }
     } catch (err) {
       console.error('[Admin] Fetch error:', err);
-      setError('Failed to load dashboard data');
+      setFailedSections(['statistics', 'users', 'activity']);
+      setError('Could not refresh dashboard data. Showing last successful data where available.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -498,26 +528,26 @@ export default function AdminDashboard() {
               <div className="stat-card">
                 <div className="stat-card-icon blue"><Icons.UsersIcon /></div>
                 <div className="stat-card-content">
-                  <span className="stat-card-value">{formatNumber(stats?.users?.total)}</span>
+                  <span className="stat-card-value">{stats === null ? '—' : formatNumber(stats?.users?.total)}</span>
                   <span className="stat-card-label">Total Users</span>
                 </div>
-                <div className="stat-card-trend positive">+{stats?.users?.newThisWeek || 0} this week</div>
+                <div className="stat-card-trend positive">{stats === null ? '—' : `+${stats?.users?.newThisWeek || 0} this week`}</div>
               </div>
               <div className="stat-card">
                 <div className="stat-card-icon green"><Icons.TrendingUp /></div>
                 <div className="stat-card-content">
-                  <span className="stat-card-value">{stats?.users?.activeToday || 0}</span>
+                  <span className="stat-card-value">{stats === null ? '—' : stats?.users?.activeToday || 0}</span>
                   <span className="stat-card-label">Active Today</span>
                 </div>
-                <div className="stat-card-trend">{stats?.users?.activeWeek || 0} active this week</div>
+                <div className="stat-card-trend">{stats === null ? '—' : `${stats?.users?.activeWeek || 0} active this week`}</div>
               </div>
               <div className="stat-card">
                 <div className="stat-card-icon purple"><Icons.RouteIcon /></div>
                 <div className="stat-card-content">
-                  <span className="stat-card-value">{stats?.routes?.today || 0}</span>
+                  <span className="stat-card-value">{stats === null ? '—' : stats?.routes?.today || 0}</span>
                   <span className="stat-card-label">Routes Today</span>
                 </div>
-                <div className="stat-card-trend">{formatNumber(stats?.routes?.total)} total routes</div>
+                <div className="stat-card-trend">{stats === null ? '—' : `${formatNumber(stats?.routes?.total)} total routes`}</div>
               </div>
               <div className="stat-card">
                 <div className="stat-card-icon orange"><Icons.Activity /></div>
@@ -562,7 +592,7 @@ export default function AdminDashboard() {
                       </div>
                     ))
                   ) : (
-                    <div className="admin-empty"><p>No route data yet.</p></div>
+                    <div className="admin-empty"><p>{stats === null ? 'Statistics unavailable.' : 'No route data yet.'}</p></div>
                   )}
                 </div>
               </div>
@@ -579,7 +609,7 @@ export default function AdminDashboard() {
                       </div>
                     ))
                   ) : (
-                    <div className="admin-empty"><p>No destination data yet</p></div>
+                    <div className="admin-empty"><p>{stats === null ? 'Statistics unavailable.' : 'No destination data yet.'}</p></div>
                   )}
                 </div>
               </div>
@@ -600,7 +630,11 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-                {activity.length === 0 && <div className="admin-empty"><p>No activity yet.</p></div>}
+                {activity.length === 0 && (
+                  <div className="admin-empty">
+                    <p>{failedSections.includes('activity') ? 'Activity data unavailable.' : 'No activity yet.'}</p>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -827,7 +861,9 @@ export default function AdminDashboard() {
           <div className="admin-card full-width">
             <div className="admin-table-header">
               <h3>All Users</h3>
-              <span className="admin-table-stats">{users.length} total users</span>
+              <span className="admin-table-stats">
+                {failedSections.includes('users') && users.length === 0 ? 'User data unavailable' : `${users.length} total users`}
+              </span>
             </div>
             <div className="admin-search-wrap">
               <svg className="admin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
