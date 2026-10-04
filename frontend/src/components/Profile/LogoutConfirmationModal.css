@@ -32,7 +32,7 @@
   border-color: rgba(148, 163, 184, 0.18);
 }
 
-.ug-root.dark .logout-modal-content h3,
+.ug-root.dark .logout-modal-content h2,
 .ug-root.dark .logout-modal-content p,
 .ug-root.dark .logout-modal-btn-cancel,
 .ug-root.dark .logout-modal-btn-confirm {
@@ -61,7 +61,7 @@
   height: 28px;
 }
 
-.logout-modal-content h3 {
+.logout-modal-content h2 {
   font-size: 20px;
   font-weight: 700;
   font-family: var(--font-sans);

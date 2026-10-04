@@ -43,21 +43,21 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.admin-dashboard .modal-content {
+.admin-dashboard .logout-modal-content {
   background: #171717;
   border-color: #353535;
   color: #f0f0f0;
 }
 
-.admin-dashboard .modal-header h2 {
+.admin-dashboard .logout-modal-content h2 {
   color: #f5f5f5;
 }
 
-.admin-dashboard .modal-header p {
+.admin-dashboard .logout-modal-content p {
   color: #b3b3b3;
 }
 
-.admin-dashboard .modal-btn-secondary {
+.admin-dashboard .logout-modal-btn-cancel {
   background: #252525;
   border-color: #404040;
   color: #f0f0f0;
