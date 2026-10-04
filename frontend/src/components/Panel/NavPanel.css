@@ -1297,6 +1297,34 @@
     transform var(--dur-press) var(--ease-out);
 }
 
+.nav-discovery-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  font: 600 11px/1 var(--font-sans);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background-color var(--dur-state) var(--ease-standard), color var(--dur-state) var(--ease-standard), border-color var(--dur-state) var(--ease-standard);
+}
+
+.nav-discovery-more:hover {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.nav-discovery-more--compact {
+  min-height: 32px;
+  border-radius: 16px;
+}
+
 .nav-discovery-chip:hover { transform: translateY(-1px); }
 .nav-discovery-chip:active { transform: scale(0.96); }
 .nav-discovery-chip:focus-visible,
@@ -1830,6 +1858,13 @@ max-width: min(42vw, 240px);
     gap: 5px;
     border-radius: 17px;
     font-size: 11px;
+  }
+
+  .nav-discovery-more {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 15px;
+    font-size: 10px;
   }
 
   .nav-discovery-chip-icon {

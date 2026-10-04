@@ -185,6 +185,7 @@ export default function NavPanel({
   const [swapRotation, setSwapRotation] = useState(0);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [voiceSearchNonce, setVoiceSearchNonce] = useState(0);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   // Senior Dev Fix: Initialize derived state BEFORE hooks that depend on it
   const isExpanded =
     externalIsExpanded !== undefined ? externalIsExpanded : internalIsExpanded;
@@ -556,7 +557,7 @@ export default function NavPanel({
         <div className={`nav-discovery-shell${markersVisible ? " nav-discovery-shell--with-legend" : ""}`}>
           <span className="nav-discovery-label">Explore campus</span>
           <div className="nav-discovery-categories" role="group" aria-label="Explore campus places">
-            {DISCOVERY_CATEGORIES.map((category) => (
+            {(showAllCategories || browseCategory ? DISCOVERY_CATEGORIES : DISCOVERY_CATEGORIES.slice(0, 3)).map((category) => (
               <button
                 key={category.id}
                 type="button"
@@ -571,6 +572,28 @@ export default function NavPanel({
                 )}
               </button>
             ))}
+            {!showAllCategories && !browseCategory && DISCOVERY_CATEGORIES.length > 3 && (
+              <button
+                type="button"
+                className="nav-discovery-more"
+                onClick={() => setShowAllCategories(true)}
+                aria-label="Show more campus categories"
+                title="Show more categories"
+              >
+                More
+              </button>
+            )}
+            {showAllCategories && DISCOVERY_CATEGORIES.length > 3 && (
+              <button
+                type="button"
+                className="nav-discovery-more nav-discovery-more--compact"
+                onClick={() => setShowAllCategories(false)}
+                aria-label="Hide extra campus categories"
+                title="Hide extra categories"
+              >
+                Less
+              </button>
+            )}
           </div>
 
           {browseCategory && (
