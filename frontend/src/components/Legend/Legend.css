@@ -295,29 +295,50 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: calc(100% - 32px);
-  margin: 0 16px 8px;
-  padding: 8px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.04);
-  color: #64748b;
-  font-size: 11px;
+  width: 100%;
+  min-height: 42px;
+  margin: 4px 0 10px;
+  padding: 9px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-align: left;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: color var(--dur-state) var(--ease-standard), border-color var(--dur-state) var(--ease-standard);
 }
 
 .legend-secondary-toggle:hover {
-  background: rgba(148, 163, 184, 0.08);
-  border-color: rgba(148, 163, 184, 0.3);
+  color: var(--accent);
+  border-color: var(--sub);
 }
 
 .legend-secondary-toggle-chevron {
-  font-size: 10px;
-  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--sub);
+  transition: transform var(--dur-state) var(--ease-out), color var(--dur-state) var(--ease-standard);
+}
+
+.legend-secondary-toggle-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.legend-secondary-toggle-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.legend-secondary-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .legend-secondary-content {
