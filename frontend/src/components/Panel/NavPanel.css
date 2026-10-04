@@ -226,12 +226,13 @@
   border: none;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: var(--sub);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
+  padding: 0;
 }
 
 .nav-search-copy {
@@ -239,22 +240,23 @@
   flex-direction: column;
   align-items: flex-start;
   min-width: 0;
-  line-height: 1.15;
+  line-height: 1.08;
+  transform: translateY(-0.5px);
 }
 
 .nav-search-title {
   color: var(--text);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .nav-search-subtitle {
   color: var(--sub);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   opacity: 0.95;
 }
 
