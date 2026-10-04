@@ -184,7 +184,7 @@ export default function AdminDashboard() {
   const [users,            setUsers]            = useState([]);
   const [activity,         setActivity]         = useState([]);
   const [reports,          setReports]          = useState([]);
-  const [pendingCount,     setPendingCount]      = useState(0);
+  const [pendingCount,     setPendingCount]      = useState(null);
   const [isLoading,        setIsLoading]        = useState(true);
   const [error,            setError]            = useState('');
   const [lastUpdated,      setLastUpdated]      = useState(null);
@@ -310,7 +310,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchReports();
+  }, [fetchData, fetchReports]);
 
   useEffect(() => {
     intervalRef.current = setInterval(refreshActiveTab, 30_000);
@@ -521,7 +522,7 @@ export default function AdminDashboard() {
               <div className="stat-card">
                 <div className="stat-card-icon orange"><Icons.Activity /></div>
                 <div className="stat-card-content">
-                  <span className="stat-card-value">{pendingCount}</span>
+                  <span className="stat-card-value">{pendingCount ?? '—'}</span>
                   <span className="stat-card-label">Pending Reports</span>
                 </div>
               </div>
