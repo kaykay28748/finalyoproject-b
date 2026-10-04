@@ -11,7 +11,7 @@
   --a-panel-hover:    #1c1c1c;
   --a-text:           #f0f0f0;
   --a-text-secondary: #a0a0a0;
-  --a-text-muted:     #666666;
+  --a-text-muted:     #929292;
   --a-border:         #1e1e1e;
   --a-border-subtle:  #161616;
   --a-accent:         #3b82f6;
@@ -102,7 +102,7 @@
 
 .admin-sidebar-subtitle {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   margin: 8px 0 0;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -128,7 +128,7 @@
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-sans);
-  color: #666;
+  color: var(--a-text-muted);
   cursor: pointer;
   transition: all var(--a-transition);
   text-align: left;
@@ -217,7 +217,7 @@
 
 .admin-user-role {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
 }
 
 .admin-logout-btn {
@@ -287,7 +287,7 @@
 
 .admin-topbar-welcome {
   font-size: 12px;
-  color: #555;
+  color: var(--a-text-muted);
   margin: 0;
 }
 
@@ -299,7 +299,7 @@
 
 .admin-updated {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   font-weight: 500;
 }
 
@@ -434,7 +434,7 @@
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
-  color: #555;
+  color: var(--a-text-muted);
   pointer-events: none;
 }
 
@@ -458,7 +458,7 @@
 }
 
 .admin-search-input::placeholder {
-  color: #555;
+  color: var(--a-text-muted);
 }
 
 .admin-search-clear {
@@ -470,7 +470,7 @@
   border: none;
   cursor: pointer;
   padding: 4px;
-  color: #555;
+  color: var(--a-text-muted);
   display: flex;
   transition: all var(--a-transition);
   border-radius: 4px;
@@ -535,7 +535,7 @@
 
 .admin-table-stats {
   font-size: 12px;
-  color: #555;
+  color: var(--a-text-muted);
   font-weight: 500;
 }
 
@@ -613,14 +613,14 @@
 
 .stat-card-label {
   font-size: 12px;
-  color: #555;
+  color: var(--a-text-muted);
   font-weight: 500;
   margin-top: 2px;
 }
 
 .stat-card-trend {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   margin-top: 6px;
 }
 
@@ -653,7 +653,7 @@
 }
 
 .profile-percent {
-  color: #555;
+  color: var(--a-text-muted);
   font-weight: 500;
 }
 
@@ -699,7 +699,7 @@
 
 .profile-count {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   margin-top: 5px;
 }
 
@@ -725,7 +725,7 @@
   width: 24px;
   font-weight: 600;
   font-size: 13px;
-  color: #555;
+  color: var(--a-text-muted);
 }
 
 .destination-name {
@@ -758,7 +758,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #555;
+  color: var(--a-text-muted);
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
@@ -867,13 +867,13 @@
 
 .activity-time {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   white-space: nowrap;
 }
 
 .activity-type {
   font-size: 12px;
-  color: #666;
+  color: var(--a-text-muted);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -940,7 +940,7 @@
   height: 20px;
 }
 
-.sev-icon-1 { color: #555; }
+.sev-icon-1 { color: var(--a-text-muted); }
 .sev-icon-2 { color: var(--a-amber); }
 .sev-icon-3 { color: var(--a-red); }
 
@@ -952,12 +952,12 @@
 
 .cluster-location {
   font-size: 12px;
-  color: #666;
+  color: var(--a-text-muted);
 }
 
 .cluster-coords {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   margin-top: 3px;
 }
 
@@ -995,7 +995,7 @@
 
 .cluster-dates {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   margin-top: 4px;
 }
 
@@ -1123,7 +1123,7 @@
 }
 
 .cluster-notes-textarea::placeholder {
-  color: #555;
+  color: var(--a-text-muted);
 }
 
 /* ── Individual Reports ────────────────────────────────────── */
@@ -1167,7 +1167,7 @@
 .badge-id {
   font-weight: 700;
   font-size: 11px;
-  color: #666;
+  color: var(--a-text-muted);
   background: rgba(255,255,255,0.04);
 }
 
@@ -1182,13 +1182,13 @@
 
 .cluster-report-date {
   font-size: 11px;
-  color: #555;
+  color: var(--a-text-muted);
   white-space: nowrap;
 }
 
 .cluster-report-location {
   font-size: 12px;
-  color: #666;
+  color: var(--a-text-muted);
   margin-bottom: 4px;
 }
 
@@ -1236,7 +1236,7 @@
 }
 
 .report-notes-textarea::placeholder {
-  color: #555;
+  color: var(--a-text-muted);
 }
 
 .report-action-row {
@@ -1248,7 +1248,7 @@
 .admin-empty {
   text-align: center;
   padding: 56px 20px;
-  color: #555;
+  color: var(--a-text-muted);
 }
 
 .admin-empty-icon {
