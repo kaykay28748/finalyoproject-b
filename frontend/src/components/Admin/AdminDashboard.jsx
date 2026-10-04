@@ -429,13 +429,23 @@ export default function AdminDashboard() {
       <button
         className="admin-mobile-menu-btn"
         onClick={() => { trigger(10); setMobileMenuOpen(o => !o); }}
-        aria-label="Toggle menu"
+        aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={mobileMenuOpen}
+        aria-controls="admin-sidebar"
       >
         {mobileMenuOpen ? <Icons.Close /> : <Icons.Menu />}
       </button>
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="admin-sidebar-backdrop"
+          onClick={() => { trigger(10); setMobileMenuOpen(false); }}
+          aria-label="Close navigation menu"
+        />
+      )}
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
-      <aside className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`}>
+      <aside id="admin-sidebar" className={`admin-sidebar ${mobileMenuOpen ? 'open' : ''}`} aria-label="Admin navigation">
         <div className="admin-sidebar-header">
           <div className="admin-logo">
             <img src="/icon-192.png" alt="" width="32" height="32" className="admin-logo-mark" />

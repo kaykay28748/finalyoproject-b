@@ -1420,6 +1420,10 @@
   transform: scale(0.94);
 }
 
+.admin-sidebar-backdrop {
+  display: none;
+}
+
 .admin-mobile-menu-btn svg {
   width: 20px;
   height: 20px;
@@ -1432,6 +1436,16 @@
 
 @media (max-width: 768px) {
   .admin-mobile-menu-btn { display: flex; }
+
+  .admin-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.56);
+    border: 0;
+    padding: 0;
+  }
 
   .admin-sidebar { transform: translateX(-100%); }
   .admin-sidebar.open {
