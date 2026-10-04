@@ -562,7 +562,7 @@
 }
 
 .auth-button-split:disabled {
-  opacity: 0.55;
+  opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
@@ -601,7 +601,7 @@
 }
 
 .auth-secondary-split:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -694,8 +694,8 @@
 .forgot-password-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 22px;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 /* ============================================
