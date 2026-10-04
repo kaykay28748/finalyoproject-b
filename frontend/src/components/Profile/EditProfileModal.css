@@ -32,9 +32,13 @@
 }
 
 .ug-root.dark .modal-form-group input {
-  background: #2c2c2e;
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #f9fafb;
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #f8fafc;
+}
+
+.ug-root.dark .modal-form-group input::placeholder {
+  color: #94a3b8;
 }
 
 .modal-form-group input:focus {
@@ -104,8 +108,9 @@
 }
 
 .ug-root.dark .modal-btn-cancel {
-  color: #d1d5db;
-  border-color: rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(148, 163, 184, 0.08);
 }
 
 .modal-btn-cancel:hover {

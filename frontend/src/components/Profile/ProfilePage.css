@@ -343,7 +343,23 @@
 }
 
 .ug-root.dark .modal-content {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.ug-root.dark .modal-header h2,
+.ug-root.dark .modal-header p,
+.ug-root.dark .modal-btn-secondary,
+.ug-root.dark .modal-btn,
+.ug-root.dark .modal-btn-cancel,
+.ug-root.dark .modal-btn-save {
+  color: #f8fafc;
+}
+
+.ug-root.dark .modal-btn-secondary {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.2);
 }
 
 .modal-header {

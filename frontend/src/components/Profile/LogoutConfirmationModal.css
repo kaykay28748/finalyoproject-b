@@ -28,8 +28,20 @@
 }
 
 .ug-root.dark .logout-modal-content {
-  background: var(--card);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.ug-root.dark .logout-modal-content h3,
+.ug-root.dark .logout-modal-content p,
+.ug-root.dark .logout-modal-btn-cancel,
+.ug-root.dark .logout-modal-btn-confirm {
+  color: #f8fafc;
+}
+
+.ug-root.dark .logout-modal-btn-cancel {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.2);
 }
 
 .logout-modal-icon {
