@@ -14,6 +14,7 @@ import NavPanel from "./components/Panel/NavPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import OfflineIndicator from "./components/OfflineIndicator";
 import SafetyNotice from "./components/SafetyNotice";
+import OnboardingModal from "./components/OnboardingModal";
 import useMediaQuery, { DESKTOP_QUERY } from "./hooks/useMediaQuery";
 import { useAuthContext } from "./context/AuthContext";
 import { FocusProvider } from "./context/FocusContext";
@@ -57,6 +58,7 @@ export default function App() {
   const [isNavExpanded, setIsNavExpanded] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const [customStartPoint, setCustomStartPoint] = useState(null);
   const [useCustomLocation, setUseCustomLocation] = useState(false);
@@ -176,6 +178,29 @@ export default function App() {
       .catch((err) => console.warn("[App] Failed to load preferences:", err))
       .finally(() => setPreferencesLoaded(true));
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || !preferencesLoaded || graphLoading || isInitialLoad) {
+      if (!user?.id) setShowOnboarding(false);
+      return;
+    }
+
+    try {
+      const key = `tg_onboarding_complete_${user.id}`;
+      setShowOnboarding(localStorage.getItem(key) !== "true");
+    } catch {
+      setShowOnboarding(false);
+    }
+  }, [user?.id, preferencesLoaded, graphLoading, isInitialLoad]);
+
+  const handleOnboardingClose = () => {
+    try {
+      if (user?.id) localStorage.setItem(`tg_onboarding_complete_${user.id}`, "true");
+    } catch (err) {
+      console.warn("[App] Could not save onboarding state:", err);
+    }
+    setShowOnboarding(false);
+  };
 
   // ── Log login + trigger location request ────────────────────────────────
   useEffect(() => {
@@ -730,6 +755,7 @@ export default function App() {
             colours, which is why it looked out of place in light mode).
             Mobile / PWA renders the in-legend variant from Legend.jsx instead. */}
         {isDesktop && <SafetyNotice variant="map" />}
+        {showOnboarding && <OnboardingModal onClose={handleOnboardingClose} />}
       </div>
     </ErrorBoundary>
     </FocusProvider>
