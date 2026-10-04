@@ -6,6 +6,7 @@ import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import ResetPasswordPage from './components/Auth/ResetPasswordPage';
 import ProfilePage from './components/Profile/ProfilePage';
+import AppLoadingScreen from './components/AppLoadingScreen';
 import App from './App';
 
 // Protected route wrapper
@@ -13,16 +14,7 @@ function ProtectedRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthContext();
   
   if (isLoading) {
-    return (
-      <div className="map-loader">
-        <div className="three-dot-loader">
-          <span className="dot" />
-          <span className="dot" />
-          <span className="dot" />
-        </div>
-        <p>Loading...</p>
-      </div>
-    );
+    return <AppLoadingScreen message="Restoring your session" />;
   }
   
   if (!isAuthenticated) {
@@ -37,16 +29,7 @@ function AdminRoute({ children }) {
   const { isAuthenticated, isLoading, isAdmin } = useAuthContext();
   
   if (isLoading) {
-    return (
-      <div className="map-loader">
-        <div className="three-dot-loader">
-          <span className="dot" />
-          <span className="dot" />
-          <span className="dot" />
-        </div>
-        <p>Loading...</p>
-      </div>
-    );
+    return <AppLoadingScreen darkMode message="Restoring your admin session" />;
   }
   
   if (!isAuthenticated) {

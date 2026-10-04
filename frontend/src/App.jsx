@@ -16,6 +16,7 @@ import OfflineIndicator from "./components/OfflineIndicator";
 import SafetyNotice from "./components/SafetyNotice";
 import OnboardingModal from "./components/OnboardingModal";
 import MapCoachmarkTour from "./components/MapCoachmarkTour";
+import AppLoadingScreen from "./components/AppLoadingScreen";
 import useMediaQuery, { DESKTOP_QUERY } from "./hooks/useMediaQuery";
 import { useAuthContext } from "./context/AuthContext";
 import { FocusProvider } from "./context/FocusContext";
@@ -24,16 +25,9 @@ import "./index.css";
 
 const MapView = lazy(() => import("./components/Map/MapView"));
 
-function MapLoader() {
+function MapLoader({ darkMode }) {
   return (
-    <div className="map-loader">
-      <div className="three-dot-loader">
-        <span className="dot" />
-        <span className="dot" />
-        <span className="dot" />
-      </div>
-      <p>Loading map...</p>
-    </div>
+    <AppLoadingScreen darkMode={darkMode} message="Loading your map" />
   );
 }
 
@@ -710,7 +704,7 @@ export default function App() {
           onExpandRequest={handleNavExpandRequest}
         />
 
-        <Suspense fallback={<MapLoader />}>
+          <Suspense fallback={<MapLoader darkMode={darkMode} />}>
           <MapView
             currentLocation={currentLocation}
             accuracy={accuracy}
