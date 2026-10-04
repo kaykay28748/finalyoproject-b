@@ -1,13 +1,15 @@
 /* EditProfileModal.css - Form & button styles only (base modal styles in ProfilePage.css) */
 
 .modal-form-group {
-  padding: 16px 0;
+  padding: 10px 0 12px;
 }
 
 .modal-form-group label {
   display: block;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   font-family: var(--font-sans);
   color: #111827;
   margin-bottom: 8px;
@@ -19,10 +21,10 @@
 
 .modal-form-group input {
   width: 100%;
-  padding: 14px 16px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 16px;
+  padding: 13px 14px;
+  background: rgba(148, 163, 184, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
   font-size: 14px;
   font-family: var(--font-sans);
   color: #111827;
@@ -37,8 +39,9 @@
 
 .modal-form-group input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  background: rgba(255, 255, 255, 1);
 }
 
 .ug-root.dark .modal-form-group input:focus {
@@ -72,8 +75,8 @@
 
 .modal-actions {
   display: flex;
-  gap: 12px;
-  padding: 20px 24px;
+  gap: 10px;
+  padding: 16px 0 4px;
   border-top: 0.5px solid rgba(0, 0, 0, 0.08);
 }
 
@@ -84,8 +87,8 @@
 .modal-btn-cancel,
 .modal-btn-save {
   flex: 1;
-  padding: 14px;
-  border-radius: 40px;
+  padding: 12px 14px;
+  border-radius: 14px;
   font-size: 14px;
   font-weight: 600;
   font-family: var(--font-sans);
@@ -95,9 +98,9 @@
 }
 
 .modal-btn-cancel {
-  background: transparent;
+  background: rgba(148, 163, 184, 0.06);
   color: #374151;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .ug-root.dark .modal-btn-cancel {
@@ -114,12 +117,13 @@
 }
 
 .modal-btn-save {
-  background: #2563eb;
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
   color: white;
+  box-shadow: 0 12px 24px -16px rgba(37, 99, 235, 0.9);
 }
 
 .modal-btn-save:hover:not(:disabled) {
-  background: #1d4ed8;
+  filter: brightness(1.04);
 }
 
 .modal-btn-save:disabled {

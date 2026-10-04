@@ -318,9 +318,9 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 10000;
   display: flex;
   align-items: center;
@@ -332,11 +332,11 @@
 .modal-content {
   width: 100%;
   max-width: 420px;
-  background: var(--panel);
-  border-radius: 28px;
-  border: 1px solid var(--border);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-  padding: 32px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 18px 40px -20px rgba(15, 23, 42, 0.45);
+  padding: 24px 20px 18px;
   position: relative;
   animation: modal-scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
@@ -348,44 +348,44 @@
 
 .modal-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .modal-icon {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   background: rgba(37, 99, 235, 0.1);
   color: #2563eb;
-  border-radius: 18px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
+  margin: 0 auto 12px;
 }
 
 .modal-header h2 {
   font-size: 22px;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .modal-header p {
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--sub);
   line-height: 1.5;
 }
 
 .modal-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 32px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .modal-btn {
   flex: 1;
-  padding: 14px;
-  border-radius: 16px;
+  padding: 13px 14px;
+  border-radius: 14px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -394,18 +394,21 @@
 }
 
 .modal-btn-secondary {
-  background: var(--hover-row);
+  background: rgba(148, 163, 184, 0.08);
   color: var(--text);
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .modal-btn-primary {
-  background: #2563eb;
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
   color: white;
+  box-shadow: 0 12px 24px -16px rgba(37, 99, 235, 0.9);
 }
 
 .modal-btn-danger {
-  background: #ef4444;
+  background: linear-gradient(180deg, #ef4444, #dc2626);
   color: white;
+  box-shadow: 0 12px 24px -16px rgba(239, 68, 68, 0.9);
 }
 
 @keyframes modal-fade-in {
