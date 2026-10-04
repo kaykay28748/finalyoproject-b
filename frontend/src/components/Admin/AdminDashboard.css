@@ -1,5 +1,5 @@
-/* Outfit is loaded once via <link> in index.html - no @import needed here.
-   Importing it again duplicated the request and delayed first paint. */
+/* Typography uses the native system stack for consistent rendering without
+   external font overhead or CDN fetches. */
 
 .admin-dashboard {
   --a-bg:             #0a0a0a;

@@ -2,10 +2,8 @@
 /* Refined edition — Sea Blue / University of Ghana, Coastal Legon inspiration */
 /* Senior redesign: same class names + same Syne/Inter fonts, elevated execution. */
 
-/* The Inter + Syne @import that used to live here is gone: neither family
-   was referenced consistently across the app, so the page rendered in a mix of
-   whatever fallback the OS resolved. Everything now uses var(--font-sans)
-   (Outfit), loaded once via <link> in index.html. */
+/* Typography stays on the native system stack for consistency across iOS,
+   Windows, and Android. No external font imports or custom font payloads. */
 
 /* ============================================
    DESIGN TOKENS
