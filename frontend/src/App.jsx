@@ -15,6 +15,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import OfflineIndicator from "./components/OfflineIndicator";
 import SafetyNotice from "./components/SafetyNotice";
 import OnboardingModal from "./components/OnboardingModal";
+import MapCoachmarkTour from "./components/MapCoachmarkTour";
 import useMediaQuery, { DESKTOP_QUERY } from "./hooks/useMediaQuery";
 import { useAuthContext } from "./context/AuthContext";
 import { FocusProvider } from "./context/FocusContext";
@@ -59,6 +60,7 @@ export default function App() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showMapCoachmarks, setShowMapCoachmarks] = useState(false);
 
   const [customStartPoint, setCustomStartPoint] = useState(null);
   const [useCustomLocation, setUseCustomLocation] = useState(false);
@@ -186,20 +188,44 @@ export default function App() {
     }
 
     try {
-      const key = `tg_onboarding_complete_${user.id}`;
-      setShowOnboarding(localStorage.getItem(key) !== "true");
+      const welcomeComplete = localStorage.getItem(`tg_onboarding_complete_${user.id}`) === "true";
+      const mapTourComplete = localStorage.getItem(`tg_map_coachmarks_complete_${user.id}`) === "true";
+      setShowOnboarding(!welcomeComplete);
+      setShowMapCoachmarks(welcomeComplete && !mapTourComplete);
     } catch {
       setShowOnboarding(false);
+      setShowMapCoachmarks(false);
     }
   }, [user?.id, preferencesLoaded, graphLoading, isInitialLoad]);
 
-  const handleOnboardingClose = () => {
+  const handleOnboardingSkip = () => {
+    try {
+      if (user?.id) localStorage.setItem(`tg_onboarding_complete_${user.id}`, "true");
+      if (user?.id) localStorage.setItem(`tg_map_coachmarks_complete_${user.id}`, "true");
+    } catch (err) {
+      console.warn("[App] Could not save onboarding state:", err);
+    }
+    setShowOnboarding(false);
+    setShowMapCoachmarks(false);
+  };
+
+  const handleOnboardingFinish = () => {
     try {
       if (user?.id) localStorage.setItem(`tg_onboarding_complete_${user.id}`, "true");
     } catch (err) {
       console.warn("[App] Could not save onboarding state:", err);
     }
     setShowOnboarding(false);
+    setShowMapCoachmarks(true);
+  };
+
+  const handleMapCoachmarksClose = () => {
+    try {
+      if (user?.id) localStorage.setItem(`tg_map_coachmarks_complete_${user.id}`, "true");
+    } catch (err) {
+      console.warn("[App] Could not save map coachmark state:", err);
+    }
+    setShowMapCoachmarks(false);
   };
 
   // ── Log login + trigger location request ────────────────────────────────
@@ -755,7 +781,12 @@ export default function App() {
             colours, which is why it looked out of place in light mode).
             Mobile / PWA renders the in-legend variant from Legend.jsx instead. */}
         {isDesktop && <SafetyNotice variant="map" />}
-        {showOnboarding && <OnboardingModal onClose={handleOnboardingClose} />}
+        {showOnboarding && (
+          <OnboardingModal onClose={handleOnboardingSkip} onFinish={handleOnboardingFinish} />
+        )}
+        {showMapCoachmarks && !showOnboarding && (
+          <MapCoachmarkTour onClose={handleMapCoachmarksClose} />
+        )}
       </div>
     </ErrorBoundary>
     </FocusProvider>

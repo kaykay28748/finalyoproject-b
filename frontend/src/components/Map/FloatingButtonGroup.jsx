@@ -63,7 +63,7 @@ const FloatingButtonGroup = ({ buttons }) => {
   }, [openPopoverIndex]);
 
   return (
-    <div className="floating-glass-container" ref={containerRef} role="toolbar" aria-label="Map controls">
+    <div className="floating-glass-container" data-map-tour-target="map-controls" ref={containerRef} role="toolbar" aria-label="Map controls">
       {renderedButtons.map((button, index) => (
         <div
           key={button.id ?? index}

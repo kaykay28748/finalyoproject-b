@@ -559,7 +559,7 @@ export default function NavPanel({
       {!isExpanded && (
         <div className={`nav-discovery-shell${markersVisible ? " nav-discovery-shell--with-legend" : ""}`}>
           <span className="nav-discovery-label">Explore campus</span>
-          <div className="nav-discovery-categories" role="group" aria-label="Explore campus places">
+          <div className="nav-discovery-categories" data-map-tour-target="categories" role="group" aria-label="Explore campus places">
             {(showAllCategories || browseCategory ? DISCOVERY_CATEGORIES : DISCOVERY_CATEGORIES.slice(0, 3)).map((category) => (
               <button
                 key={category.id}

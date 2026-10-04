@@ -16,7 +16,7 @@ const STEPS = [
   },
 ];
 
-export default function OnboardingModal({ onClose }) {
+export default function OnboardingModal({ onClose, onFinish = onClose }) {
   const [stepIndex, setStepIndex] = useState(0);
   const dialogRef = useRef(null);
   const nextButtonRef = useRef(null);
@@ -54,7 +54,7 @@ export default function OnboardingModal({ onClose }) {
   }, [onClose]);
 
   const handleContinue = () => {
-    if (isLastStep) onClose();
+    if (isLastStep) onFinish();
     else setStepIndex((current) => current + 1);
   };
 
