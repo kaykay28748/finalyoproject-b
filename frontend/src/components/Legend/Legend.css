@@ -127,17 +127,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 16px 4px;
+  padding: 0 16px 2px;
   flex-shrink: 0;
 }
 
 .peek-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
+  opacity: 0.9;
 }
 
 .peek-mode-label {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text, #111827);
 }
@@ -147,7 +148,7 @@
 }
 
 .peek-time {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text, #111827);
   margin-left: auto;
@@ -155,11 +156,11 @@
 
 .peek-sep {
   color: var(--sub, #9ca3af);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .peek-dist {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--sub, #6b7280);
 }
@@ -195,8 +196,9 @@
 .legend-mode-strip {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: space-evenly;
-  padding: 4px 12px 0;
+  justify-content: center;
+  gap: 8px;
+  padding: 2px 12px 0;
   flex-shrink: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -214,16 +216,17 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 8px 12px 10px;
-  min-width: 44px;
-  min-height: 44px;
+  padding: 6px 10px 8px;
+  min-width: 36px;
+  min-height: 36px;
   border: none;
   background: transparent;
   color: #9ca3af;
   cursor: pointer;
-  transition: color 0.2s ease;
-  border-bottom: 3px solid transparent;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  border-bottom: 2px solid transparent;
   scroll-snap-align: center;
+  opacity: 0.8;
 }
 
 .legend-mode-btn:hover {
@@ -257,19 +260,19 @@
 .legend-metrics-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 20px;
+  gap: 10px;
+  padding: 6px 16px 10px;
   flex-shrink: 0;
 }
 
 .legend-metrics-time {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text, #111827);
 }
 
 .legend-metrics-dist {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--sub, #6b7280);
 }
@@ -279,12 +282,13 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #6b7280;
-  padding: 2px 10px;
-  border-radius: 20px;
-  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .ug-root.dark .legend-traffic-text {
