@@ -1,6 +1,7 @@
 // frontend/src/components/Auth/AuthPage.jsx
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuthContext } from '../../context/AuthContext';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import ForgotPasswordPage from './ForgotPasswordPage';
@@ -8,6 +9,7 @@ import ResetPasswordPage from './ResetPasswordPage';
 import './AuthPage.css';
 
 export default function AuthPage() {
+  const { isAuthenticated } = useAuthContext();
   const [mode, setMode] = useState('login'); // login, register, forgot, reset
   const [darkMode, setDarkMode] = useState(false);
   const location = useLocation();
@@ -58,6 +60,10 @@ export default function AuthPage() {
 
   // Wrap everything with the theme class
   const themeClass = darkMode ? 'dark' : '';
+
+  if (isAuthenticated && mode !== 'reset') {
+    return <Navigate to="/" replace />;
+  }
 
   if (mode === 'login') {
     return (
