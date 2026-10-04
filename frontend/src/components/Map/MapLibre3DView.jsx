@@ -334,11 +334,10 @@ export default function MapLibre3DView({
           failIfMissingGlyphs: false,
           preserveDrawingBuffer: false,
           maxWorkerCount: 2,
-          // MapLibre needs a literal stack here, not var(--font-sans) — it is
-          // handed straight to a canvas font string. Because the @font-face
-          // rules live in src/index.css, canvas resolves the webfont once it
-          // has loaded.
-          localFontFamily: '"Schibsted Grotesk", system-ui, sans-serif',
+          // MapLibre needs a literal font stack straight into the canvas text
+          // renderer, so we use the same native system stack as the rest of the
+          // Sail UI instead of loading any third-party fonts.
+          localFontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
           collectResourceTiming: false,
         });
 

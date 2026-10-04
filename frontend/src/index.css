@@ -3,60 +3,13 @@
 input::placeholder { opacity: 0.5; }
 
 /* ─── Typography ─────────────────────────────────────────────────────────────
-   Two self-hosted families, declared once and referenced everywhere else.
-
-   Fonts live in src/assets/fonts and are bundled by Vite — no third-party CDN,
-   no silent fallback when fonts.googleapis.com is unreachable (campus/corporate
-   firewall, Render egress, offline dev). Outfit was previously pulled from
-   Google at runtime and, with `display=swap`, vanished without an error whenever
-   that request failed.
-
-   The stylesheets used to ask for 'Inter', 'Syne', 'DM Sans' and 'SF Pro Text'
-   in ~50 rules, none of which were ever fetched — so each one silently fell
-   back to whatever generic sans-serif the OS resolved, and that varied per
-   rule. That mismatch is what made the UI look typographically inconsistent.
-
-   Schibsted Grotesk and Azeret Mono were picked over the usual Inter /
-   Space Grotesk / Manrope defaults on purpose: they are far less common in
-   shipped UIs, and both are variable, so every weight the app uses (300-800)
-   comes from one file each.
-
-   Tokens sit on :root rather than .ug-root so the portaled forecast popup and
-   the auth / admin / profile routes — all of which render outside .ug-root —
-   inherit the same stack as the map.
+   Sail uses the device-native system stack to keep the UI instant, consistent,
+   and free of external font loading overhead.
 ───────────────────────────────────────────────────────────────────────────*/
 
-/* Schibsted Grotesk — variable, latin subset. Covers 400-900 natively, so
-   every font-weight in the app (300-800) renders as a real cut. */
-@font-face {
-  font-family: "Schibsted Grotesk";
-  font-style: normal;
-  font-weight: 400 900;
-  font-display: swap;
-  src: url("./assets/fonts/schibsted-grotesk-latin-var.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
-    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* Azeret Mono — variable, latin subset. Covers 100-900 for tabular data:
-   distances, times, coordinates, confidence percentages. */
-@font-face {
-  font-family: "Azeret Mono";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("./assets/fonts/azeret-mono-latin-var.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
-    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
 :root {
-  --font-sans: "Schibsted Grotesk", "Space Grotesk", "Outfit", system-ui,
-    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Azeret Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
-    "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Type scale — prefer these over ad-hoc px values in new/edited UI so
      vertical rhythm stays consistent across breakpoints. */
@@ -91,13 +44,11 @@ input::placeholder { opacity: 0.5; }
   --stagger:     24ms;
 }
 
-/* Global baseline: anything without an explicit font-family — the portaled
-   forecast popup, the auth/admin/profile routes — still renders in the product
-   typeface instead of the browser default. */
-html, body {
+body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Ensure full height layout */
