@@ -73,7 +73,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 72px clamp(48px, 6vw, 88px);
+  padding: 64px clamp(40px, 5vw, 80px);
   background:
     radial-gradient(120% 90% at 15% 10%, rgba(58, 155, 194, 0.28), transparent 55%),
     linear-gradient(155deg, var(--sea-900) 0%, var(--sea-800) 45%, var(--sea-600) 100%);
@@ -165,12 +165,12 @@
   position: relative;
   z-index: 1;
   font-family: var(--font-sans);
-  font-size: clamp(44px, 5vw, 60px);
+  font-size: clamp(36px, 4.2vw, 54px);
   font-weight: 700;
   line-height: 1.04;
-  letter-spacing: -2px;
+  letter-spacing: -1.8px;
   color: #ffffff;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
   text-wrap: balance;
   animation: heroTextIn 0.5s var(--ease) 0.2s both;
 }
@@ -214,11 +214,11 @@
 /* Constrain form to a comfortable reading column */
 .auth-form-panel > * {
   width: 100%;
-  max-width: 380px;
+  max-width: 420px;
 }
 
 .auth-form-header {
-  margin-bottom: 36px;
+  margin-bottom: 28px;
   animation: fadeUp 0.4s var(--ease) 0.25s both;
 }
 
@@ -736,25 +736,28 @@
   .auth-container-split { flex-direction: column; }
 
   .auth-hero {
-    padding: 52px 36px 56px;
-    min-height: 300px;
+    padding: 44px 28px 48px;
+    min-height: 260px;
     flex: none;
   }
 
-  .auth-hero img { margin-bottom: 24px; }
-  .auth-form-panel { padding: 48px 32px 56px; }
+  .auth-hero img { margin-bottom: 20px; }
+  .auth-hero h1 { max-width: 280px; }
+  .auth-form-panel { padding: 40px 28px 52px; }
 }
 
 @media (max-width: 480px) {
   .auth-hero {
-    padding: 40px 24px 44px;
-    min-height: 240px;
+    padding: 32px 20px 36px;
+    min-height: 220px;
   }
 
-  .auth-hero img { width: 56px; height: 56px; margin-bottom: 18px; }
+  .auth-hero img { width: 52px; height: 52px; margin-bottom: 16px; }
+  .auth-hero h1 { font-size: 30px; letter-spacing: -1.2px; }
   .auth-hero p { font-size: 14.5px; }
-  .auth-form-panel { padding: 36px 24px 48px; }
-  .auth-form-header { margin-bottom: 28px; }
+  .auth-form-panel { padding: 28px 20px 40px; }
+  .auth-form-header { margin-bottom: 24px; }
+  .auth-form-header h2 { font-size: 28px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
