@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn var(--dur-state) var(--ease-standard);
 }
 
 .logout-modal-content {
@@ -22,7 +22,7 @@
   max-width: 320px;
   padding: 20px 18px 18px;
   text-align: center;
-  animation: slideUp 0.3s ease;
+  animation: slideUp var(--dur-enter) var(--ease-out);
   box-shadow: 0 18px 40px -20px rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(148, 163, 184, 0.2);
 }
@@ -90,7 +90,10 @@
   font-weight: 600;
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--dur-state) var(--ease-standard),
+    border-color var(--dur-state) var(--ease-standard),
+    color var(--dur-state) var(--ease-standard),
+    transform var(--dur-press) var(--ease-out);
   border: none;
 }
 
