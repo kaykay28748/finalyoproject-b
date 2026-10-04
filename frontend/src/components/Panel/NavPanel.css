@@ -231,6 +231,31 @@
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
+  text-align: left;
+}
+
+.nav-search-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.nav-search-title {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.nav-search-subtitle {
+  color: var(--sub);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.95;
 }
 
 /* ── Search Hint Animation ─────────────────────────────────────────────── */

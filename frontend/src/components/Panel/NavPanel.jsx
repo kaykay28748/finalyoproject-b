@@ -346,7 +346,10 @@ export default function NavPanel({
                 >
                   <img src={logo} alt="TransitGuide" className="nav-pill-logo" />
                 </div>
-                <span className="nav-search-text-hint">Search here...</span>
+                <div className="nav-search-copy">
+                  <span className="nav-search-text-hint nav-search-title">Where to?</span>
+                  <span className="nav-search-subtitle">Search campus or a place</span>
+                </div>
               </button>
               <button
                 className="nav-mic-btn"
