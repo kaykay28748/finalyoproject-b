@@ -43,6 +43,26 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.admin-dashboard .modal-content {
+  background: #171717;
+  border-color: #353535;
+  color: #f0f0f0;
+}
+
+.admin-dashboard .modal-header h2 {
+  color: #f5f5f5;
+}
+
+.admin-dashboard .modal-header p {
+  color: #b3b3b3;
+}
+
+.admin-dashboard .modal-btn-secondary {
+  background: #252525;
+  border-color: #404040;
+  color: #f0f0f0;
+}
+
 /* ── Sidebar ──────────────────────────────────────────────── */
 .admin-sidebar {
   width: var(--a-sidebar-w);
