@@ -30,17 +30,14 @@
   width: 72px;
   height: 72px;
   margin-bottom: 22px;
-  background: #ffffff;
-  border: 1px solid rgba(23, 111, 137, 0.12);
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(18, 65, 77, 0.1);
 }
 
 .app-loading-mark img {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
+  border-radius: 14px;
 }
 
 .app-loading-ring {
@@ -53,9 +50,7 @@
 }
 
 .app-loading-screen--dark .app-loading-mark {
-  background: #ffffff;
-  border-color: rgba(115, 211, 223, 0.22);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.34);
+  background: transparent;
 }
 
 .app-loading-screen--dark .app-loading-ring {
