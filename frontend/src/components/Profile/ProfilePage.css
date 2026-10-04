@@ -39,6 +39,21 @@
   backdrop-filter: blur(10px);
 }
 
+.ug-root.dark .profile-header,
+.ug-root.dark .profile-content-header,
+.ug-root.dark .profile-sidebar {
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+.ug-root.dark .profile-header h1,
+.ug-root.dark .profile-content-header h1,
+.ug-root.dark .profile-sidebar-user-info strong,
+.ug-root.dark .profile-sidebar-user-info span,
+.ug-root.dark .profile-nav-item {
+  color: var(--text);
+}
+
 .profile-back-btn {
   display: flex;
   align-items: center;
