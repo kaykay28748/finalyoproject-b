@@ -8,6 +8,8 @@ import { useDragSheet } from "./hooks/useDragSheet";
 import { useRouteMetrics, formatDistance, formatTravelTime } from "./hooks/useRouteMetrics";
 import { getGateWarnings, getReportWarnings, getWeatherWarning } from "./utils/getRouteWarnings";
 import { getTrafficLabel } from "./utils/getTrafficLabel";
+import { useRouteProgress } from "../../hooks/useRouteProgress";
+import RouteFeedbackPrompt from "./RouteFeedbackPrompt";
 import LegendHeader from "./LegendHeader";
 import LegendBody from "./LegendBody";
 import LegendDirectionsTab from "./LegendDirectionsTab";
@@ -35,6 +37,7 @@ const Legend = forwardRef(function Legend({
   const [approvedReports, setApprovedReports] = useState([]);
 
   const hasRoute = Boolean(route?.totalDistance);
+  const routeProgress = useRouteProgress(route, currentLocation, routeActive && hasRoute);
   const metrics = useRouteMetrics(route, vehicleMode);
   const { isVoiceEnabled, toggleVoice, speak, speakTurn, speakArrival } = useVoiceGuidance();
   const { trigger } = useHaptics();
@@ -44,6 +47,13 @@ const Legend = forwardRef(function Legend({
   const lastAnnouncedRouteIdRef = useRef(null);
   const prevHasRouteRef = useRef(hasRoute);
   const wasExpandedBeforeCollapse = useRef(false);
+  const routeIdentityRef = useRef(null);
+  const routeProgressSeenRef = useRef(false);
+  const routeFeedbackPromptedRef = useRef(false);
+  const [showRouteFeedback, setShowRouteFeedback] = useState(false);
+  const routeIdentity = hasRoute && route?.coordinates?.length
+    ? `${route.coordinates[0]?.lat},${route.coordinates[0]?.lng}:${route.coordinates.at(-1)?.lat},${route.coordinates.at(-1)?.lng}:${route.totalDistanceKm}`
+    : null;
 
   // Desktop renders the safety notice as a map overlay from App.jsx; here we only
   // own the mobile / PWA in-flow placement.
@@ -93,6 +103,37 @@ const Legend = forwardRef(function Legend({
       lastAnnouncedStepRef.current = -1;
     }
   }, [route]);
+
+  useEffect(() => {
+    if (!hasRoute) {
+      routeIdentityRef.current = null;
+      routeProgressSeenRef.current = false;
+      routeFeedbackPromptedRef.current = false;
+      setShowRouteFeedback(false);
+      return;
+    }
+
+    if (!routeActive || !routeIdentity) return;
+
+    if (routeIdentityRef.current !== routeIdentity) {
+      routeIdentityRef.current = routeIdentity;
+      routeProgressSeenRef.current = false;
+      routeFeedbackPromptedRef.current = false;
+      setShowRouteFeedback(false);
+      return;
+    }
+
+    const { percentage, hasArrived } = routeProgress.progress;
+    if (percentage >= 5 && !hasArrived) routeProgressSeenRef.current = true;
+
+    if (hasArrived && routeProgressSeenRef.current && !routeFeedbackPromptedRef.current) {
+      routeFeedbackPromptedRef.current = true;
+      setShowRouteFeedback(true);
+      setDetailsOpen(false);
+      onNavPanelClose?.();
+      setExpanded(true);
+    }
+  }, [hasRoute, routeActive, routeIdentity, routeProgress.progress, onNavPanelClose]);
 
   useEffect(() => {
     if (hasRoute && !prevHasRouteRef.current && visible) setExpanded(true);
@@ -218,6 +259,13 @@ const Legend = forwardRef(function Legend({
                     {getTrafficLabel()}
                   </span>
                 </div>
+
+                {showRouteFeedback && (
+                  <RouteFeedbackPrompt
+                    profile={activeProfile}
+                    onDismiss={() => setShowRouteFeedback(false)}
+                  />
+                )}
 
                 <button
                   type="button"

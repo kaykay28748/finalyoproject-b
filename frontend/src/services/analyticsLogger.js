@@ -86,3 +86,16 @@ export async function logLogin() {
     })
   });
 }
+
+export async function submitRouteFeedback(profile, rating) {
+  const response = await fetchWithAuth(`${API_URL}/analytics/feedback`, {
+    method: 'POST',
+    body: JSON.stringify({ profile, rating }),
+  });
+
+  if (!response?.ok) {
+    throw new Error('Could not submit your rating. Please try again.');
+  }
+
+  return response.json();
+}
