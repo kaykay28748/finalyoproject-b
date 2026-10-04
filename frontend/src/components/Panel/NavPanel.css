@@ -1808,6 +1808,59 @@ max-width: min(42vw, 240px);
   }
 }
 
+@media (max-width: 480px) {
+  .nav-discovery-shell {
+    top: calc(env(safe-area-inset-top) + 64px);
+    gap: 6px;
+  }
+
+  .nav-discovery-label {
+    padding-left: 2px;
+    font-size: 10px;
+  }
+
+  .nav-discovery-categories {
+    gap: 6px;
+    padding-bottom: 3px;
+  }
+
+  .nav-discovery-chip {
+    min-height: 34px;
+    padding: 0 10px;
+    gap: 5px;
+    border-radius: 17px;
+    font-size: 11px;
+  }
+
+  .nav-discovery-chip-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .nav-discovery-count {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 9px;
+  }
+
+  .nav-discovery-summary {
+    font-size: 10px;
+  }
+
+  .nav-discovery-list-toggle {
+    min-height: 28px;
+    padding: 0 8px;
+    border-radius: 14px;
+    font-size: 11px;
+  }
+
+  .nav-discovery-list-toggle svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
 @media (min-width: 901px) {
   .nav-discovery-shell { max-width: 650px; }
 
