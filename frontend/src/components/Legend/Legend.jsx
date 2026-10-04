@@ -28,6 +28,7 @@ const Legend = forwardRef(function Legend({
   routeProvenance = null,
 }, ref) {
   const [expanded, setExpanded] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [directions, setDirections] = useState([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [completedDistance, setCompletedDistance] = useState(0);
@@ -217,8 +218,24 @@ const Legend = forwardRef(function Legend({
                     {getTrafficLabel()}
                   </span>
                 </div>
-                <WeatherBanner />
-                <RouteProvenance provenance={routeProvenance} />
+
+                <button
+                  type="button"
+                  className="legend-secondary-toggle"
+                  onClick={() => setDetailsOpen((v) => !v)}
+                  aria-expanded={detailsOpen}
+                >
+                  <span>Route details</span>
+                  <span className="legend-secondary-toggle-chevron" aria-hidden="true">{detailsOpen ? "▴" : "▾"}</span>
+                </button>
+
+                {detailsOpen && (
+                  <div className="legend-secondary-content">
+                    <WeatherBanner />
+                    <RouteProvenance provenance={routeProvenance} />
+                  </div>
+                )}
+
                 <LegendDirectionsTab
                   directions={directions}
                   currentStepIndex={currentStepIndex}
