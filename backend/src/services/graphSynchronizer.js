@@ -254,10 +254,8 @@ export function buildOverpassQuery({ minLat, minLng, maxLat, maxLng }) {
   return (
     `[out:json][timeout:30];` +
     `way["highway"~"footway|pedestrian|path|steps|residential|service"](${minLat},${minLng},${maxLat},${maxLng});` +
-    `node(w);` +
-    `out body;` +
-    `>;` +
-    `out skel qt;`
+    `(._;>;);` +
+    `out body;`
   );
 }
 
