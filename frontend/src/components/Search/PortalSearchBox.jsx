@@ -43,6 +43,7 @@ export default function PortalSearchBox({
   accentColor,
   onFocus,
   searchNonce,
+  searchAnchor,
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -109,12 +110,12 @@ export default function PortalSearchBox({
 
   // Fetch remote suggestions and merge with local ones, deduped by name.
   const fetchApiSuggestions = useCallback(async (val, localResults, controller) => {
-    const apiResults = await geocode(val, controller.signal);
+    const apiResults = await geocode(val, controller.signal, searchAnchor);
     if (apiResults === null) return null;
     const localNames = new Set(localResults.map((r) => r.name.toLowerCase()));
     const fresh = apiResults.filter((r) => !localNames.has(r.name.toLowerCase()));
     return [...localResults, ...fresh].slice(0, 7);
-  }, []);
+  }, [searchAnchor]);
 
   // ── Input change ─────────────────────────────────────────────────────────────
   const handleChange = (e) => {
@@ -129,7 +130,7 @@ export default function PortalSearchBox({
       return;
     }
 
-    const localResults = searchLocal(val);
+    const localResults = searchLocal(val, searchAnchor);
     setSuggestions(localResults);
 
     if (localResults.length >= 3) {
@@ -191,7 +192,7 @@ export default function PortalSearchBox({
     setLoading(true);
     setShowDropdown(false);
 
-    const localResults = searchLocal(val);
+    const localResults = searchLocal(val, searchAnchor);
     setSuggestions(localResults);
 
     const controller = new AbortController();

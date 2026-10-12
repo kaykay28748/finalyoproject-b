@@ -6,7 +6,7 @@ import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&fo
 import { useHaptics } from "../../hooks/useHaptics";
 import { fetchHeatmapData } from "../../services/heatmapAnalytics";
 import { ROUTE_COLORS } from "../../function/utils/colors";
-import { UG_MAX_BOUNDS } from "../../function/utils/bounds";
+import { METRO_BOUNDS, METRO_CENTER } from "../../function/utils/bounds";
 
 // Vite's dev server cannot serve maplibre-gl's sibling ESM files: "?url" pulls in
 // the raw worker while its "import ./maplibre-gl-shared.mjs" 404s to the SPA
@@ -26,7 +26,8 @@ if (!MAPTILER_KEY) {
 const STYLE_SATELLITE_URL = `https://api.maptiler.com/maps/hybrid/style.json?key=${MAPTILER_KEY}`;
 const TERRAIN_SOURCE = `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`;
 
-const UG_CENTER = { lng: -0.1865, lat: 5.651 };
+// 3D opens centred on the imported Accra metro coverage instead of just Legon.
+const UG_CENTER = { lng: METRO_CENTER.lng, lat: METRO_CENTER.lat };
 
 const RAIN_CODES = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
 const getRainIntensity = (code) => {
@@ -322,8 +323,8 @@ export default function MapLibre3DView({
           container: mapContainer.current,
           style: style,
           center: [UG_CENTER.lng, UG_CENTER.lat],
-          zoom: 15,
-          minZoom: 13,
+          zoom: 13,
+          minZoom: 11,
           maxZoom: 17,
           pitch: 60,
           pixelRatio: 1,
@@ -545,10 +546,11 @@ export default function MapLibre3DView({
 
   const hasFlownRef = useRef(false);
   useEffect(() => {
-    // Only auto-center on the GPS when the fix is actually within the campus
-    // area. A fix from home (kilometres away) must not hijack the 3D view.
+    // Only auto-center on the GPS when the fix is within the area we have
+    // routing data for (METRO_BOUNDS). A fix from home (kilometres away) must
+    // not hijack the 3D view.
     const onCampus = !!currentLocation &&
-      UG_MAX_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
+      METRO_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
     if (!mapRef.current || !currentLocation || !onCampus || hasFlownRef.current) return;
     try {
       mapRef.current.flyTo({

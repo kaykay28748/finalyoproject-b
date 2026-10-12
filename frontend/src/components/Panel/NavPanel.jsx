@@ -180,6 +180,8 @@ export default function NavPanel({
   onClose,
   onStartTextChange,
   onDestTextChange,
+  fromSearchAnchor,
+  toSearchAnchor,
 }) {
   const [internalIsExpanded, setInternalIsExpanded] = useState(false);
   const [swapRotation, setSwapRotation] = useState(0);
@@ -412,6 +414,7 @@ export default function NavPanel({
                 showCurrentLocationOption={hasCurrentLocation}
                 accentColor="#2563eb"
                 onFocus={handleSearchFocus}
+                searchAnchor={fromSearchAnchor}
               />
             </div>
 
@@ -439,6 +442,7 @@ export default function NavPanel({
                 accentColor="#22c55e"
                 onFocus={handleSearchFocus}
                 searchNonce={voiceSearchNonce}
+                searchAnchor={toSearchAnchor}
               />
               <button
                 className="nav-mic-btn nav-mic-btn--to"

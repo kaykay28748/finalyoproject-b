@@ -50,6 +50,7 @@ export default function SearchBox({
   showCurrentLocationOption,
   accentColor,
   onFocus,
+  searchAnchor,
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -97,7 +98,7 @@ export default function SearchBox({
       return;
     }
 
-    const localResults = searchLocal(val);
+    const localResults = searchLocal(val, searchAnchor);
     setSuggestions(localResults);
 
     if (localResults.length >= 3) {
@@ -114,7 +115,7 @@ export default function SearchBox({
       abortRef.current = controller;
 
       try {
-        const apiResults = await geocode(val, controller.signal);
+        const apiResults = await geocode(val, controller.signal, searchAnchor);
 
         if (apiResults === null) return;
 

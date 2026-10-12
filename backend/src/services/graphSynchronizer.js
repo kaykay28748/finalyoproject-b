@@ -416,6 +416,115 @@ export function parseOverpassElements(elements) {
 }
 
 /**
+ * Persist parsed edges to the regional table.
+ *
+ * Extracted from `syncSpatialGraphRegion` so a local OSM import (e.g. a pre-clipped
+ * Accra extract) can reuse the exact same ensureTable + batched upsert pipeline
+ * that the Overpass path uses, instead of forking a second write path that can
+ * drift. `source` is only a label carried through to the result object; it has no
+ * behavioural effect.
+ *
+ * @returns {Promise<{ok: boolean, source: string, table: string, edgesParsed: number,
+ *   edgesInserted: number, batches: number, withGeometry: boolean, elapsedMs: number,
+ *   error?: string}>}
+ */
+export async function ingestEdges(edges, { source = 'file' } = {}) {
+  const input = Array.isArray(edges) ? edges : [];
+
+  if (input.length === 0) {
+    return {
+      ok: true,
+      source,
+      table: edgeTableName(),
+      edgesParsed: 0,
+      edgesInserted: 0,
+      batches: 0,
+      withGeometry: false,
+      elapsedMs: 0,
+    };
+  }
+
+  let withGeometry = false;
+  try {
+    ({ withGeometry } = await ensureTable());
+  } catch (err) {
+    return { ok: false, error: `Could not prepare edge table: ${err?.message || 'unknown'}` };
+  }
+
+  const table = edgeTableName();
+  const started = Date.now();
+  let edgesInserted = 0;
+  let batches = 0;
+
+  for (let offset = 0; offset < input.length; offset += UPSERT_BATCH_SIZE) {
+    const batch = input.slice(offset, offset + UPSERT_BATCH_SIZE);
+    const params = [];
+
+    for (const e of batch) {
+      params.push(
+        e.osm_id,
+        e.from_node_id,
+        e.to_node_id,
+        e.distance_m,
+        e.highway_type,
+        e.surface,
+        e.lit,
+        e.sidewalk,
+        e.incline,
+        e.fromLat,
+        e.fromLng,
+        e.toLat,
+        e.toLng,
+        e.isOnCampus,
+      );
+
+      if (withGeometry) {
+        params.push(e.fromLng, e.fromLat, e.toLng, e.toLat);
+      }
+    }
+
+    try {
+      await query(buildInsertSql({ withGeometry, rowCount: batch.length, table }), params);
+      edgesInserted += batch.length;
+      batches++;
+    } catch (err) {
+      // Postgres aborts the whole transaction on a bad row, so a single
+      // malformed batch loses all of it. Reporting which batch failed, and how
+      // many already committed, is what makes this recoverable rather than a
+      // black box.
+      console.error(`[GraphSync] Batch ${batches + 1} failed after ${edgesInserted} edges:`, err?.message);
+      return {
+        ok: false,
+        error: `Upsert failed on batch ${batches + 1}: ${err?.message || 'unknown'}`,
+        source,
+        table,
+        edgesParsed: input.length,
+        edgesInserted,
+        batches,
+        withGeometry,
+        elapsedMs: Date.now() - started,
+      };
+    }
+  }
+
+  console.log(
+    `[GraphSync] ${source}: ${edgesInserted} edges in ${batches} batch(es) ` +
+    `in ${Date.now() - started}ms (dialect: ${isPostgres ? 'postgresql' : 'sqlite'}, geom: ${withGeometry})`
+  );
+
+  return {
+    ok: true,
+    source,
+    table,
+    edgesParsed: input.length,
+    edgesInserted,
+    batches,
+    withGeometry,
+    elapsedMs: Date.now() - started,
+  };
+}
+
+/**
  * Ensure the target table exists.
  *
  * Called on every sync. It is cheap (IF NOT EXISTS), and it removes the
@@ -811,103 +920,41 @@ export async function syncSpatialGraphRegion(minLat, minLng, maxLat, maxLng) {
     };
   }
 
-  let withGeometry = false;
-  try {
-    ({ withGeometry } = await ensureTable());
-  } catch (err) {
-    return { ok: false, error: `Could not prepare edge table: ${err?.message || 'unknown'}` };
-  }
+  const ingestResult = await ingestEdges(edges, { source: 'overpass' });
 
-  // Dialect, not geometry availability — see edgeTableName(). A PostgreSQL
-  // database without PostGIS has no geom column but still writes here.
-  const table = edgeTableName();
-  let edgesInserted = 0;
-  let batches = 0;
-
-  for (let offset = 0; offset < edges.length; offset += UPSERT_BATCH_SIZE) {
-    const batch = edges.slice(offset, offset + UPSERT_BATCH_SIZE);
-    const params = [];
-
-    for (const e of batch) {
-      params.push(
-        e.osm_id,
-        e.from_node_id,
-        e.to_node_id,
-        e.distance_m,
-        e.highway_type,
-        e.surface,
-        e.lit,
-        e.sidewalk,
-        e.incline,
-        // Coordinates are written on every dialect, not only where geom exists.
-        // They are what makes a spatial slice possible on SQLite and on
-        // PostgreSQL-without-PostGIS, and writing them only under `withGeometry`
-        // would leave those readers with nothing to filter on.
-        e.fromLat,
-        e.fromLng,
-        e.toLat,
-        e.toLng,
-        // Classified from the segment's own endpoints, not the bbox being synced:
-        // an edge that merely crosses into the campus box is not campus network.
-        // A segment whose endpoints agree is unambiguous; one that straddles the
-        // boundary is classified on its FROM endpoint so the answer is stable
-        // across re-syncs rather than flipping with a node reordering.
-        e.isOnCampus,
-      );
-
-      if (withGeometry) {
-        // Four binds, one per ST_MakePoint(x, y) placeholder, in the order the
-        // SQL reads them: fromLng, fromLat, toLng, toLat. Longitude first —
-        // PostGIS x is longitude, and a swap renders a plausible but mirrored
-        // line rather than erroring.
-        params.push(e.fromLng, e.fromLat, e.toLng, e.toLat);
-      }
-    }
-
-    try {
-      // Rebuilt per batch so the placeholder count matches `batch.length` exactly.
-      await query(buildInsertSql({ withGeometry, rowCount: batch.length, table }), params);
-      edgesInserted += batch.length;
-      batches++;
-    } catch (err) {
-      // Postgres aborts the whole transaction on a bad row, so a single
-      // malformed batch loses all of it. Reporting which batch failed, and how
-      // many already committed, is what makes this recoverable rather than a
-      // black box.
-      console.error(`[GraphSync] Batch ${batches + 1} failed after ${edgesInserted} edges:`, err?.message);
-      return {
-        ok: false,
-        error: `Upsert failed on batch ${batches + 1}: ${err?.message || 'unknown'}`,
-        source: 'overpass',
-        region,
-        waysFetched: stats.waysSeen,
-        edgesParsed: edges.length,
-        edgesInserted,
-        batches,
-        stats,
-        elapsedMs: Date.now() - started,
-      };
-    }
+  if (!ingestResult.ok) {
+    return {
+      ok: false,
+      error: ingestResult.error,
+      source: 'overpass',
+      region,
+      waysFetched: stats.waysSeen,
+      edgesParsed: ingestResult.edgesParsed,
+      edgesInserted: ingestResult.edgesInserted,
+      batches: ingestResult.batches,
+      stats,
+      elapsedMs: ingestResult.elapsedMs,
+    };
   }
 
   console.log(
-    `[GraphSync] Region ${region}: ${edgesInserted} edges in ${batches} batch(es) ` +
-    `in ${Date.now() - started}ms (dialect: ${isPostgres ? 'postgresql' : 'sqlite'}, geom: ${withGeometry})`
+    `[GraphSync] Region ${region}: ${ingestResult.edgesInserted} edges in ${ingestResult.batches} batch(es) ` +
+    `in ${ingestResult.elapsedMs}ms (dialect: ${isPostgres ? 'postgresql' : 'sqlite'}, geom: ${ingestResult.withGeometry})`
   );
 
   return {
     ok: true,
     source: 'overpass',
     region,
-    table,
+    table: ingestResult.table,
     waysFetched: stats.waysSeen,
-    edgesParsed: edges.length,
-    edgesInserted,
-    batches,
-    withGeometry,
+    edgesParsed: ingestResult.edgesParsed,
+    edgesInserted: ingestResult.edgesInserted,
+    batches: ingestResult.batches,
+    withGeometry: ingestResult.withGeometry,
     truncated: stats.truncated,
     stats,
-    elapsedMs: Date.now() - started,
+    elapsedMs: ingestResult.elapsedMs,
   };
 }
 

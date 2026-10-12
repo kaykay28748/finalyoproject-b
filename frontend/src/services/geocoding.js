@@ -5,7 +5,8 @@ import ugLocations from "../data/ugLocations.json";
 
 const apiCache = new Map();
 
-// Reachable search radius, measured from UG centre.
+// Reachable search radius, measured from the search anchor (the user's current
+// location or their chosen "from" point), falling back to the UG centre.
 //
 // Was 6km, which covered only Legon and its immediate neighbourhood — a search
 // run from home or a lecture outside the main campus returned nothing, and the
@@ -68,6 +69,20 @@ function matchesCategoryIntent(location, intent) {
   );
 }
 
+// ── Search anchor ────────────────────────────────────────────────────────────
+// Rankings (and the reachable radius) are anchored to whoever called the
+// search: the user's current GPS fix when they are picking a start point, and
+// the chosen start point when they are picking a destination. That makes an
+// on-campus "from" rank campus places first and an off-campus "from" (e.g.
+// Tema) rank that area's places first. Falls back to the UG centre so every
+// caller keeps working when no location is available.
+function resolveAnchor(anchor) {
+  if (anchor && Number.isFinite(anchor.lat) && Number.isFinite(anchor.lng)) {
+    return { lat: anchor.lat, lng: anchor.lng };
+  }
+  return UG_CENTER;
+}
+
 // ── Local fuzzy search ───────────────────────────────────────────────────────
 
 function scoreLocalMatch(location, query) {
@@ -95,8 +110,9 @@ function scoreLocalMatch(location, query) {
   return 0;
 }
 
-export function searchLocal(query) {
+export function searchLocal(query, anchor = UG_CENTER) {
   if (!query || query.trim().length < 2) return [];
+  const ref = resolveAnchor(anchor);
   const cleanQuery = normalizeSearchText(query);
   const categoryIntent = findCategoryIntent(cleanQuery);
   const queryWords = cleanQuery.split(/\s+/);
@@ -125,8 +141,8 @@ export function searchLocal(query) {
     .filter((loc) => loc.score > 0)
     .sort((a, b) =>
       b.score - a.score ||
-      distanceKm(UG_CENTER.lat, UG_CENTER.lng, a.lat, a.lng) -
-        distanceKm(UG_CENTER.lat, UG_CENTER.lng, b.lat, b.lng)
+      distanceKm(ref.lat, ref.lng, a.lat, a.lng) -
+        distanceKm(ref.lat, ref.lng, b.lat, b.lng)
     )
     .slice(0, categoryIntent ? 20 : 6)
     .map((loc) => ({
@@ -134,7 +150,7 @@ export function searchLocal(query) {
       lat: loc.lat,
       lng: loc.lng,
       type: loc.type,
-      dist: distanceKm(UG_CENTER.lat, UG_CENTER.lng, loc.lat, loc.lng),
+      dist: distanceKm(ref.lat, ref.lng, loc.lat, loc.lng),
       source: "local",
     }));
 }
@@ -179,10 +195,11 @@ function extractName(item) {
 }
 
 // ── Main geocode function ────────────────────────────────────────────────────
-export async function geocode(query, signal) {
+export async function geocode(query, signal, anchor = UG_CENTER) {
   if (!query || query.trim().length < 3) return [];
 
-  const localResults = searchLocal(query);
+  const ref = resolveAnchor(anchor);
+  const localResults = searchLocal(query, ref);
   if (localResults.length >= 2 || findCategoryIntent(query)) return localResults;
 
   const cacheKey = query.trim().toLowerCase();
@@ -201,7 +218,7 @@ export async function geocode(query, signal) {
       .map((item) => {
         const lat  = parseFloat(item.lat);
         const lng  = parseFloat(item.lon);
-        const dist = distanceKm(UG_CENTER.lat, UG_CENTER.lng, lat, lng);
+        const dist = distanceKm(ref.lat, ref.lng, lat, lng);
         const name = extractName(item);
         const area = extractArea(item.address || {}, item.display_name);
 
@@ -221,8 +238,8 @@ export async function geocode(query, signal) {
           type: "place",
         };
       })
-      // Reachable window: 50km from campus, so the whole Greater Accra
-      // metropolitan area is searchable.
+      // Reachable window: 50km from the search anchor, so wherever the user
+      // is (campus, Osu, Tema, …) the local metro area is searchable.
       //
       // This was a hard `.filter((r) => r.dist <= UG_MAX_RADIUS_KM)` at 6km,
       // which made a search from home return an empty dropdown with no error —
@@ -233,7 +250,8 @@ export async function geocode(query, signal) {
       // Takoradi that the user cannot route to.
       .filter((r) => r.dist <= METRO_MAX_RADIUS_KM)
       // Closest branch first — still the right order now that the window is
-      // wide, because the user almost always wants the nearest match.
+      // wide, because the user almost always wants the nearest match. Anchored
+      // to the caller so a Tema "from" ranks Tema branches ahead of campus.
       .sort((a, b) => a.dist - b.dist)
       // Cap at 8 for the dropdown (was 5): a wider window needs more rows
       // before the nearest useful one appears.

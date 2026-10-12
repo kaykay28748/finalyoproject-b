@@ -22,10 +22,9 @@ import { useDeviceHeading } from "../../hooks/useDeviceHeading";
 import "../Legend/Legend.css";
 
 import {
-  UG_MAX_BOUNDS,
   WORLD_BOUNDS,
-  UG_CENTER,
-  DEFAULT_ZOOM,
+  METRO_BOUNDS,
+  METRO_CENTER,
   MAX_ZOOM,
 } from "../../function/utils/bounds";
 import "./MapView.css";
@@ -101,6 +100,24 @@ const MapSnapToNorth = memo(function MapSnapToNorth({ trigger }) {
     }
     prev.current = trigger;
   }, [trigger, map]);
+
+  return null;
+});
+
+// ── FitDataCoverage — fits the map to the imported routing data once ───────
+// The app routes outside campus from server-served DB graph slices, so the
+// opening view should show the whole region we actually have data for, not just
+// Legon. Fits once on mount without capturing props; a later GPS fix inside the
+// coverage still overrides via InitialFly.
+const FitDataCoverage = memo(function FitDataCoverage() {
+  const map = useMap();
+  const done = useRef(false);
+
+  useEffect(() => {
+    if (done.current) return;
+    done.current = true;
+    map.fitBounds(METRO_BOUNDS, { padding: [48, 48], maxZoom: 13 });
+  }, [map]);
 
   return null;
 });
@@ -415,11 +432,11 @@ export default function MapView({
     Math.abs(primaryRoute.coordinates[0].lat - currentLocation.lat) < 0.0001 &&
     Math.abs(primaryRoute.coordinates[0].lng - currentLocation.lng) < 0.0001;
 
-  // Only auto-center on the live GPS when the fix is actually within the campus
-  // area (UG_MAX_BOUNDS). A fix from kilometres away (e.g. demos from home)
-  // must NOT hijack the campus view.
-  const isGpsOnCampus = !!currentLocation &&
-    UG_MAX_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
+  // Auto-center on the live GPS only when the fix is within the area we have
+  // routing data for (METRO_BOUNDS). A fix from kilometres away (e.g. demos
+  // from home) must NOT hijack the initial view.
+  const isGpsInCoverage = !!currentLocation &&
+    METRO_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
 
   // Track map bounds for heatmap controls (2D only)
   useEffect(() => {
@@ -555,13 +572,14 @@ export default function MapView({
         }}
       >
         <MapContainer
-          center={[UG_CENTER.lat, UG_CENTER.lng]}
-          zoom={DEFAULT_ZOOM}
+          center={[METRO_CENTER.lat, METRO_CENTER.lng]}
+          zoom={12}
           // Free panning. Was maxBounds={UG_MAX_BOUNDS} with viscosity 0.4,
           // which rubber-banded the map back to Legon and made routing from
           // anywhere else impossible. WORLD_BOUNDS is the Web Mercator
           // envelope, so the constraint now only stops Leaflet asking for tiles
           // that do not exist rather than confining the user to one campus.
+          // Routing coverage itself now spans METRO_BOUNDS (see bounds.js).
           maxBounds={WORLD_BOUNDS}
           // 1.0 = hard clamp at the edge, no spring-back. The old 0.4 produced a
           // visible bounce that made free panning feel broken even though it
@@ -588,7 +606,8 @@ export default function MapView({
           <MapDragGuard />
           <TileLayerSwitcher layer={mapLayer} />
           <SmoothFly target={flyTarget} />
-          <InitialFly location={isGpsOnCampus ? currentLocation : null} />
+          <FitDataCoverage />
+          <InitialFly location={isGpsInCoverage ? currentLocation : null} />
           <SmartFitBounds
             startPoint={displayStartPoint}
             destPoint={destPoint}

@@ -518,7 +518,7 @@ export default function App() {
     let resolvedDest  = destPoint;
 
     if (!resolvedStart && effectiveStartText.trim().length > 0) {
-      const results = await geocode(effectiveStartText);
+      const results = await geocode(effectiveStartText, undefined, currentLocation ?? undefined);
       if (results.length > 0) {
         resolvedStart = results[0];
         if (!useCustomLocation) { setStartPoint(results[0]); setStartText(results[0].name); }
@@ -527,7 +527,7 @@ export default function App() {
     }
 
     if (!resolvedDest && destText.trim().length > 0) {
-      const results = await geocode(destText);
+      const results = await geocode(destText, undefined, resolvedStart ?? currentLocation ?? undefined);
       if (results.length > 0) {
         resolvedDest = results[0];
         setDestPoint(results[0]);
@@ -678,6 +678,8 @@ export default function App() {
         <NavPanel
           startText={effectiveStartText}
           destText={destText}
+          fromSearchAnchor={currentLocation ?? undefined}
+          toSearchAnchor={effectiveStartPoint ?? currentLocation ?? undefined}
           onStartTextChange={setStartText}
           onDestTextChange={setDestText}
           onStartSelect={handleStartSelect}
