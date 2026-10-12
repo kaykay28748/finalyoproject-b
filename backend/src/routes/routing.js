@@ -5,8 +5,9 @@
 // on-campus GPS constraints.
 
 import express from 'express';
+import { randomUUID } from 'node:crypto';
 import { getRoutingContext, getSpatialGraphSlice } from '../services/routingContext.js';
-import { syncSpatialGraphRegion } from '../services/graphSynchronizer.js';
+import { syncSpatialGraphRegion, validateBbox } from '../services/graphSynchronizer.js';
 
 const router = express.Router();
 
@@ -116,6 +117,63 @@ router.get('/graph-slice', async (req, res) => {
 // /api/admin/sync-region, so the two files stay separate but the URL is as
 // specified.
 export const graphSyncRouter = express.Router();
+const syncJobs = new Map();
+const SYNC_JOB_RETENTION_MS = 60 * 60 * 1000;
+const MAX_SYNC_JOBS = 100;
+let activeSyncJobId = null;
+
+function cleanSyncJobs() {
+  const expiredBefore = Date.now() - SYNC_JOB_RETENTION_MS;
+  for (const [jobId, job] of syncJobs) {
+    if (job.completedAt && Date.parse(job.completedAt) < expiredBefore) {
+      syncJobs.delete(jobId);
+    }
+  }
+
+  while (syncJobs.size >= MAX_SYNC_JOBS) {
+    const completedJobId = [...syncJobs].find(([, job]) => job.completedAt)?.[0];
+    if (!completedJobId) return;
+    syncJobs.delete(completedJobId);
+  }
+}
+
+function publicSyncJob(job) {
+  return {
+    jobId: job.jobId,
+    status: job.status,
+    region: job.region,
+    createdAt: job.createdAt,
+    startedAt: job.startedAt,
+    completedAt: job.completedAt,
+    result: job.result,
+    error: job.error,
+  };
+}
+
+function startSyncJob(job) {
+  setImmediate(async () => {
+    job.status = 'running';
+    job.startedAt = new Date().toISOString();
+
+    try {
+      job.result = await syncSpatialGraphRegion(
+        job.bbox.minLat,
+        job.bbox.minLng,
+        job.bbox.maxLat,
+        job.bbox.maxLng
+      );
+      job.status = job.result.ok ? 'succeeded' : 'failed';
+      if (!job.result.ok) job.error = job.result.error || 'Regional sync failed';
+    } catch (err) {
+      job.status = 'failed';
+      job.error = err?.message || 'Regional sync failed';
+      console.error(`[SyncRegion] Job ${job.jobId} failed:`, err);
+    } finally {
+      job.completedAt = new Date().toISOString();
+      if (activeSyncJobId === job.jobId) activeSyncJobId = null;
+    }
+  });
+}
 
 /**
  * Reject anything that is not a plausible bbox before it reaches the service.
@@ -154,8 +212,9 @@ function validateBboxParams(body) {
 
 // POST /api/admin/sync-region
 //
-// Compiles a bounding box into the edge table from Overpass. This is the write
-// path that replaces the browser's per-cold-start Overpass fetch.
+// Starts a background regional import and returns immediately, so slow Overpass
+// responses do not exceed client or proxy request timeouts. Poll the returned
+// statusUrl to retrieve progress and the final import result.
 //
 // Deliberately not mounted on the public router and deliberately not
 // authenticated here: server.js wraps this sub-router in verifyToken +
@@ -167,28 +226,59 @@ graphSyncRouter.post('/sync-region', async (req, res) => {
     return res.status(400).json({ error: invalid });
   }
 
-  try {
-    const result = await syncSpatialGraphRegion(
-      req.body.minLat, req.body.minLng, req.body.maxLat, req.body.maxLng
-    );
+  const validation = validateBbox(
+    req.body.minLat, req.body.minLng, req.body.maxLat, req.body.maxLng
+  );
+  if (!validation.ok) {
+    return res.status(400).json({ error: validation.error });
+  }
 
-    if (!result.ok) {
-      // 502 for an upstream failure, 400 for bad input. The service returns a
-      // string error without a code, so the distinction is made here: a failed
-      // Overpass fetch is a bad gateway, not a malformed request. Getting this
-      // backwards would make a client retry a permanently-invalid bbox forever.
-      const isUpstream = /Overpass|prepare edge table|Upsert|Prune/i.test(result.error || '');
-      return res.status(isUpstream ? 502 : 400).json(result);
-    }
-
-    return res.status(200).json(result);
-  } catch (err) {
-    console.error('[SyncRegion] Unexpected error:', err);
-    return res.status(500).json({
-      ok: false,
-      error: err?.message || 'Sync failed',
+  cleanSyncJobs();
+  if (activeSyncJobId) {
+    return res.status(409).json({
+      error: 'A regional sync is already running',
+      jobId: activeSyncJobId,
+      statusUrl: `/api/admin/sync-region/${activeSyncJobId}`,
     });
   }
+
+  const bbox = validation.bbox;
+  const jobId = randomUUID();
+  const job = {
+    jobId,
+    status: 'queued',
+    bbox,
+    region: `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng}`,
+    createdAt: new Date().toISOString(),
+    startedAt: null,
+    completedAt: null,
+    result: null,
+    error: null,
+  };
+
+  syncJobs.set(jobId, job);
+  activeSyncJobId = jobId;
+  startSyncJob(job);
+
+  return res.status(202).json({
+    ok: true,
+    ...publicSyncJob(job),
+    statusUrl: `/api/admin/sync-region/${jobId}`,
+    pollAfterMs: 2000,
+  });
+});
+
+graphSyncRouter.get('/sync-region/:jobId', (req, res) => {
+  cleanSyncJobs();
+  const job = syncJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'Sync job not found or expired' });
+  }
+
+  return res.status(200).json({
+    ok: job.status === 'succeeded',
+    ...publicSyncJob(job),
+  });
 });
 
 export default router;
