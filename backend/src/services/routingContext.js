@@ -166,11 +166,9 @@ export async function getRoutingContext(lat, lng) {
 //
 // ── THE EDGE TABLE ───────────────────────────────────────────────────────────
 //
-// One table, `public.pedestrian_edges`, written by
-// backend/src/services/graphSynchronizer.js. The previous
-// `public.legon_edges` / `osm.accra_edges` pair never existed in any schema in
-// this repository, so every graph-slice request was hitting a 42P01 and falling
-// back to the browser's Overpass fetch — the migration this replaces.
+// Campus reads retain `public.pedestrian_edges`; expanded-area imports and reads
+// use `public.regional_pedestrian_edges`. Keeping these tables separate prevents
+// regional syncs from changing the campus graph used by simulations.
 //
 // The column mapping below is the real column list, not an assumption. Two
 // consequences are worth stating because they differ from the pgRouting
@@ -187,6 +185,7 @@ export async function getRoutingContext(lat, lng) {
 const EDGE_TABLE = {
   schema: 'public',
   table: 'pedestrian_edges',
+  regionalTable: 'regional_pedestrian_edges',
   columns: { id: 'osm_id', source: 'from_node_id', target: 'to_node_id', geom: 'geom' },
   tags: { highway: 'highway_type', name: null, incline: 'incline', sidewalk: 'sidewalk', surface: 'surface' },
   coords: { fromLat: 'from_lat', fromLng: 'from_lng', toLat: 'to_lat', toLng: 'to_lng' },
@@ -196,6 +195,7 @@ const EDGE_TABLE = {
 // constant so the reader and the writer cannot disagree about the name — the
 // writer's equivalent is in graphSynchronizer.js and both resolve the same way.
 const SQLITE_EDGE_TABLE = 'public_pedestrian_edges';
+const SQLITE_REGIONAL_EDGE_TABLE = 'public_regional_pedestrian_edges';
 
 // The external slice radius. 2km is the figure in the brief, and it is what the
 // comment immediately below this constant has always claimed — the constant itself
@@ -420,12 +420,15 @@ function buildSliceFilter({ campus, envelope, hasGeometry }) {
  * @param {boolean} opts.hasGeometry  whether to select and use the geom column.
  */
 async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
-  const { schema, table: tableName, columns, tags, coords } = EDGE_TABLE;
+  const { schema, columns, tags, coords } = EDGE_TABLE;
+  const tableName = campus ? EDGE_TABLE.table : EDGE_TABLE.regionalTable;
 
   // Identifiers cannot be parameterised in SQL. schema/table/column names come
   // from the constants above, never from request input, which is what makes this
   // safe to interpolate.
-  const qualified = isPostgres ? `${schema}.${tableName}` : SQLITE_EDGE_TABLE;
+  const qualified = isPostgres
+    ? `${schema}.${tableName}`
+    : (campus ? SQLITE_EDGE_TABLE : SQLITE_REGIONAL_EDGE_TABLE);
   const col = (c) => (isPostgres ? `${qualified}.${c}` : c);
 
   const select = [
@@ -569,13 +572,14 @@ export async function getSpatialGraphSlice(lat, lng) {
   // a round-trip on every request, so it is asked once and cached for the process
   // — the answer can only change if someone installs PostGIS, which needs a
   // redeploy anyway.
-  const hasGeometry = isPostgres && (await geomColumnExists());
+  const tableName = insideSandbox ? EDGE_TABLE.table : EDGE_TABLE.regionalTable;
+  const sqliteTable = insideSandbox ? SQLITE_EDGE_TABLE : SQLITE_REGIONAL_EDGE_TABLE;
+  const hasGeometry = isPostgres && (await geomColumnExists(tableName));
   // The table is fixed by the dialect, not by geometry availability — same rule
   // as graphSynchronizer.js. loadGraphSlice() resolves the name itself; this is
-  // only the label used in the failure log below, and labelling a
-  // PostGIS-less PostgreSQL failure as `public_pedestrian_edges` sends whoever is
-  // on call to debug a table that was never part of the query.
-  const target = isPostgres ? `${EDGE_TABLE.schema}.${EDGE_TABLE.table}` : SQLITE_EDGE_TABLE;
+  // only the label used in the failure log below; it follows the same campus vs
+  // regional choice as loadGraphSlice().
+  const target = isPostgres ? `${EDGE_TABLE.schema}.${tableName}` : sqliteTable;
 
   if (insideSandbox) {
     // CASE A: CAMPUS_SANDBOX. No spatial filter.
@@ -637,35 +641,39 @@ export async function getSpatialGraphSlice(lat, lng) {
   }
 }
 
-// Cached answer to "does public.pedestrian_edges have a geom column?".
+// Cached geometry-column probes, keyed by table because campus and regional
+// graph tables have independent PostGIS lifecycles.
 //
 // `undefined` means not yet asked. `null` means asked and the query itself failed
 // (e.g. the table does not exist yet), which is distinct from `false` (asked, no
 // such column) — the first is a missing table to be reported, the second is a
 // working table that simply has no geometry.
-let geomColumnProbe;
-async function geomColumnExists() {
-  if (geomColumnProbe !== undefined) return geomColumnProbe;
+const geomColumnProbes = new Map();
+async function geomColumnExists(tableName) {
+  if (geomColumnProbes.has(tableName)) return geomColumnProbes.get(tableName);
   try {
     const r = await query(
       `SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'pedestrian_edges' AND column_name = 'geom'
-        LIMIT 1`
+        WHERE table_schema = 'public' AND table_name = ? AND column_name = 'geom'
+        LIMIT 1`,
+      [tableName]
     );
-    geomColumnProbe = (r?.rows?.length ?? 0) > 0;
+    const exists = (r?.rows?.length ?? 0) > 0;
+    geomColumnProbes.set(tableName, exists);
+    return exists;
   } catch {
-    geomColumnProbe = false;
+    geomColumnProbes.set(tableName, false);
+    return false;
   }
-  return geomColumnProbe;
 }
 
 /** Test seam: forget the cached geom probe. */
 export function __resetGeomProbe() {
-  geomColumnProbe = undefined;
+  geomColumnProbes.clear();
 }
 
 export const __test__ = {
   parseCoordinate, coerceBoolean, CAMPUS_BBOX,
   envelopeForRadius, normaliseEdgeRow, haversineMetres,
-  buildSliceFilter, EDGE_TABLE, SQLITE_EDGE_TABLE, MAX_EDGES, SLICE_RADIUS_KM,
+  buildSliceFilter, EDGE_TABLE, SQLITE_EDGE_TABLE, SQLITE_REGIONAL_EDGE_TABLE, MAX_EDGES, SLICE_RADIUS_KM,
 };

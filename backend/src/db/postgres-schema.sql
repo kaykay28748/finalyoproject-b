@@ -427,3 +427,48 @@ CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_type
 -- fails halfway leaves a confusing partial state. Enable PostGIS in the Supabase
 -- dashboard, then run the sync once — graphSynchronizer.js adds the column, this
 -- GIST index, and backfills it from the coordinate columns.
+
+-- ============================================
+-- REGIONAL OSM EDGE GRAPH
+-- ============================================
+-- Kept separate from pedestrian_edges so expanded-area imports cannot change
+-- the campus graph used by existing routing simulations.
+CREATE TABLE IF NOT EXISTS public.regional_pedestrian_edges (
+  id            BIGSERIAL PRIMARY KEY,
+  osm_id        TEXT NOT NULL UNIQUE,
+  from_node_id  TEXT NOT NULL,
+  to_node_id    TEXT NOT NULL,
+  distance_m    DOUBLE PRECISION NOT NULL,
+  highway_type  TEXT,
+  surface       TEXT,
+  lit           BOOLEAN DEFAULT FALSE,
+  sidewalk      TEXT,
+  incline       TEXT,
+  from_lat      DOUBLE PRECISION NOT NULL,
+  from_lng      DOUBLE PRECISION NOT NULL,
+  to_lat        DOUBLE PRECISION NOT NULL,
+  to_lng        DOUBLE PRECISION NOT NULL,
+  is_on_campus  BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_campus
+  ON public.regional_pedestrian_edges (is_on_campus) WHERE is_on_campus;
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_from
+  ON public.regional_pedestrian_edges (from_node_id);
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_to
+  ON public.regional_pedestrian_edges (to_node_id);
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_type
+  ON public.regional_pedestrian_edges (highway_type);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+    EXECUTE 'ALTER TABLE public.regional_pedestrian_edges
+             ADD COLUMN IF NOT EXISTS geom geometry(LineString, 4326)';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_geom
+             ON public.regional_pedestrian_edges USING GIST (geom)';
+  ELSE
+    RAISE NOTICE 'postgis not installed — regional graph sync will use coordinate columns';
+  END IF;
+END $$;

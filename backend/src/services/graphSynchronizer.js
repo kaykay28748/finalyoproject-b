@@ -5,7 +5,7 @@
 // Replaces the browser's static Overpass fetch with a persistent, queryable
 // edge table. The browser used to ask Overpass for one hardcoded Legon bounding
 // box on every cold start; this service lets a region be compiled into
-// `public.pedestrian_edges` once, so every later read is a database query.
+// `public.regional_pedestrian_edges` once, so every later read is a database query.
 //
 // The pipeline is:
 //
@@ -115,12 +115,12 @@ const UPSERT_COLUMNS = [
 // These are two independent facts and conflating them is fatal on a PostgreSQL
 // database without the PostGIS extension: such a database has no `geom` column
 // (so `withGeometry` is false) but it still has — and must be written to —
-// `public.pedestrian_edges`. Keying the table off `withGeometry` sent those syncs
-// to `public_pedestrian_edges`, which does not exist in PostgreSQL at all, and
+// `public.regional_pedestrian_edges`. Keying the table off `withGeometry` sent those syncs
+// to `public_regional_pedestrian_edges`, which does not exist in PostgreSQL at all, and
 // every write failed with 42P01 undefined_table. The geometry path degrades the
 // way it is designed to; it must never redirect the write to another database.
-const EDGE_TABLE_POSTGRES = 'public.pedestrian_edges';
-const EDGE_TABLE_SQLITE = 'public_pedestrian_edges';
+const EDGE_TABLE_POSTGRES = 'public.regional_pedestrian_edges';
+const EDGE_TABLE_SQLITE = 'public_regional_pedestrian_edges';
 
 /** The edge table for the current dialect. */
 export function edgeTableName() {
@@ -432,6 +432,8 @@ export function parseOverpassElements(elements) {
  * on exactly the database that most needs a fallback.
  */
 async function ensureTable() {
+  const table = edgeTableName();
+
   if (isPostgres) {
     // geom only exists when PostGIS does, and the whole block is skipped
     // otherwise rather than aborting — same guard as accessibility_reports.
@@ -441,7 +443,7 @@ async function ensureTable() {
     // every request. A reader that has to cope with the column being missing is a
     // reader that can return an empty graph for a reason unrelated to the data.
     await query(`
-      CREATE TABLE IF NOT EXISTS public.pedestrian_edges (
+      CREATE TABLE IF NOT EXISTS ${table} (
         id            BIGSERIAL PRIMARY KEY,
         osm_id        TEXT NOT NULL UNIQUE,
         from_node_id  TEXT NOT NULL,
@@ -468,25 +470,25 @@ async function ensureTable() {
     // with the same 42703/`no such column` error every sync after that. The
     // backfill makes the column set match the CREATE TABLE shape first, then the
     // indexes are safe to build.
-    await backfillDerivedColumns('public.pedestrian_edges');
+    await backfillDerivedColumns(table);
 
-    await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_from ON public.pedestrian_edges (from_node_id)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_to   ON public.pedestrian_edges (to_node_id)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_type ON public.pedestrian_edges (highway_type)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_from ON ${table} (from_node_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_to   ON ${table} (to_node_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_type ON ${table} (highway_type)`);
     // The campus branch is `WHERE is_on_campus = TRUE` over the whole campus, so
     // it is a pure equality scan — a partial index on the campus rows keeps it
     // off the full table.
-    await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_campus
-                   ON public.pedestrian_edges (is_on_campus) WHERE is_on_campus`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_campus
+                   ON ${table} (is_on_campus) WHERE is_on_campus`);
 
-    return { withGeometry: await ensurePostgisGeometry() };
+    return { withGeometry: await ensurePostgisGeometry(table) };
   }
 
   // SQLite: no geometry type, no ON CONFLICT DO UPDATE with an EXCLUDED-list
   // difference (SQLite does support it, but BOOLEAN/TIMESTAMPTZ types do not
   // exist). text/real/integer are the portable types.
   await query(`
-    CREATE TABLE IF NOT EXISTS public_pedestrian_edges (
+    CREATE TABLE IF NOT EXISTS ${table} (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       osm_id        TEXT NOT NULL UNIQUE,
       from_node_id  TEXT NOT NULL,
@@ -505,12 +507,12 @@ async function ensureTable() {
       updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_from ON public_pedestrian_edges (from_node_id)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_to   ON public_pedestrian_edges (to_node_id)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_campus
-                 ON public_pedestrian_edges (is_on_campus) WHERE is_on_campus = 1`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_from ON ${table} (from_node_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_to   ON ${table} (to_node_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_campus
+                 ON ${table} (is_on_campus) WHERE is_on_campus = 1`);
 
-  await backfillDerivedColumns('public_pedestrian_edges');
+  await backfillDerivedColumns(table);
   return { withGeometry: false };
 }
 
@@ -548,7 +550,7 @@ async function ensureTable() {
 async function existingColumnNames(table) {
   try {
     if (isPostgres) {
-      // `table` arrives schema-qualified ('public.pedestrian_edges'), but
+      // `table` arrives schema-qualified ('public.regional_pedestrian_edges'), but
       // information_schema.columns stores the BARE table name. Passing the
       // qualified string as the `table_name` value matches nothing — the probe
       // always returned an empty set — so backfillDerivedColumns re-ALTERed the
@@ -669,7 +671,7 @@ async function backfillDerivedColumns(table) {
   if (!existing.has('osm_id')) {
     await query(`ALTER TABLE ${table} ADD COLUMN osm_id TEXT`);
     await query(`UPDATE ${table} SET osm_id = CAST(id AS TEXT) WHERE osm_id IS NULL`);
-    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pedestrian_edges_osm_id ON ${table} (osm_id)`);
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_osm_id ON ${table} (osm_id)`);
   }
 
   for (const col of Object.keys(types)) {
@@ -692,7 +694,7 @@ async function backfillDerivedColumns(table) {
   if (isPostgres) {
     try {
       await query(`
-        UPDATE public.pedestrian_edges
+        UPDATE ${table}
            SET from_lng = COALESCE(from_lng, ST_X(geom)),
                from_lat = COALESCE(from_lat, ST_Y(geom)),
                to_lng   = COALESCE(to_lng,   ST_X(ST_GeometryN(geom, 2))),
@@ -713,7 +715,7 @@ async function backfillDerivedColumns(table) {
 }
 
 /** Add the PostGIS geometry column and its GIST index, if PostGIS is present. */
-async function ensurePostgisGeometry() {
+async function ensurePostgisGeometry(table) {
   try {
     // NOT a DO/RAISE NOTICE block: the extension check has to happen in
     // JavaScript to decide whether the INSERT can reference geom at all, and
@@ -729,12 +731,12 @@ async function ensurePostgisGeometry() {
     }
 
     await query(`
-      ALTER TABLE public.pedestrian_edges
+      ALTER TABLE ${table}
         ADD COLUMN IF NOT EXISTS geom geometry(LineString, 4326)
     `);
     await query(`
-      CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_geom
-        ON public.pedestrian_edges USING GIST (geom)
+      CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_geom
+        ON ${table} USING GIST (geom)
     `);
     return true;
   } catch (err) {
@@ -911,37 +913,16 @@ export async function syncSpatialGraphRegion(minLat, minLng, maxLat, maxLng) {
 }
 
 /**
- * Remove rows whose geometry falls outside a synced region.
- *
- * Not called by syncSpatialGraphRegion on purpose. A sync that deletes as it
- * writes will, if the Overpass fetch is partial (timeout mid-response, an
- * endpoint returning a truncated set), erase good data for the parts of the
- * region that happened to come back fine. Pruning has to be a separate,
- * explicit, admin-initiated action that runs only after a complete sync.
+ * Pruning is disabled until imported regions are tracked independently.
+ * A bbox-wide delete against a table containing multiple regions can erase
+ * valid edges belonging to every other synced area.
  */
 export async function pruneRegion(minLat, minLng, maxLat, maxLng) {
   const validated = validateBbox(minLat, minLng, maxLat, maxLng);
   if (!validated.ok) return { ok: false, error: validated.error };
 
-  const { bbox } = validated;
-
-  if (!isPostgres) {
-    // SQLite has no geometry, so a bbox delete has to fall back to a
-    // coordinate test. The endpoints are not stored as columns, so this can only
-    // be a conservative no-op rather than a wrong delete.
-    console.warn('[GraphSync] pruneRegion on SQLite is a no-op (no geometry column stored)');
-    return { ok: true, deleted: 0, note: 'no-op on SQLite' };
-  }
-
-  try {
-    await query(
-      `DELETE FROM public.pedestrian_edges
-        WHERE geom IS NOT NULL
-          AND NOT ST_Intersects(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))`,
-      [bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat]
-    );
-    return { ok: true, deleted: true };
-  } catch (err) {
-    return { ok: false, error: `Prune failed: ${err?.message || 'unknown'}` };
-  }
+  return {
+    ok: false,
+    error: 'Pruning is disabled until synced regions are tracked independently.',
+  };
 }

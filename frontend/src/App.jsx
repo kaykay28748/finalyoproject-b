@@ -295,6 +295,8 @@ export default function App() {
     graph,
     startNodeId,
     endNodeId:   destNodeId,
+    routeStartPoint: effectiveStartPoint,
+    routeDestinationPoint: finalDestPoint,
     currentLocation,
     activeProfile,
     vehicleMode,

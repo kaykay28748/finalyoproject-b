@@ -240,3 +240,34 @@ CREATE INDEX IF NOT EXISTS idx_pedestrian_edges_to   ON public_pedestrian_edges 
 
 -- See the PostgreSQL version for why osm_id is segment-scoped, why the four
 -- coordinate columns exist at all, and why there is no `name` column.
+
+-- ============================================
+-- REGIONAL OSM EDGE GRAPH (SQLite)
+-- ============================================
+-- Separate from public_pedestrian_edges so regional imports cannot change the
+-- campus graph used by existing routing simulations.
+CREATE TABLE IF NOT EXISTS public_regional_pedestrian_edges (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  osm_id        TEXT NOT NULL UNIQUE,
+  from_node_id  TEXT NOT NULL,
+  to_node_id    TEXT NOT NULL,
+  distance_m    REAL NOT NULL,
+  highway_type  TEXT,
+  surface       TEXT,
+  lit           INTEGER DEFAULT 0,
+  sidewalk      TEXT,
+  incline       TEXT,
+  from_lat      REAL NOT NULL,
+  from_lng      REAL NOT NULL,
+  to_lat        REAL NOT NULL,
+  to_lng        REAL NOT NULL,
+  is_on_campus  INTEGER NOT NULL DEFAULT 0,
+  updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_campus
+  ON public_regional_pedestrian_edges (is_on_campus) WHERE is_on_campus = 1;
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_from
+  ON public_regional_pedestrian_edges (from_node_id);
+CREATE INDEX IF NOT EXISTS idx_regional_pedestrian_edges_to
+  ON public_regional_pedestrian_edges (to_node_id);

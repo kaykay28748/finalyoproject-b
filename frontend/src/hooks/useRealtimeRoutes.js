@@ -45,6 +45,8 @@ export function useRealtimeRoutes({
   graph,
   startNodeId,
   endNodeId,
+  routeStartPoint,
+  routeDestinationPoint,
   currentLocation,
   activeProfile,
   vehicleMode = 'walk',
@@ -94,8 +96,10 @@ export function useRealtimeRoutes({
   const sandboxContextRef     = useRef(SANDBOX_CONTEXT.CAMPUS);
 
   useEffect(() => {
-    activeGraphRef.current = sliceGraph ?? graph;
-  }, [sliceGraph, graph]);
+    activeGraphRef.current = sandboxContext === SANDBOX_CONTEXT.EXTERNAL
+      ? sliceGraph
+      : sliceGraph ?? graph;
+  }, [sliceGraph, graph, sandboxContext]);
 
   useEffect(() => {
     sandboxContextRef.current = sandboxContext;
@@ -119,6 +123,8 @@ export function useRealtimeRoutes({
 
     const controller = new AbortController();
     let cancelled = false;
+    setSliceGraph(null);
+    setSliceSource('loading');
 
     fetchGraphSlice(lat, lng, { signal: controller.signal })
       .then((slice) => {
@@ -148,13 +154,18 @@ export function useRealtimeRoutes({
     currentStartNodeIdRef.current = startNodeId;
   }, [startNodeId]);
 
-  const calculateRoutes = useCallback(async (fromNodeId, reason = "initial") => {
+  const calculateRoutes = useCallback(async (fromNodeId, reason = "initial", fromCoordinate = null) => {
     // Route over the slice graph when we have one, else the Overpass graph.
     // `let`, not `const`: the fallbacks below reassign it back to the Overpass
     // graph when the slice cannot serve the requested endpoints.
     let activeGraph = activeGraphRef.current;
-    if (!activeGraph || !fromNodeId || !endNodeId) {
+    if (!activeGraph || (!fromNodeId && !fromCoordinate && !routeStartPoint) || (!endNodeId && !routeDestinationPoint)) {
       console.warn('[useRealtimeRoutes] Missing graph or node IDs');
+      if (sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL) {
+        setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
+        setIsLoading(false);
+        setIsRerouting(false);
+      }
       return;
     }
 
@@ -167,12 +178,17 @@ export function useRealtimeRoutes({
     let endId = endNodeId;
 
     if (activeGraph !== graph) {
-      const startCoord = graph?.nodes?.[fromNodeId];
-      const endCoord   = graph?.nodes?.[endNodeId];
+      const startCoord = fromCoordinate ?? routeStartPoint ?? graph?.nodes?.[fromNodeId];
+      const endCoord   = routeDestinationPoint ?? graph?.nodes?.[endNodeId];
 
       if (!startCoord || !endCoord) {
-        // The Overpass graph no longer has the node we were handed, so there is no
-        // coordinate to re-snap from. Fall back rather than route over nothing.
+        if (sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL) {
+          console.warn('[useRealtimeRoutes] External graph cannot locate route endpoints');
+          setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
+          setIsLoading(false);
+          setIsRerouting(false);
+          return;
+        }
         console.warn('[useRealtimeRoutes] Cannot re-snap onto slice graph, using Overpass graph');
         activeGraphRef.current = graph;
         activeGraph = graph;
@@ -182,6 +198,13 @@ export function useRealtimeRoutes({
         if (!startSnap || !endSnap) {
           // The slice does not cover the requested endpoints. findNearestNode
           // returns null past its max distance, which is the signal for this.
+          if (sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL) {
+            console.warn('[useRealtimeRoutes] Regional slice does not cover the route endpoints');
+            setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
+            setIsLoading(false);
+            setIsRerouting(false);
+            return;
+          }
           console.warn('[useRealtimeRoutes] Slice graph does not cover the endpoints, using Overpass graph');
           activeGraphRef.current = graph;
           activeGraph = graph;
@@ -278,7 +301,7 @@ export function useRealtimeRoutes({
       setIsLoading(false);
       setIsRerouting(false);
     }
-  }, [graph, endNodeId, vehicleMode, speakRouteSummary]);
+  }, [graph, endNodeId, routeStartPoint, routeDestinationPoint, vehicleMode, speakRouteSummary]);
 
   const updateRouteProgress = useCallback(() => {
     const activeRoute = routes[activeProfile];
@@ -299,10 +322,11 @@ export function useRealtimeRoutes({
 
   // Initial route calculation
   useEffect(() => {
-    if (startNodeId && endNodeId && graph) {
+    if (currentLocation && (sliceSource === 'not-requested' || sliceSource === 'loading')) return;
+    if ((startNodeId || routeStartPoint) && (endNodeId || routeDestinationPoint) && graph) {
       calculateRoutes(startNodeId, "initial");
     }
-  }, [startNodeId, endNodeId, graph, calculateRoutes]);
+  }, [startNodeId, endNodeId, routeStartPoint, routeDestinationPoint, graph, currentLocation, sliceSource, calculateRoutes]);
 
   // Recalculate once a server slice arrives.
   //
@@ -378,10 +402,11 @@ export function useRealtimeRoutes({
       if (deviationTimerRef.current) clearTimeout(deviationTimerRef.current);
 
       deviationTimerRef.current = setTimeout(async () => {
-        const nearestNode = findNearestNode(graph, lat, lng, NEAREST_NODE_MAX_DISTANCE_DEG);
+        const routeGraph = activeGraphRef.current ?? graph;
+        const nearestNode = findNearestNode(routeGraph, lat, lng, NEAREST_NODE_MAX_DISTANCE_DEG);
 
         if (nearestNode && nearestNode !== currentStartNodeIdRef.current) {
-          await calculateRoutes(nearestNode, "deviation");
+          await calculateRoutes(nearestNode, "deviation", { lat, lng });
         } else if (!nearestNode) {
           console.warn("[Deviation] No nearest node found, using fallback");
           await calculateRoutes(currentStartNodeIdRef.current, "deviation");
@@ -472,7 +497,9 @@ export function useRealtimeRoutes({
     // address; exposed so the UI can reflect it rather than assume campus rules.
     sandboxContext,
     enforceGpsTracking,
-    graphSource: sliceGraph ? sliceSource : 'overpass',
+    graphSource: sliceGraph
+      ? sliceSource
+      : sandboxContext === SANDBOX_CONTEXT.EXTERNAL ? sliceSource : 'overpass',
     routeGuardNotice,
     primaryRoute:       getPrimaryRoute(),
     alternativeRoutes:  getAlternativeRoutes(),
