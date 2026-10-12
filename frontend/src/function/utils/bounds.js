@@ -17,18 +17,18 @@ export const UG_MAX_BOUNDS = L.latLngBounds(
 export const UG_CENTER = { lat: 5.6502, lng: -0.1962 };
 
 // Accra metropolitan data coverage — the region actually imported into
-// public.regional_pedestrian_edges (clip box from ghana-261011.osm.pbf:
-// lat 5.50..5.76, lng -0.35..-0.02). Routes are routable anywhere inside this
-// box via the server graph-slice; outside it, routing falls back to this box's
-// 2km slices only existing where data exists, so the map opens on exactly what
-// we can route on.
+// public.regional_pedestrian_edges. Corners are the true extent of the
+// imported edges (plus the small overspill of ways that cross the clip box
+// from ghana-261011.osm.pbf), so anything on the map here is routable and, in
+// particular, Tema neighbours around lng ≈ −0.017 count as "in coverage" for
+// the GPS auto-locate.
 export const METRO_BOUNDS = L.latLngBounds(
-  [5.5000, -0.3500], // south-west: coast / Weija
-  [5.7600, -0.0200]  // north-east: toward Tema
+  [5.4978, -0.3881], // south-west: coast / Weija
+  [5.8706, 0.0026]   // north-east: toward Tema
 );
 
 // Geographic center of the imported coverage box.
-export const METRO_CENTER = { lat: 5.6300, lng: -0.1850 };
+export const METRO_CENTER = { lat: 5.6842, lng: -0.1928 };
 
 // Default map zoom levels
 export const DEFAULT_ZOOM = 16;
