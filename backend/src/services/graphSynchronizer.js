@@ -40,6 +40,7 @@ import { query, isPostgres } from '../config/db.js';
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
 
 // Overpass `timeout:30` is the server-side budget. The HTTP timeout must exceed
