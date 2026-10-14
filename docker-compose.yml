@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules # Prevents your local node_modules from overwriting the container
+    environment:
+      # The container reaches the host-run Supabase stack via host.docker.internal.
+      # Local Supabase Postgres (isolated from production) is on host port 54322.
+      - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres
+      - DB_SSL=false
+      - SUPABASE_URL=http://host.docker.internal:54321
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      # Dev API target (backend is published on 3001). Must be reachable from
+      # the browser, so it is localhost, not the in-network service name.
+      - VITE_DEV_API_URL=http://localhost:3001
