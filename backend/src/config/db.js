@@ -10,9 +10,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required for the PostgreSQL-only backend configuration.');
 }
 
+// SSL defaults to on (production Supabase requires it). The local Supabase
+// Postgres container does not speak SSL, so set DB_SSL=false for local dev.
+export const useSsl = process.env.DB_SSL !== 'false';
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: useSsl ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
 });
