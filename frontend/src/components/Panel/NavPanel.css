@@ -1289,6 +1289,10 @@
   padding-left: 4px;
   color: var(--sub);
   font: 600 11px/1.2 var(--font-sans);
+  /* This text floats straight on the map, and the map layer can be dark even
+     while the UI is in light mode. A faint halo keeps it readable on any tile
+     without inserting a pill behind a label that has no border. */
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9), 0 0 1px rgba(255, 255, 255, 0.85);
 }
 
 .nav-discovery-categories::-webkit-scrollbar,
@@ -1367,9 +1371,12 @@
 /* Active state is a tinted band plus a single ink border, not a saturated fill.
    The filled blue pill read as a third nested surface next to the cream panel
    and clashed with the warm-neutral palette. This matches the treatment already
-   used for selected place rows below, so the chip and the list agree. */
+   used for selected place rows below, so the chip and the list agree.
+   The tint is opaque (--accent-tint-solid, not the translucent --accent-tint-hi):
+   the chip floats over the map, and a see-through fill made the label illegible
+   whenever a dark tile sat underneath it. */
 .nav-discovery-chip--active {
-  background: var(--accent-tint-hi);
+  background: var(--accent-tint-solid);
   border-color: var(--accent);
   color: var(--accent);
   /* Selection is carried by depth as well as tint. Without the lift the chip
@@ -1379,7 +1386,7 @@
 }
 
 .nav-discovery-chip--active:hover {
-  background: var(--accent-tint-hi);
+  background: var(--accent-tint-solid);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
 }
 
@@ -1420,6 +1427,12 @@
   pointer-events: auto;
 }
 
+/* Halo only the status text, not the List button (which carries its own
+   surface). Same reason as .nav-discovery-label: it sits directly on the map. */
+.nav-discovery-summary > span {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9), 0 0 1px rgba(255, 255, 255, 0.85);
+}
+
 .nav-discovery-list-toggle {
   display: inline-flex;
   align-items: center;
@@ -1441,7 +1454,7 @@
 .nav-discovery-list-toggle:hover { background: #f1f5f9; }
 .nav-discovery-list-toggle--active {
   border-color: var(--accent);
-  background: var(--accent-tint-hi);
+  background: var(--accent-tint-solid);
   color: var(--accent);
 }
 
@@ -1751,10 +1764,12 @@ max-width: min(42vw, 240px);
 }
 
 /* Ink border reads as "on" against the dark chip surface. No fill — a light fill
-   would be the loudest element on the map. */
+   would be the loudest element on the map.
+   Opaque tint (--accent-tint-solid) so the label stays legible over light map
+   tiles; the translucent --accent-tint-hi let the tile show through. */
 .ug-root.dark .nav-discovery-chip--active {
   border-color: var(--accent);
-  background: var(--accent-tint-hi);
+  background: var(--accent-tint-solid);
   color: var(--accent);
   /* Must be restated here: .ug-root.dark .nav-discovery-chip is 0-2-0 and would
      otherwise win over .nav-discovery-chip--active, leaving selection without
@@ -1766,6 +1781,10 @@ max-width: min(42vw, 240px);
    rule now uses var(--sub), which re-themes itself (7.71:1 in dark). */
 
 .ug-root.dark .nav-discovery-summary { color: #cbd5e1; }
+.ug-root.dark .nav-discovery-label,
+.ug-root.dark .nav-discovery-summary > span {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
 
 .ug-root.dark .nav-discovery-list-toggle {
   border-color: rgba(255, 255, 255, 0.12);
@@ -1777,7 +1796,7 @@ max-width: min(42vw, 240px);
 .ug-root.dark .nav-discovery-list-toggle:hover { background: rgba(255, 255, 255, 0.12); }
 .ug-root.dark .nav-discovery-list-toggle--active {
   border-color: var(--accent);
-  background: var(--accent-tint-hi);
+  background: var(--accent-tint-solid);
   color: var(--accent);
 }
 
