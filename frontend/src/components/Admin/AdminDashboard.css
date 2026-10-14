@@ -1520,16 +1520,16 @@
   flex-direction: column;
   gap: 3px;
   padding: 14px;
-  border: 1px solid var(--a-border, rgba(0, 0, 0, 0.07));
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  background: var(--a-surface, #fff);
+  background: var(--a-panel-alt);
   min-width: 0;
 }
 
 .sys-metric-value {
   font-size: 22px;
   font-weight: 700;
-  color: var(--a-text, #14161a);
+  color: var(--a-text);
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
@@ -1537,14 +1537,14 @@
 .sys-metric-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--a-text-muted, #6b7280);
+  color: var(--a-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .sys-metric-hint {
   font-size: 11.5px;
-  color: var(--a-text-subtle, #9ca3af);
+  color: var(--a-text-secondary);
 }
 
 /* Endpoint labels like "GET /admin/users" can run long; keep them on one
@@ -1559,7 +1559,7 @@
 .sys-footnote {
   margin: 2px 2px 0;
   font-size: 12.5px;
-  color: var(--a-text-subtle, #9ca3af);
+  color: var(--a-text-muted);
 }
 
 @media (max-width: 900px) {
