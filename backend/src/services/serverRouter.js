@@ -23,6 +23,7 @@
 import { loadTripGraph, TRIP_CORRIDOR_KM } from './routingContext.js';
 import { getAllRoutes, findNearestNodeWithSnap } from '../../../shared/routing/routing.js';
 import { LruTtlCache } from '../utils/lruCache.js';
+import { recordServerRoute } from '../utils/metrics.js';
 
 // Snap tolerance in degrees (~2.2km at this latitude), wider than the engine's
 // 1.1km default. The regional graph is sparser than the campus graph, so a
@@ -42,21 +43,48 @@ function coordKey(p) {
   return `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
 }
 
-// A stable fingerprint of the inputs that change the path. Only `id` and
-// `verdict` of each decision matter to the cost function; sorting makes the key
-// order-independent. Weather is a small numeric object, so JSON is fine.
+// Every field of a decision that actually changes the computed path. It is NOT
+// just id+verdict: getDecisionPenalty (costFunction.js) scores from lat/lng and
+// penalty and decays by decided_at/expires_at, while assessRouteDecisions
+// (routing.js) blocks on verdict. Decisions arrive from the client, so two
+// requests can legitimately carry the same id and verdict but a different hazard
+// position or penalty — keying on id+verdict alone would let them share an entry
+// and receive each other's route.
+function decisionFingerprint(decision) {
+  return [
+    decision?.id ?? null,
+    decision?.verdict ?? null,
+    decision?.lat ?? null,
+    decision?.lng ?? null,
+    decision?.penalty ?? null,
+    decision?.decided_at ?? null,
+    decision?.expires_at ?? null,
+  ];
+}
+
+function compareFingerprints(a, b) {
+  const sa = JSON.stringify(a);
+  const sb = JSON.stringify(b);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
+}
+
+// A stable fingerprint of the inputs that change the path. The whole tuple is
+// JSON-encoded rather than delimiter-joined so a crafted id containing a
+// separator cannot forge a collision between two different requests. Sorting the
+// decision fingerprints keeps the key independent of array order; weather is a
+// small numeric object, so plain JSON is fine (a different key order is a cache
+// miss, never a wrong hit).
 function cacheKeyFor({ from, to, vehicleMode, decisions, weatherMultipliers }) {
   const decisionKey = (decisions ?? [])
-    .map((d) => `${d?.id}:${d?.verdict}`)
-    .sort()
-    .join('|');
-  return [
+    .map(decisionFingerprint)
+    .sort(compareFingerprints);
+  return JSON.stringify([
     coordKey(from),
     coordKey(to),
     vehicleMode,
     decisionKey,
-    weatherMultipliers ? JSON.stringify(weatherMultipliers) : '',
-  ].join('~');
+    weatherMultipliers ?? null,
+  ]);
 }
 
 // Run the shared engine against an already-loaded graph. Returns the same shape
@@ -149,30 +177,56 @@ export async function routeOffCampus({
   decisions = [],
   weatherMultipliers = undefined,
 }) {
+  const startedAt = performance.now();
   const cacheKey = cacheKeyFor({ from, to, vehicleMode, decisions, weatherMultipliers });
   const cached = routeCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    // A cache hit is the fast path and should show as such in the metrics: it
+    // has no A* or graph-load cost, so recording a near-zero total here keeps
+    // the averages honest instead of folding hits into search timings.
+    recordServerRoute({ ok: true, cacheHit: true, totalMs: performance.now() - startedAt });
+    return cached;
+  }
+
+  const args = { from, to, vehicleMode, decisions, weatherMultipliers };
 
   // First attempt: the thin corridor around the straight from->to line. This is
   // the common case and the reason server routes are fast — for Legon->Tema it
   // loads a small fraction of the ~35k edges the bbox would.
-  const args = { from, to, vehicleMode, decisions, weatherMultipliers };
-  let result = await routeOverLoadedGraph(
-    await loadTripGraph({ from, to, mode: 'corridor', corridorKm: TRIP_CORRIDOR_KM }),
-    args
-  );
+  let mode = 'corridor';
+  let loaded = await loadTripGraph({ from, to, mode: 'corridor', corridorKm: TRIP_CORRIDOR_KM });
+  let graphLoadMs = loaded.loadMs ?? 0;
+  let result = await routeOverLoadedGraph(loaded, args);
 
   // The corridor only fails when it is genuinely too narrow — a route that
   // detours beyond the half-width, or an endpoint whose nearest node sits just
   // outside it. That is rare, so pay for the full padded bbox only here. A
   // 'no-route' on the bbox is the real answer and is surfaced as-is.
   if (!result.ok) {
-    result = await routeOverLoadedGraph(await loadTripGraph({ from, to, mode: 'bbox' }), args);
+    mode = 'bbox';
+    loaded = await loadTripGraph({ from, to, mode: 'bbox' });
+    graphLoadMs += loaded.loadMs ?? 0;
+    result = await routeOverLoadedGraph(loaded, args);
   }
 
   // Cache successes only: a transient miss (graph not yet synced, a cold DB)
   // should not be remembered for the TTL.
   if (result.ok) routeCache.set(cacheKey, result);
+
+  recordServerRoute({
+    ok: result.ok,
+    reason: result.reason,
+    cacheHit: false,
+    mode,
+    totalMs: performance.now() - startedAt,
+    graphLoadMs,
+    // Populated by the shared engine (shared/routing/routing.js). Absent on a
+    // miss, where there is no A* run to attribute time to.
+    astarMs: result.routes?.metrics?.elapsedMs,
+    edgeCount: result.stats?.edgeCount,
+    nodeCount: result.stats?.nodeCount,
+  });
+
   return result;
 }
 

@@ -30,6 +30,20 @@ const Icons = {
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
   ),
+  System: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" rx="1" />
+      <line x1="9" y1="1" x2="9" y2="4" />
+      <line x1="15" y1="1" x2="15" y2="4" />
+      <line x1="9" y1="20" x2="9" y2="23" />
+      <line x1="15" y1="20" x2="15" y2="23" />
+      <line x1="20" y1="9" x2="23" y2="9" />
+      <line x1="20" y1="14" x2="23" y2="14" />
+      <line x1="1" y1="9" x2="4" y2="9" />
+      <line x1="1" y1="14" x2="4" y2="14" />
+    </svg>
+  ),
   Logout: () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -151,6 +165,20 @@ function formatNumber(num) {
   return String(num);
 }
 
+// Latency is reported in milliseconds; anything at or above a second reads
+// better as seconds so the operator is not counting zeros.
+function formatMs(value) {
+  if (value === null || value === undefined) return '—';
+  if (value >= 1000) return `${(value / 1000).toFixed(2)}s`;
+  if (value >= 10)   return `${Math.round(value)}ms`;
+  return `${value.toFixed(1)}ms`;
+}
+
+function formatRate(fraction) {
+  if (fraction === null || fraction === undefined) return '—';
+  return `${(fraction * 100).toFixed(1)}%`;
+}
+
 function getActivityDisplay(item) {
   const meta = item.parsedMetadata || {};
   switch (item.activity_type) {
@@ -165,6 +193,23 @@ function getActivityDisplay(item) {
     default:
       return item.activity_type;
   }
+}
+
+// ── Metric grid (System tab) ──────────────────────────────────────────────────
+// A small label/value grid reused for every metric section so the System tab
+// stays consistent without a charting dependency.
+function MetricGrid({ items }) {
+  return (
+    <div className="sys-metrics">
+      {items.map(({ label, value, hint }) => (
+        <div key={label} className="sys-metric">
+          <span className="sys-metric-value">{value}</span>
+          <span className="sys-metric-label">{label}</span>
+          {hint !== undefined && hint !== null && <span className="sys-metric-hint">{hint}</span>}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ── Skeleton Loader ───────────────────────────────────────────────────────────
@@ -186,6 +231,7 @@ export default function AdminDashboard() {
   const [users,            setUsers]            = useState([]);
   const [activity,         setActivity]         = useState([]);
   const [reports,          setReports]          = useState([]);
+  const [systemStats,      setSystemStats]      = useState(null);
   const [pendingCount,     setPendingCount]      = useState(null);
   const [isLoading,        setIsLoading]        = useState(true);
   const [error,            setError]            = useState('');
@@ -238,6 +284,28 @@ export default function AdminDashboard() {
       setClusters(data.clusters || []);
     } catch (err) {
       console.error('[Admin] Fetch clusters error:', err);
+    }
+  }, []);
+
+  // ── Fetch system performance metrics ──────────────────────────────────────────
+  // Separate from fetchData because it is only useful on the System tab and
+  // changes continuously; no point polling it while the operator is elsewhere.
+  const fetchSystemMetrics = useCallback(async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_URL}/admin/system`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+
+      // 401/403 here is handled by the main fetchData redirect; silently skip.
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data && typeof data === 'object') setSystemStats(data);
+    } catch (err) {
+      console.error('[Admin] Fetch system metrics error:', err);
     }
   }, []);
 
@@ -338,7 +406,10 @@ export default function AdminDashboard() {
     if (activeTab === 'reports') {
       await Promise.all([fetchReports(), fetchClusters()]);
     }
-  }, [activeTab, fetchData, fetchReports, fetchClusters]);
+    if (activeTab === 'system') {
+      await fetchSystemMetrics();
+    }
+  }, [activeTab, fetchData, fetchReports, fetchClusters, fetchSystemMetrics]);
 
   useEffect(() => {
     fetchData();
@@ -357,6 +428,11 @@ export default function AdminDashboard() {
       fetchClusters();
     }
   }, [activeTab, fetchReports, fetchClusters]);
+
+  // ── Load system metrics when the System tab opens ───────────────────────────────
+  useEffect(() => {
+    if (activeTab === 'system') fetchSystemMetrics();
+  }, [activeTab, fetchSystemMetrics]);
 
   // ── Approve / Reject ──────────────────────────────────────────────────────────
   const handleUpdateReport = useCallback(async (reportId, status) => {
@@ -419,6 +495,7 @@ export default function AdminDashboard() {
     reports:  'Reports & Messages',
     users:    'User Management',
     activity: 'Activity Log',
+    system:   'System Performance',
   }[activeTab] ?? 'Dashboard';
 
   // Only clusters that still need admin action (pending, or approved awaiting resolution)
@@ -460,6 +537,7 @@ export default function AdminDashboard() {
             { key: 'reports',  label: 'Reports',  Icon: Icons.Flag,     badge: pendingCount },
             { key: 'users',    label: 'Users',    Icon: Icons.Users },
             { key: 'activity', label: 'Activity', Icon: Icons.Activity },
+            { key: 'system',   label: 'System',   Icon: Icons.System },
           ].map(({ key, label, Icon, badge }) => (
             <button
               key={key}
@@ -972,6 +1050,154 @@ export default function AdminDashboard() {
               </table>
             </div>
           </div>
+        )}
+
+        {/* ── System ─────────────────────────────────────────────────────────── */}
+        {activeTab === 'system' && (
+          <>
+            <div className="admin-stats-grid">
+              <div className="stat-card">
+                <div className="stat-card-icon blue"><Icons.Activity /></div>
+                <div className="stat-card-content">
+                  <span className="stat-card-value">{systemStats ? formatNumber(systemStats.http.total) : '—'}</span>
+                  <span className="stat-card-label">Requests</span>
+                </div>
+                <div className="stat-card-trend">{systemStats ? `${systemStats.http.requestsPerMinute.toFixed(1)}/min` : '—'}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon green"><Icons.TrendingUp /></div>
+                <div className="stat-card-content">
+                  <span className="stat-card-value">{systemStats ? formatMs(systemStats.http.latency.avg) : '—'}</span>
+                  <span className="stat-card-label">Avg Request</span>
+                </div>
+                <div className="stat-card-trend">{systemStats ? `p95 ${formatMs(systemStats.http.latency.p95)}` : '—'}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon purple"><Icons.System /></div>
+                <div className="stat-card-content">
+                  <span className="stat-card-value">{systemStats ? formatMs(systemStats.db.latency.avg) : '—'}</span>
+                  <span className="stat-card-label">Avg DB Query</span>
+                </div>
+                <div className="stat-card-trend">{systemStats ? `${formatNumber(systemStats.db.queries)} queries` : '—'}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon orange"><Icons.RouteIcon /></div>
+                <div className="stat-card-content">
+                  <span className="stat-card-value">{systemStats ? formatRate(systemStats.serverRouting.cacheHitRate) : '—'}</span>
+                  <span className="stat-card-label">Route Cache Hit</span>
+                </div>
+                <div className="stat-card-trend">{systemStats ? `${formatNumber(systemStats.serverRouting.requests)} off-campus` : '—'}</div>
+              </div>
+            </div>
+
+            <div className="admin-two-col">
+              <div className="admin-card">
+                <h3>Requests &amp; Latency</h3>
+                <MetricGrid items={[
+                  { label: 'Requests', value: systemStats ? formatNumber(systemStats.http.total) : '—' },
+                  { label: 'Req / min', value: systemStats ? systemStats.http.requestsPerMinute.toFixed(1) : '—' },
+                  { label: 'Avg', value: systemStats ? formatMs(systemStats.http.latency.avg) : '—' },
+                  { label: 'p50', value: systemStats ? formatMs(systemStats.http.latency.p50) : '—' },
+                  { label: 'p95', value: systemStats ? formatMs(systemStats.http.latency.p95) : '—' },
+                  { label: 'p99', value: systemStats ? formatMs(systemStats.http.latency.p99) : '—' },
+                  { label: 'Error rate', value: systemStats ? formatRate(systemStats.http.errorRate) : '—' },
+                  { label: '4xx / 5xx', value: systemStats ? `${formatNumber(systemStats.http.byStatus['4xx'])} / ${formatNumber(systemStats.http.byStatus['5xx'])}` : '—' },
+                ]} />
+              </div>
+
+              <div className="admin-card">
+                <h3>Database</h3>
+                <MetricGrid items={[
+                  { label: 'Queries', value: systemStats ? formatNumber(systemStats.db.queries) : '—' },
+                  { label: 'Errors', value: systemStats ? formatNumber(systemStats.db.errors) : '—' },
+                  { label: 'Avg', value: systemStats ? formatMs(systemStats.db.latency.avg) : '—' },
+                  { label: 'p95', value: systemStats ? formatMs(systemStats.db.latency.p95) : '—' },
+                  { label: 'p99', value: systemStats ? formatMs(systemStats.db.latency.p99) : '—' },
+                  { label: 'Slowest', value: systemStats ? formatMs(systemStats.db.latency.max) : '—' },
+                  { label: 'SELECT', value: systemStats ? formatNumber(systemStats.db.byVerb.SELECT) : '—' },
+                  { label: 'Write', value: systemStats ? formatNumber(systemStats.db.byVerb.INSERT + systemStats.db.byVerb.UPDATE + systemStats.db.byVerb.DELETE) : '—' },
+                ]} />
+              </div>
+            </div>
+
+            <div className="admin-card full-width">
+              <div className="admin-table-header">
+                <h3>Server Routing (Off-Campus)</h3>
+                <span className="admin-table-stats">computed on the backend over the regional graph</span>
+              </div>
+              <MetricGrid items={[
+                { label: 'Routes', value: systemStats ? formatNumber(systemStats.serverRouting.requests) : '—' },
+                { label: 'Cache hit', value: systemStats ? formatRate(systemStats.serverRouting.cacheHitRate) : '—', hint: systemStats ? `${formatNumber(systemStats.serverRouting.cacheHits)} hits` : undefined },
+                { label: 'Failures', value: systemStats ? formatNumber(systemStats.serverRouting.failures) : '—' },
+                { label: 'A* avg', value: systemStats ? formatMs(systemStats.serverRouting.astarMs.avg) : '—', hint: systemStats ? `p95 ${formatMs(systemStats.serverRouting.astarMs.p95)}` : undefined },
+                { label: 'Graph load avg', value: systemStats ? formatMs(systemStats.serverRouting.graphLoadMs.avg) : '—', hint: systemStats ? `p95 ${formatMs(systemStats.serverRouting.graphLoadMs.p95)}` : undefined },
+                { label: 'Total avg', value: systemStats ? formatMs(systemStats.serverRouting.totalMs.avg) : '—' },
+                { label: 'Avg edges', value: systemStats ? formatNumber(Math.round(systemStats.serverRouting.avgEdgeCount)) : '—' },
+                { label: 'Avg nodes', value: systemStats ? formatNumber(Math.round(systemStats.serverRouting.avgNodeCount)) : '—' },
+                { label: 'Corridor / bbox', value: systemStats ? `${formatNumber(systemStats.serverRouting.corridorLoads)} / ${formatNumber(systemStats.serverRouting.bboxFallbacks)}` : '—' },
+              ]} />
+            </div>
+
+            <div className="admin-card full-width">
+              <div className="admin-table-header">
+                <h3>Client Routing (Campus)</h3>
+                <span className="admin-table-stats">reported by browsers — A* runs locally on the device</span>
+              </div>
+              <MetricGrid items={[
+                { label: 'Reports', value: systemStats ? formatNumber(systemStats.clientRouting.reports) : '—' },
+                { label: 'Campus routes', value: systemStats ? formatNumber(systemStats.clientRouting.campus.requests) : '—' },
+                { label: 'A* avg', value: systemStats ? formatMs(systemStats.clientRouting.campus.astarMs.avg) : '—', hint: systemStats ? `p95 ${formatMs(systemStats.clientRouting.campus.astarMs.p95)}` : undefined },
+                { label: 'Nodes explored avg', value: systemStats ? formatNumber(Math.round(systemStats.clientRouting.campus.nodesExplored.avg)) : '—', hint: systemStats ? `max ${formatNumber(systemStats.clientRouting.campus.nodesExplored.max)}` : undefined },
+                { label: 'Avg graph edges', value: systemStats ? formatNumber(Math.round(systemStats.clientRouting.campus.avgEdgeCount)) : '—' },
+                { label: 'Off-campus RT avg', value: systemStats ? formatMs(systemStats.clientRouting.offcampus.roundTripMs.avg) : '—', hint: systemStats ? `p95 ${formatMs(systemStats.clientRouting.offcampus.roundTripMs.p95)}` : undefined },
+                { label: 'Off-campus fails', value: systemStats ? formatNumber(systemStats.clientRouting.offcampus.failures) : '—' },
+              ]} />
+            </div>
+
+            <div className="admin-card full-width">
+              <div className="admin-table-header">
+                <h3>Endpoints</h3>
+                <span className="admin-table-stats">
+                  {systemStats?.http?.endpoints?.length ? `top ${systemStats.http.endpoints.length} by traffic` : 'no traffic yet'}
+                </span>
+              </div>
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Endpoint</th>
+                      <th>Requests</th>
+                      <th>Avg</th>
+                      <th>p95</th>
+                      <th>Last status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(systemStats?.http?.endpoints ?? []).map((ep) => (
+                      <tr key={ep.route}>
+                        <td className="user-email">{ep.route}</td>
+                        <td>{formatNumber(ep.count)}</td>
+                        <td>{formatMs(ep.avgMs)}</td>
+                        <td>{formatMs(ep.p95Ms)}</td>
+                        <td>{ep.lastStatus || '—'}</td>
+                      </tr>
+                    ))}
+                    {(!systemStats || !systemStats.http.endpoints.length) && (
+                      <tr><td colSpan="5" className="admin-empty"><p>No requests recorded yet</p></td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {systemStats && (
+              <p className="sys-footnote">
+                Since {new Date(systemStats.startedAt).toLocaleString()} ·
+                uptime {Math.floor(systemStats.uptimeMs / 60000)}m ·
+                in-process, resets on deploy
+              </p>
+            )}
+          </>
         )}
         </div>
       </main>

@@ -1503,3 +1503,72 @@
   .stat-card-icon svg { width: 18px; height: 18px; }
   .admin-topbar { padding: 14px 12px; }
 }
+
+/* -- System Performance tab ----------------------------------------------- */
+/* Compact metric grid: value-first, label under it, optional hint (usually a
+   p95 or a sub-count) under the label. Charts would add a dependency for what
+   are six or eight numbers an operator scans. */
+.sys-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.sys-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px;
+  border: 1px solid var(--a-border, rgba(0, 0, 0, 0.07));
+  border-radius: 12px;
+  background: var(--a-surface, #fff);
+  min-width: 0;
+}
+
+.sys-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--a-text, #14161a);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.sys-metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--a-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sys-metric-hint {
+  font-size: 11.5px;
+  color: var(--a-text-subtle, #9ca3af);
+}
+
+/* Endpoint labels like "GET /admin/users" can run long; keep them on one
+   clipped line so the row heights stay uniform. */
+.admin-table .user-email {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sys-footnote {
+  margin: 2px 2px 0;
+  font-size: 12.5px;
+  color: var(--a-text-subtle, #9ca3af);
+}
+
+@media (max-width: 900px) {
+  .sys-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-table .user-email { max-width: 240px; }
+}
+
+@media (max-width: 480px) {
+  .sys-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .sys-metric { padding: 11px; }
+  .sys-metric-value { font-size: 18px; }
+}

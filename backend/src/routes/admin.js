@@ -5,12 +5,31 @@ import express from 'express';
 import { query } from '../config/db.js';
 import { verifyToken } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
+import { snapshotSystemMetrics } from '../utils/metrics.js';
 
 const router = express.Router();
 
 // Apply admin middleware to all routes
 router.use(verifyToken);
 router.use(requireAdmin);
+
+/**
+ * GET /admin/system
+ * Process-level performance metrics: request/DB latency, server-side off-campus
+ * routing cost, and client-reported campus routing cost.
+ *
+ * Reads an in-memory registry (utils/metrics.js), so it performs no DB work and
+ * cannot itself distort the DB numbers. Values are since process start; a deploy
+ * resets them. The endpoint is guarded by verifyToken+requireAdmin above.
+ */
+router.get('/system', (req, res) => {
+  try {
+    res.json(snapshotSystemMetrics());
+  } catch (error) {
+    console.error('[Admin System] Error:', error.message);
+    res.status(500).json({ error: 'Failed to read system metrics' });
+  }
+});
 
 /**
  * GET /admin/stats

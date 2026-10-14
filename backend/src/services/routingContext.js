@@ -587,6 +587,11 @@ async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
   };
 }
 
+/** Round a duration to 0.1ms so metric payloads stay compact and readable. */
+function roundMs(value) {
+  return Number.isFinite(value) ? Math.round(value * 10) / 10 : 0;
+}
+
 /** Great-circle distance in metres. Used only when distance_m is unavailable. */
 function haversineMetres(a, b) {
   const R = 6371000;
@@ -713,6 +718,7 @@ function buildCorridorFilter({ from, to, corridorKm = TRIP_CORRIDOR_KM }) {
  * Returns { graph, source, truncated, stats, envelope, corridor }.
  */
 export async function loadTripGraph({ from, to, mode = 'corridor', corridorKm = TRIP_CORRIDOR_KM }) {
+  const loadStartedAt = performance.now();
   const { schema } = EDGE_TABLE;
   const tableName = EDGE_TABLE.regionalTable;
 
@@ -757,6 +763,11 @@ export async function loadTripGraph({ from, to, mode = 'corridor', corridorKm = 
     stats: { ...stats, cap: MAX_TRIP_EDGES },
     envelope,
     corridor: useCorridor ? { corridorKm, from, to } : null,
+    // Wall-clock cost of the fetch+assemble step, separate from A*. Reported to
+    // the admin System tab so a slow trip can be attributed to graph I/O rather
+    // than pathfinding (and vice versa). Measured here rather than by the caller
+    // because it excludes nothing between the two.
+    loadMs: roundMs(performance.now() - loadStartedAt),
   };
 }
 

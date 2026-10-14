@@ -266,6 +266,8 @@ export function findShortestPath(
       profile:         profileKey,
       vehicleMode,
       roadNames:       [],
+      // No search happened, so the efficiency probe reports zero explored.
+      nodesExplored:   0,
     };
   }
 
@@ -414,6 +416,7 @@ export function findShortestPath(
         vehicleMode,
         context,
         roadNames:       [],
+        nodesExplored,
       };
     }
 
@@ -468,6 +471,10 @@ export function findShortestPath(
     vehicleMode,
     context,
     roadNames, // ← ROAD NAMES FOR DIRECTIONS
+    // Search-cost signal for the System tab (client campus + server off-campus):
+    // how many nodes A* popped to reach the goal. Returned rather than only
+    // logged so callers can surface efficiency without parsing console output.
+    nodesExplored,
   };
 }
 
@@ -491,12 +498,25 @@ export async function getAllRoutes(
 ) {
   const startTime = performance.now();
 
-  const [standard, fastest, accessible, night] = await Promise.all([
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "standard",   vehicleMode, decisions, weatherMultipliers, sandboxContext)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "fastest",    vehicleMode, decisions, weatherMultipliers, sandboxContext)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "accessible", vehicleMode, decisions, weatherMultipliers, sandboxContext)),
-    Promise.resolve(findShortestPath(graph, startNodeId, endNodeId, "night",      vehicleMode, decisions, weatherMultipliers, sandboxContext)),
-  ]);
+  // Each profile is timed on its own. The four calls are synchronous
+  // (getAllRoutes is async only for interface stability), so they run
+  // sequentially — the per-profile figures are real, and `elapsedMs` is their
+  // sum, which is what a caller actually waits for.
+  const profiles = {};
+  const runProfile = (key) => {
+    const profileStart = performance.now();
+    const route = findShortestPath(graph, startNodeId, endNodeId, key, vehicleMode, decisions, weatherMultipliers, sandboxContext);
+    profiles[key] = {
+      timeMs: Math.round(performance.now() - profileStart),
+      nodesExplored: route?.nodesExplored ?? 0,
+    };
+    return route;
+  };
+
+  const standard   = runProfile("standard");
+  const fastest    = runProfile("fastest");
+  const accessible = runProfile("accessible");
+  const night      = runProfile("night");
 
   const elapsed = performance.now() - startTime;
   console.log(`[Routing] All 4 routes in ${elapsed.toFixed(0)}ms (vehicle: ${vehicleMode}, context: ${sandboxContext ?? 'default'})`);
@@ -510,5 +530,19 @@ export async function getAllRoutes(
     if (route) route.decisions = assessRouteDecisions(route, decisions);
   });
 
-  return { standard, fastest, accessible, night, timestamp: Date.now() };
+  return {
+    standard,
+    fastest,
+    accessible,
+    night,
+    timestamp: Date.now(),
+    // Efficiency/speed probe consumed by the admin System tab (client campus
+    // routes) and by serverRouter for off-campus routes. Additive: existing
+    // callers that only read the four profiles are unaffected.
+    metrics: {
+      elapsedMs: Math.round(elapsed),
+      nodesExplored: Object.values(profiles).reduce((sum, p) => sum + p.nodesExplored, 0),
+      profiles,
+    },
+  };
 }

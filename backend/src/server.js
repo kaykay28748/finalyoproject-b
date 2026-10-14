@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import { query, runDevMigrations } from './config/db.js';
 import { sanitizeParams } from './middleware/validation.js';
 import { handleError } from './utils/errorHandler.js';
+import { recordHttpRequest } from './utils/metrics.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import analyticsRoutes, { heatmapRouter } from './routes/analytics.js';
@@ -22,6 +23,24 @@ import { requireAdmin } from './middleware/admin.js';
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
+
+// ─── Request timing ──────────────────────────────────────────────────────────
+// Registered first so it sees every request (including the raw-bodied Overpass
+// proxy defined before the body parsers). The listener is on `finish`, not a
+// wrapper around next(), so a route that ends the response early is still
+// measured. hrtime is monotonic; Date.now() would drift with clock adjustments.
+app.use((req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  // Capture the full path now: by the time `finish` fires the request has been
+  // unwound through the routers, so deriving it later risks recording a mounted
+  // sub-path instead of the real endpoint. Strip the query string.
+  const path = (req.originalUrl || req.url || '').split('?')[0];
+  res.on('finish', () => {
+    const ms = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    recordHttpRequest({ method: req.method, path, status: res.statusCode, ms });
+  });
+  next();
+});
 
 // ─── LocationIQ Rate Limit Queue (3 requests per second) ────────────────────
 let lastLocationIQRequest = 0;

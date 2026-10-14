@@ -7,6 +7,7 @@ import { fetchDecisionFeed } from "../services/reportService";
 import { fetchWeather, getWeatherMultipliers } from "../services/weatherService";
 import { getDistanceToRoute, distanceBetween, findClosestPointOnRoute } from "../function/utils/geometry";
 import { resetHeatmapSession } from "../services/heatmapAnalytics";
+import { recordRouteMetric } from "../services/perfService";
 import { useVoiceGuidance } from "./useVoiceGuidance";
 
 const DEVIATION_THRESHOLD_METERS  = 45;
@@ -278,12 +279,23 @@ export function useRealtimeRoutes({
         // Off-campus: the backend owns the regional graph and the A* run. It
         // returns the same four-profile shape as getAllRoutes(), so the rest of
         // this function (progress, voice, profile switching) is unchanged.
+        const serverCallStart = performance.now();
         const result = await fetchServerRoutes({
           from: serverFrom,
           to: serverTo,
           vehicleMode,
           decisions: feed?.reports ?? [],
           weatherMultipliers,
+        });
+        // Round-trip time is the client-observable cost of an off-campus route
+        // (graph load + A* + network). The server separately records its own A*
+        // and graph-load times, so the gap between the two is network + queue.
+        recordRouteMetric({
+          kind: "offcampus",
+          vehicleMode,
+          roundTripMs: performance.now() - serverCallStart,
+          edgeCount: result.stats?.edgeCount,
+          ok: result.ok,
         });
 
         if (!result.ok) {
@@ -299,6 +311,7 @@ export function useRealtimeRoutes({
         // Campus: compute locally over the small, already-present graph.
         // sandboxContextRef is passed by reference on purpose: it is current at
         // call time without making calculateRoutes re-create whenever the slice lands.
+        const campusStart = performance.now();
         allRoutes = await getAllRoutes(
           activeGraph,
           startId,
@@ -308,6 +321,18 @@ export function useRealtimeRoutes({
           weatherMultipliers,
           sandboxContextRef.current
         );
+        // Report campus A* cost to the server so the admin System tab can show
+        // it. campusStart covers the calls the engine does not time itself
+        // (graph lookup, profile packaging); allRoutes.metrics.elapsedMs is the
+        // sum of the four A* passes.
+        recordRouteMetric({
+          kind: "campus",
+          vehicleMode,
+          astarMs: allRoutes?.metrics?.elapsedMs ?? (performance.now() - campusStart),
+          nodesExplored: allRoutes?.metrics?.nodesExplored,
+          edgeCount: activeGraph?.edges?.length,
+          ok: true,
+        });
       }
       
       setRoutes({ ...allRoutes, lastUpdated: now });

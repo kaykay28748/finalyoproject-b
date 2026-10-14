@@ -3,6 +3,7 @@ import express from 'express';
 import { query } from '../config/db.js';
 import { verifyToken } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
+import { recordClientRoute } from '../utils/metrics.js';
 
 const router = express.Router();
 
@@ -82,6 +83,77 @@ router.post('/route', async (req, res) => {
     console.error('[Analytics Route] Error:', error.message);
     res.status(500).json({ error: 'Failed to log route' });
   }
+});
+
+// Rate limit for client performance reports. These arrive from every active
+// browser on each route calculation, so a per-IP cap keeps one noisy (or
+// buggy) client from skewing the System tab. This is in-memory like the heatmap
+// limiter — enough for a single-instance campus app.
+const perfRateLimit = (() => {
+  const hits = new Map(); // ip → { count, resetAt }
+  const MAX = 120;
+  const TTL = 60_000;
+
+  return (req, res, next) => {
+    const ip  = req.ip || 'unknown';
+    const now = Date.now();
+    const rec = hits.get(ip);
+
+    if (!rec || now > rec.resetAt) {
+      hits.set(ip, { count: 1, resetAt: now + TTL });
+      return next();
+    }
+
+    rec.count++;
+    if (rec.count > MAX) {
+      return res.status(429).json({ error: 'Too many perf reports' });
+    }
+    next();
+  };
+})();
+
+// Cap how many samples one request may carry (a batch flush) so a large body
+// cannot turn a single call into thousands of observations.
+const MAX_PERF_SAMPLES = 50;
+
+function toFiniteOrUndefined(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * POST /analytics/perf
+ * Ingest client-side routing performance from browsers.
+ * Body: { kind: 'campus'|'offcampus', astarMs?, nodesExplored?, edgeCount?,
+ *         roundTripMs?, ok? }  OR  { samples: [ ...same shape... ] }
+ *
+ * Client campus routing happens entirely in the browser (there is no server-side
+ * equivalent), so the admin System tab can only see it if the client reports it.
+ * Best-effort: the frontend swallows failures, and this always answers 200 for
+ * an accepted batch so a metrics hiccup never surfaces as an app error.
+ */
+router.post('/perf', perfRateLimit, (req, res) => {
+  const body = req.body || {};
+  const samples = Array.isArray(body.samples) ? body.samples.slice(0, MAX_PERF_SAMPLES) : [body];
+
+  try {
+    for (const sample of samples) {
+      if (!sample || typeof sample !== 'object') continue;
+      recordClientRoute({
+        kind:          sample.kind === 'offcampus' ? 'offcampus' : 'campus',
+        astarMs:       toFiniteOrUndefined(sample.astarMs),
+        nodesExplored: toFiniteOrUndefined(sample.nodesExplored),
+        edgeCount:     toFiniteOrUndefined(sample.edgeCount),
+        roundTripMs:   toFiniteOrUndefined(sample.roundTripMs),
+        ok:            sample.ok !== false,
+      });
+    }
+  } catch (error) {
+    // Never let a malformed sample fail the request: metrics are best-effort.
+    console.warn('[Analytics Perf] Ignored malformed sample:', error.message);
+  }
+
+  res.json({ success: true, accepted: samples.length });
 });
 
 // ─── Heatmap routes (no auth — we want data from all users) ─────────────────
