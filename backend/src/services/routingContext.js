@@ -666,12 +666,20 @@ export async function loadTripGraph({ from, to }) {
 
   const envelope = envelopeForPoints(from, to, TRIP_PADDING_KM);
 
-  const hasGeometry = isPostgres && (await geomColumnExists(tableName));
+  // The geom column, when present, is used ONLY to build the spatial WHERE
+  // filter. It is deliberately NOT selected: the routing graph needs each
+  // edge's two endpoints, and the from/to coordinate columns already carry
+  // them, so shipping tens of thousands of LineStrings across the wire (and
+  // JSON-parsing them on the way back out of the driver) is pure latency.
+  // Measured: selecting geom made a Legon->Tema route take ~30s.
+  const filterByGeometry = isPostgres && (await geomColumnExists(tableName));
   const qualified = isPostgres ? `${schema}.${tableName}` : SQLITE_REGIONAL_EDGE_TABLE;
   const col = (c) => (isPostgres ? `${qualified}.${c}` : c);
 
-  const select = buildEdgeSelect(col, { hasGeometry });
-  const filter = buildTripFilter({ envelope, hasGeometry });
+  // hasGeometry:false for the SELECT/normalise path — see above. The filter
+  // still uses the geom index when it exists.
+  const select = buildEdgeSelect(col, { hasGeometry: false });
+  const filter = buildTripFilter({ envelope, hasGeometry: filterByGeometry });
 
   const sql =
     `SELECT ${select} ` +
@@ -682,7 +690,7 @@ export async function loadTripGraph({ from, to }) {
 
   const result = await query(sql, [...filter.params, MAX_TRIP_EDGES]);
   const rows = result?.rows ?? [];
-  const { graph, stats } = assembleGraph(rows, { hasGeometry });
+  const { graph, stats } = assembleGraph(rows, { hasGeometry: false });
 
   return {
     graph,

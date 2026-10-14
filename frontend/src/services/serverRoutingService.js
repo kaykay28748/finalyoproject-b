@@ -50,7 +50,9 @@ export async function fetchServerRoutes({
       body: JSON.stringify({ from, to, vehicleMode, decisions, weatherMultipliers }),
       // A long inter-city route loads a large corridor graph and then runs four
       // A* passes, so this budget is deliberately larger than the slice's 15s.
-      signal: signal ?? AbortSignal.timeout(30000),
+      // Raised from 30s after a Legon->Tema route was measured at ~30s server-side
+      // (the geom payload has since been dropped, so this is headroom, not a target).
+      signal: signal ?? AbortSignal.timeout(60000),
     });
 
     if (!res.ok) {
