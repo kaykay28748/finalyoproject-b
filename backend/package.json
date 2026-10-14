@@ -6,7 +6,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "dev": "node --watch src/server.js",
     "migrate": "node src/db/migrate.js",
     "migrate:sqlite": "node src/db/migrate.js",
     "migrate:pg": "node src/db/migrate-pg.js",
@@ -22,13 +22,15 @@
     "express-validator": "^7.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.0",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.1.1",
     "pg": "^8.11.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1"
+  },
+  "overrides": {
+    "proxy-addr": "^2.0.8"
   },
   "engines": {
     "node": ">=20.0.0 <23.0.0"
