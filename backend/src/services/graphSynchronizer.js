@@ -43,10 +43,11 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-// Overpass `timeout:30` is the server-side budget. The HTTP timeout must exceed
-// it or we abort a query that was about to succeed, which then caches nothing
-// and leaves the caller with a false "region is empty".
-const OVERPASS_HTTP_TIMEOUT_MS = 45000;
+// Overpass `timeout:60` is the server-side budget (raised from 30 when the
+// highway filter was widened to the full routable set — more ways, so more time).
+// The HTTP timeout must exceed it or we abort a query that was about to succeed,
+// which then caches nothing and leaves the caller with a false "region is empty".
+const OVERPASS_HTTP_TIMEOUT_MS = 90000;
 
 // Rows per INSERT. A single multi-row INSERT with this many value groups stays
 // under the 65535 bind-parameter ceiling in PostgreSQL (10 columns x 500), while
@@ -243,17 +244,45 @@ export function validateBbox(minLat, minLng, maxLat, maxLng) {
   return { ok: true, bbox };
 }
 
+// Highway classes the routing cost function knows about (see costFunction.js
+// road-type weights and PROFILES.allowedRoads/blockedRoads). This is the union
+// of every type ANY profile can route over, links included.
+//
+// WHY THIS IS NOT A PEDESTRIAN-ONLY LIST
+// --------------------------------------
+// The previous filter was `footway|pedestrian|path|steps|residential|service`,
+// but the regional table is actually populated by full-highway PBF clips (it
+// contains primary/secondary/tertiary/trunk/motorway — none of which the filter
+// could ever produce). So a live Overpass sync could not reproduce the existing
+// coverage: it filled an area with local streets while the main-road corridors —
+// including Accra->Tema, which runs along them — stayed missing, and the two
+// endpoints ended up in separate graph components. Matching the union here makes
+// a sync and a clip agree.
+//
+// Anchored with ^(...)$ so `motorway` cannot also match `motorway_link`
+// (Overpass `~` is an unanchored regex; without the anchors the alternation is a
+// substring match, which both over- and under-selects depending on list order).
+const ROUTABLE_HIGHWAY_TYPES = [
+  'motorway', 'motorway_link',
+  'trunk', 'trunk_link',
+  'primary', 'primary_link',
+  'secondary', 'secondary_link',
+  'tertiary', 'tertiary_link',
+  'unclassified', 'residential', 'living_street', 'service',
+  'pedestrian', 'track', 'footway', 'path', 'steps', 'cycleway', 'bridleway',
+].join('|');
+
 /**
  * Build the Overpass QL for a bbox.
  *
- * The highway filter is the pedestrian-relevant subset. `unclassified` is
- * included because a lot of Ghanaian campus-adjacent streets are mapped that
- * way, and excluding it produces graphs with visible holes in them.
+ * The highway filter is the full routable set above. `unclassified` is included
+ * because a lot of Ghanaian campus-adjacent streets are mapped that way, and
+ * excluding it produces graphs with visible holes in them.
  */
 export function buildOverpassQuery({ minLat, minLng, maxLat, maxLng }) {
   return (
-    `[out:json][timeout:30];` +
-    `way["highway"~"footway|pedestrian|path|steps|residential|service"](${minLat},${minLng},${maxLat},${maxLng});` +
+    `[out:json][timeout:60];` +
+    `way["highway"~"^(${ROUTABLE_HIGHWAY_TYPES})$"](${minLat},${minLng},${maxLat},${maxLng});` +
     `(._;>;);` +
     `out body;`
   );
