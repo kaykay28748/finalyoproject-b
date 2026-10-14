@@ -215,6 +215,27 @@ const SLICE_RADIUS_KM = 2;
 // right fix is a real spatial filter, not a bigger number.
 const MAX_EDGES = 50000;
 
+// Padding applied to the hull of a trip's two endpoints when loading a regional
+// graph for server-side routing. The pad exists because a straight-line hull of
+// two points does not contain the footpath the route actually takes: a
+// pedestrian corridor bends around blocks, so a zero-margin hull can clip the
+// only connecting edge and return "no route". 0.75km keeps the local connector
+// edges around each endpoint without it being a meaningful fraction of the
+// 13km+ journeys this loader exists to serve.
+const TRIP_PADDING_KM = 0.75;
+
+// Ceiling on edges loaded for a single server-side route. Deliberately far above
+// MAX_EDGES: that caps the *client* slice, but a server route loads a whole
+// corridor in one pass, and a measured Legon->Accra corridor is already ~61k
+// edges. The cap still exists so a pathological envelope (endpoints at opposite
+// ends of the metro area) cannot pull the full ~400k-row regional table into
+// memory and block the event loop.
+const MAX_TRIP_EDGES = 300000;
+
+// Degrees of latitude per kilometre. Hoisted to module scope because both
+// envelope helpers below need it and a second copy could silently drift.
+const KM_PER_DEG_LAT = 111.32;
+
 /**
  * Build a ST_MakeEnvelope argument set for a lat/lng centred box.
  *
@@ -224,7 +245,6 @@ const MAX_EDGES = 50000;
  * oddly asymmetric routing rather than an error.
  */
 function envelopeForRadius(lat, lng, radiusKm = SLICE_RADIUS_KM) {
-  const KM_PER_DEG_LAT = 111.32;
   const latDelta = radiusKm / KM_PER_DEG_LAT;
   // Clamp the cosine: at the poles cos(lat) is 0, which would make lngDelta
   // infinite and produce an invalid envelope.
@@ -408,28 +428,19 @@ function buildSliceFilter({ campus, envelope, hasGeometry }) {
 }
 
 /**
- * Fetch and assemble a graph payload for the unified edge table.
+ * Build the SELECT list shared by every graph loader.
  *
- * Never throws. Returns { graph, source, detail }.
+ * `col` qualifies a column for the current dialect and table; the caller owns
+ * that decision because the campus and regional loaders target different tables.
  *
- * @param {object} opts
- * @param {number} opts.lat
- * @param {number} opts.lng
- * @param {object} opts.envelope  required when campus is false.
- * @param {boolean} opts.campus   true = whole campus graph, no spatial filter.
- * @param {boolean} opts.hasGeometry  whether to select and use the geom column.
+ * The aliases are the REAL column names, not prettier ones. normaliseEdgeRow
+ * reads every field through EDGE_TABLE.tags, so a row aliased `AS highway` while
+ * the descriptor says `highway_type` left `tags.highway` permanently undefined:
+ * every edge fell back to `type: 'residential'` and the cost function lost the
+ * highway-type weighting entirely, with no error anywhere.
  */
-async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
-  const { schema, columns, tags, coords } = EDGE_TABLE;
-  const tableName = campus ? EDGE_TABLE.table : EDGE_TABLE.regionalTable;
-
-  // Identifiers cannot be parameterised in SQL. schema/table/column names come
-  // from the constants above, never from request input, which is what makes this
-  // safe to interpolate.
-  const qualified = isPostgres
-    ? `${schema}.${tableName}`
-    : (campus ? SQLITE_EDGE_TABLE : SQLITE_REGIONAL_EDGE_TABLE);
-  const col = (c) => (isPostgres ? `${qualified}.${c}` : c);
+function buildEdgeSelect(col, { hasGeometry }) {
+  const { columns, tags, coords } = EDGE_TABLE;
 
   const select = [
     `${col(columns.id)} AS osm_id`,
@@ -439,11 +450,6 @@ async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
     `${col(coords.fromLng)} AS from_lng`,
     `${col(coords.toLat)} AS to_lat`,
     `${col(coords.toLng)} AS to_lng`,
-    // Aliased to the REAL column name, not a prettier one. normaliseEdgeRow reads
-    // every field through EDGE_TABLE.tags, so a row aliased `AS highway` while
-    // the descriptor says `highway_type` made `tags.highway` permanently
-    // undefined: every edge fell back to `type: 'residential'` and the cost
-    // function lost the highway-type weighting entirely, with no error anywhere.
     `${col(tags.highway)} AS highway_type`,
     `${col(tags.incline)} AS incline`,
     `${col(tags.sidewalk)} AS sidewalk`,
@@ -461,26 +467,22 @@ async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
     select.push(`${col(columns.geom)} AS geom`);
   }
 
-  const filter = buildSliceFilter({ campus, envelope, hasGeometry });
+  return select.join(', ');
+}
 
-  const sql =
-    `SELECT ${select.join(', ')} ` +
-    `FROM ${qualified} ` +
-    filter.where +
-    // Deterministic cap. Without ORDER BY, "first N rows" is whatever the
-    // planner returns, so the same request can return different graphs — which
-    // reads as nondeterministic routing rather than as a limit.
-    // ORDER BY osm_id, not the surrogate `id`, because osm_id is what A* uses as
-    // the edge id and ordering by it keeps the two in agreement.
-    ` ORDER BY osm_id ` +
-    `LIMIT ?`;
+/**
+ * Turn raw edge rows into the graph payload A* consumes.
+ *
+ * Builds the node table from edge endpoints, then links neighbours both ways. A*
+ * treats the graph as undirected, so an edge reachable only one way is a dead
+ * end. Isolated nodes are dropped afterwards: findClosestNode can snap a route
+ * to one and then A* has nowhere to go.
+ *
+ * @returns {{graph: {nodes: object, edges: array}, stats: object}}
+ */
+function assembleGraph(rows, { hasGeometry }) {
+  const { coords } = EDGE_TABLE;
 
-  const result = await query(sql, [...filter.params, MAX_EDGES]);
-  const rows = result?.rows ?? [];
-
-  // Build the node table from edge endpoints, then link neighbours both ways.
-  // A* treats the graph as undirected, so an edge that is only reachable one way
-  // is a dead end.
   const nodes = {};
   const edges = [];
   let skipped = 0;
@@ -512,8 +514,6 @@ async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
     toNode.neighbors.push({ nodeId: parsed.sourceId, edgeId: edge.id, distance });
   }
 
-  // Drop isolated nodes: findClosestNode can snap a route to one and then A*
-  // has nowhere to go.
   const connected = {};
   for (const [id, node] of Object.entries(nodes)) {
     if (node.neighbors.length > 0) connected[id] = node;
@@ -521,9 +521,59 @@ async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
 
   return {
     graph: { nodes: connected, edges },
+    stats: { edgeCount: edges.length, nodeCount: Object.keys(connected).length, skipped },
+  };
+}
+
+/**
+ * Fetch and assemble a graph payload for the unified edge table.
+ *
+ * Never throws. Returns { graph, source, stats }.
+ *
+ * @param {object} opts
+ * @param {number} opts.lat
+ * @param {number} opts.lng
+ * @param {object} opts.envelope  required when campus is false.
+ * @param {boolean} opts.campus   true = whole campus graph, no spatial filter.
+ * @param {boolean} opts.hasGeometry  whether to select and use the geom column.
+ */
+async function loadGraphSlice({ lat, lng, envelope, campus, hasGeometry }) {
+  const { schema } = EDGE_TABLE;
+  const tableName = campus ? EDGE_TABLE.table : EDGE_TABLE.regionalTable;
+
+  // Identifiers cannot be parameterised in SQL. schema/table/column names come
+  // from the constants above, never from request input, which is what makes this
+  // safe to interpolate.
+  const qualified = isPostgres
+    ? `${schema}.${tableName}`
+    : (campus ? SQLITE_EDGE_TABLE : SQLITE_REGIONAL_EDGE_TABLE);
+  const col = (c) => (isPostgres ? `${qualified}.${c}` : c);
+
+  const select = buildEdgeSelect(col, { hasGeometry });
+  const filter = buildSliceFilter({ campus, envelope, hasGeometry });
+
+  const sql =
+    `SELECT ${select} ` +
+    `FROM ${qualified} ` +
+    filter.where +
+    // Deterministic cap. Without ORDER BY, "first N rows" is whatever the
+    // planner returns, so the same request can return different graphs — which
+    // reads as nondeterministic routing rather than as a limit.
+    // ORDER BY osm_id, not the surrogate `id`, because osm_id is what A* uses as
+    // the edge id and ordering by it keeps the two in agreement.
+    ` ORDER BY osm_id ` +
+    `LIMIT ?`;
+
+  const result = await query(sql, [...filter.params, MAX_EDGES]);
+  const rows = result?.rows ?? [];
+
+  const { graph, stats } = assembleGraph(rows, { hasGeometry });
+
+  return {
+    graph,
     source: rows.length === 0 ? `${qualified}-empty` : qualified,
     truncated: rows.length >= MAX_EDGES,
-    stats: { edgeCount: edges.length, nodeCount: Object.keys(connected).length, skipped, cap: MAX_EDGES },
+    stats: { ...stats, cap: MAX_EDGES },
   };
 }
 
@@ -537,6 +587,110 @@ function haversineMetres(a, b) {
   const lat2 = toRad(b.lat);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * Bounding box covering both endpoints of a trip, expanded by `paddingKm` on
+ * every side. Used by the server-side router to load a corridor graph.
+ */
+function envelopeForPoints(from, to, paddingKm = TRIP_PADDING_KM) {
+  const minLat = Math.min(from.lat, to.lat);
+  const maxLat = Math.max(from.lat, to.lat);
+  const minLng = Math.min(from.lng, to.lng);
+  const maxLng = Math.max(from.lng, to.lng);
+
+  const latDelta = paddingKm / KM_PER_DEG_LAT;
+  // The widest latitude in the box governs longitude scaling; using the
+  // equator-wide figure would make the box too narrow this far from it.
+  const widestLat = Math.max(Math.abs(minLat), Math.abs(maxLat));
+  const cosLat = Math.max(Math.cos((widestLat * Math.PI) / 180), 1e-6);
+  const lngDelta = paddingKm / (KM_PER_DEG_LAT * cosLat);
+
+  return {
+    minLat: minLat - latDelta,
+    maxLat: maxLat + latDelta,
+    minLng: minLng - lngDelta,
+    maxLng: maxLng + lngDelta,
+    paddingKm,
+  };
+}
+
+/**
+ * WHERE clause for a trip envelope.
+ *
+ * Unlike buildSliceFilter this does NOT filter on is_on_campus. A trip can start
+ * on campus and end in Accra, and the regional table already contains the campus
+ * edges (is_on_campus = TRUE), so both halves must be visible or A* dead-ends at
+ * the campus boundary. Carries the same ST_Intersects-vs-ST_Contains reasoning:
+ * a LineString has an empty interior, so ST_Contains would match nothing.
+ */
+function buildTripFilter({ envelope, hasGeometry }) {
+  const { coords } = EDGE_TABLE;
+
+  if (hasGeometry) {
+    return {
+      where: 'WHERE ST_Intersects(geom, ST_MakeEnvelope(?, ?, ?, ?, 4326))',
+      params: [envelope.minLng, envelope.minLat, envelope.maxLng, envelope.maxLat],
+    };
+  }
+
+  const endpoint = (latCol, lngCol) =>
+    `(${latCol} BETWEEN ? AND ? AND ${lngCol} BETWEEN ? AND ?)`;
+
+  return {
+    where:
+      'WHERE (' +
+      `${endpoint(coords.fromLat, coords.fromLng)} OR ` +
+      `${endpoint(coords.toLat, coords.toLng)})`,
+    params: [
+      envelope.minLat, envelope.maxLat, envelope.minLng, envelope.maxLng,
+      envelope.minLat, envelope.maxLat, envelope.minLng, envelope.maxLng,
+    ],
+  };
+}
+
+/**
+ * Load the regional graph covering a single trip.
+ *
+ * This is the server-side replacement for the 2km client slice: instead of
+ * shipping a small box to the browser and hoping the route fits inside it, the
+ * server loads the whole corridor between the two endpoints — from the regional
+ * table, which also holds the campus edges — and computes the path itself.
+ *
+ * Never throws; the caller (serverRouter) decides how to surface a failure.
+ * Returns { graph, source, truncated, stats, envelope }.
+ */
+export async function loadTripGraph({ from, to }) {
+  const { schema } = EDGE_TABLE;
+  const tableName = EDGE_TABLE.regionalTable;
+
+  const envelope = envelopeForPoints(from, to, TRIP_PADDING_KM);
+
+  const hasGeometry = isPostgres && (await geomColumnExists(tableName));
+  const qualified = isPostgres ? `${schema}.${tableName}` : SQLITE_REGIONAL_EDGE_TABLE;
+  const col = (c) => (isPostgres ? `${qualified}.${c}` : c);
+
+  const select = buildEdgeSelect(col, { hasGeometry });
+  const filter = buildTripFilter({ envelope, hasGeometry });
+
+  const sql =
+    `SELECT ${select} ` +
+    `FROM ${qualified} ` +
+    filter.where +
+    ` ORDER BY osm_id ` +
+    `LIMIT ?`;
+
+  const result = await query(sql, [...filter.params, MAX_TRIP_EDGES]);
+  const rows = result?.rows ?? [];
+  const { graph, stats } = assembleGraph(rows, { hasGeometry });
+
+  return {
+    graph,
+    source: rows.length === 0 ? `${qualified}-empty` : qualified,
+    truncated: rows.length >= MAX_TRIP_EDGES,
+    stats: { ...stats, cap: MAX_TRIP_EDGES },
+    envelope,
+  };
 }
 
 /**
@@ -674,6 +828,8 @@ export function __resetGeomProbe() {
 
 export const __test__ = {
   parseCoordinate, coerceBoolean, CAMPUS_BBOX,
-  envelopeForRadius, normaliseEdgeRow, haversineMetres,
-  buildSliceFilter, EDGE_TABLE, SQLITE_EDGE_TABLE, SQLITE_REGIONAL_EDGE_TABLE, MAX_EDGES, SLICE_RADIUS_KM,
+  envelopeForRadius, envelopeForPoints, normaliseEdgeRow, haversineMetres,
+  buildSliceFilter, buildTripFilter, buildEdgeSelect, assembleGraph,
+  EDGE_TABLE, SQLITE_EDGE_TABLE, SQLITE_REGIONAL_EDGE_TABLE,
+  MAX_EDGES, SLICE_RADIUS_KM, MAX_TRIP_EDGES, TRIP_PADDING_KM,
 };

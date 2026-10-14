@@ -7,6 +7,13 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  
     port: 5173,
+    fs: {
+      // The routing engine lives in shared/routing/ (repo root), outside this
+      // Vite root, so the dev server must be allowed to serve files above
+      // frontend/. Rollup already follows the imports at build time; this is
+      // the dev-server-only equivalent of that.
+      allow: ['..'],
+    },
     watch: {
       // Playwright writes these directories during E2E; watching+locking them
       // crashed the Vite dev server (EBUSY). Ignore them.

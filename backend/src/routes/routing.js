@@ -8,6 +8,7 @@ import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { getRoutingContext, getSpatialGraphSlice } from '../services/routingContext.js';
 import { syncSpatialGraphRegion, validateBbox } from '../services/graphSynchronizer.js';
+import { routeOffCampus } from '../services/serverRouter.js';
 
 const router = express.Router();
 
@@ -102,6 +103,100 @@ router.get('/graph-slice', async (req, res) => {
       graph: { nodes: {}, edges: [] },
       source: 'error-default',
     });
+  }
+});
+
+// Vehicle modes the routing engine defines. Kept here as an allowlist so an
+// arbitrary string cannot reach the cost function; it mirrors costFunction.js's
+// VEHICLE_MODES and must be updated alongside it.
+const ALLOWED_VEHICLE_MODES = new Set(['walk', 'bicycle', 'jogging', 'car', 'motorcycle']);
+
+// Ceiling on decisions forwarded into a single routing request. Each decision is
+// scanned against every route segment, so an unbounded array is a cheap way to
+// make one request expensive on a shared process.
+const MAX_DECISIONS = 500;
+
+function validatePoint(point, name) {
+  if (!point || typeof point !== 'object') {
+    return `${name} must be an object with lat and lng`;
+  }
+  const invalid = validateLatLng(point.lat, point.lng);
+  return invalid ? `${name}.${invalid}` : null;
+}
+
+/**
+ * Validate a POST /route body.
+ *
+ * Returns { error } or { value } with fully-coerced, bounded inputs. Coercion is
+ * explicit here (not left to routeOffCampus) so a bad payload is rejected with a
+ * clear 400 instead of surfacing later as an opaque SQL geometry error.
+ */
+function validateRouteRequest(body) {
+  const { from, to, vehicleMode, decisions, weatherMultipliers } = body || {};
+
+  const fromError = validatePoint(from, 'from');
+  if (fromError) return { error: fromError };
+  const toError = validatePoint(to, 'to');
+  if (toError) return { error: toError };
+
+  let mode = 'walk';
+  if (vehicleMode !== undefined && vehicleMode !== null) {
+    if (typeof vehicleMode !== 'string' || !ALLOWED_VEHICLE_MODES.has(vehicleMode)) {
+      return { error: `vehicleMode must be one of: ${[...ALLOWED_VEHICLE_MODES].join(', ')}` };
+    }
+    mode = vehicleMode;
+  }
+
+  let safeDecisions = [];
+  if (decisions !== undefined && decisions !== null) {
+    if (!Array.isArray(decisions)) return { error: 'decisions must be an array' };
+    safeDecisions = decisions.slice(0, MAX_DECISIONS);
+  }
+
+  let multipliers;
+  if (weatherMultipliers !== undefined && weatherMultipliers !== null) {
+    if (typeof weatherMultipliers !== 'object' || Array.isArray(weatherMultipliers)) {
+      return { error: 'weatherMultipliers must be an object' };
+    }
+    multipliers = weatherMultipliers;
+  }
+
+  return {
+    value: {
+      from: { lat: Number(from.lat), lng: Number(from.lng) },
+      to: { lat: Number(to.lat), lng: Number(to.lng) },
+      vehicleMode: mode,
+      decisions: safeDecisions,
+      weatherMultipliers: multipliers,
+    },
+  };
+}
+
+// ============================================
+// POST /api/routing/route
+// ============================================
+//
+// Server-side off-campus routing. The browser posts two coordinates and gets
+// back the four route profiles, computed here over the regional corridor graph
+// — removing the 2km client-slice cap that made longer trips fail with "no
+// route". Public and unauthenticated for the same reason as /context and
+// /graph-slice: the frontend needs it before a session exists.
+//
+// Expected non-fatal conditions (empty region, un-snappable endpoint) come back
+// as 200 with ok:false and a `reason`, because they are normal answers, not
+// errors. Only a genuine server fault is a 5xx.
+router.post('/route', async (req, res) => {
+  const parsed = validateRouteRequest(req.body);
+  if (parsed.error) {
+    return res.status(400).json({ ok: false, reason: 'invalid-request', error: parsed.error });
+  }
+
+  try {
+    const result = await routeOffCampus(parsed.value);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[ServerRoute] Unexpected error:', err);
+    return res.status(500).json({ ok: false, reason: 'server-error', error: err?.message || 'Routing failed' });
   }
 });
 

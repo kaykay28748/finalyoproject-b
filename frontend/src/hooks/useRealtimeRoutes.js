@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { getAllRoutes, findNearestNode } from "../services/routing";
 import { fetchGraphSlice, SANDBOX_CONTEXT } from "../services/graphSliceService";
+import { fetchServerRoutes } from "../services/serverRoutingService";
 import { fetchDecisionFeed } from "../services/reportService";
 import { fetchWeather, getWeatherMultipliers } from "../services/weatherService";
 import { getDistanceToRoute, distanceBetween, findClosestPointOnRoute } from "../function/utils/geometry";
@@ -155,62 +156,69 @@ export function useRealtimeRoutes({
   }, [startNodeId]);
 
   const calculateRoutes = useCallback(async (fromNodeId, reason = "initial", fromCoordinate = null) => {
+    const isExternal = sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL;
+
+    // Off-campus trips are routed on the server (see serverRoutingService.js):
+    // the Overpass graph is campus-sized and the server slice was capped at 2km,
+    // which is what made longer trips fail with "no route". That path needs only
+    // coordinates, so no local graph is required from this branch.
+    let serverFrom = null;
+    let serverTo   = null;
+
     // Route over the slice graph when we have one, else the Overpass graph.
     // `let`, not `const`: the fallbacks below reassign it back to the Overpass
     // graph when the slice cannot serve the requested endpoints.
     let activeGraph = activeGraphRef.current;
-    if (!activeGraph || (!fromNodeId && !fromCoordinate && !routeStartPoint) || (!endNodeId && !routeDestinationPoint)) {
-      console.warn('[useRealtimeRoutes] Missing graph or node IDs');
-      if (sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL) {
-        setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
-        setIsLoading(false);
-        setIsRerouting(false);
-      }
-      return;
-    }
-
-    // The node IDs arrive from App.jsx, which snapped them against the OVERPASS
-    // graph. They are meaningless in a slice graph — different node table, so
-    // findShortestPath returns null with "Start or end node not found" and the
-    // user gets no route at all. So when the two graphs differ, re-snap by
-    // coordinate against the graph actually being routed over.
     let startId = fromNodeId;
     let endId = endNodeId;
 
-    if (activeGraph !== graph) {
-      const startCoord = fromCoordinate ?? routeStartPoint ?? graph?.nodes?.[fromNodeId];
-      const endCoord   = routeDestinationPoint ?? graph?.nodes?.[endNodeId];
+    if (isExternal) {
+      // Coordinates only. fromCoordinate arrives from App.jsx; routeStartPoint /
+      // routeDestinationPoint are the user's chosen points; the graph-node lookup
+      // is the last resort for the common case where App snapped nothing but a
+      // node id exists.
+      serverFrom = fromCoordinate ?? routeStartPoint ?? (fromNodeId ? graph?.nodes?.[fromNodeId] : null);
+      serverTo   = routeDestinationPoint ?? (endNodeId ? graph?.nodes?.[endNodeId] : null);
 
-      if (!startCoord || !endCoord) {
-        if (sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL) {
-          console.warn('[useRealtimeRoutes] External graph cannot locate route endpoints');
-          setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
-          setIsLoading(false);
-          setIsRerouting(false);
-          return;
-        }
-        console.warn('[useRealtimeRoutes] Cannot re-snap onto slice graph, using Overpass graph');
-        activeGraphRef.current = graph;
-        activeGraph = graph;
-      } else {
-        const startSnap = findNearestNode(activeGraph, startCoord.lat, startCoord.lng);
-        const endSnap   = findNearestNode(activeGraph, endCoord.lat, endCoord.lng);
-        if (!startSnap || !endSnap) {
-          // The slice does not cover the requested endpoints. findNearestNode
-          // returns null past its max distance, which is the signal for this.
-          if (sandboxContextRef.current === SANDBOX_CONTEXT.EXTERNAL) {
-            console.warn('[useRealtimeRoutes] Regional slice does not cover the route endpoints');
-            setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
-            setIsLoading(false);
-            setIsRerouting(false);
-            return;
-          }
-          console.warn('[useRealtimeRoutes] Slice graph does not cover the endpoints, using Overpass graph');
+      if (!serverFrom || !serverTo) {
+        console.warn('[useRealtimeRoutes] External route is missing endpoint coordinates');
+        setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
+        setIsLoading(false);
+        setIsRerouting(false);
+        return;
+      }
+    } else {
+      if (!activeGraph || (!fromNodeId && !fromCoordinate && !routeStartPoint) || (!endNodeId && !routeDestinationPoint)) {
+        console.warn('[useRealtimeRoutes] Missing graph or node IDs');
+        return;
+      }
+
+      // The node IDs arrive from App.jsx, which snapped them against the OVERPASS
+      // graph. They are meaningless in a slice graph — different node table, so
+      // findShortestPath returns null with "Start or end node not found" and the
+      // user gets no route at all. So when the two graphs differ, re-snap by
+      // coordinate against the graph actually being routed over.
+      if (activeGraph !== graph) {
+        const startCoord = fromCoordinate ?? routeStartPoint ?? graph?.nodes?.[fromNodeId];
+        const endCoord   = routeDestinationPoint ?? graph?.nodes?.[endNodeId];
+
+        if (!startCoord || !endCoord) {
+          console.warn('[useRealtimeRoutes] Cannot re-snap onto slice graph, using Overpass graph');
           activeGraphRef.current = graph;
           activeGraph = graph;
         } else {
-          startId = startSnap;
-          endId = endSnap;
+          const startSnap = findNearestNode(activeGraph, startCoord.lat, startCoord.lng);
+          const endSnap   = findNearestNode(activeGraph, endCoord.lat, endCoord.lng);
+          if (!startSnap || !endSnap) {
+            // The slice does not cover the requested endpoints. findNearestNode
+            // returns null past its max distance, which is the signal for this.
+            console.warn('[useRealtimeRoutes] Slice graph does not cover the endpoints, using Overpass graph');
+            activeGraphRef.current = graph;
+            activeGraph = graph;
+          } else {
+            startId = startSnap;
+            endId = endSnap;
+          }
         }
       }
     }
@@ -264,18 +272,43 @@ export function useRealtimeRoutes({
         message:  weatherMultipliers.message,
       });
 
-      // Fetch all profiles in parallel (handled by services/routing).
-      // sandboxContextRef is passed by reference on purpose: it is current at call
-      // time without making calculateRoutes re-create whenever the slice lands.
-      const allRoutes = await getAllRoutes(
-        activeGraph,
-        startId,
-        endId,
-        vehicleMode,
-        feed?.reports ?? [],
-        weatherMultipliers,
-        sandboxContextRef.current
-      );
+      let allRoutes;
+
+      if (isExternal) {
+        // Off-campus: the backend owns the regional graph and the A* run. It
+        // returns the same four-profile shape as getAllRoutes(), so the rest of
+        // this function (progress, voice, profile switching) is unchanged.
+        const result = await fetchServerRoutes({
+          from: serverFrom,
+          to: serverTo,
+          vehicleMode,
+          decisions: feed?.reports ?? [],
+          weatherMultipliers,
+        });
+
+        if (!result.ok) {
+          // No usable route (region empty, endpoint unsnappable, network) — the
+          // honest answer is "no route", not a stale or invented one.
+          console.warn('[useRealtimeRoutes] Server routing returned no route:', result.reason);
+          setRoutes({ standard: null, fastest: null, accessible: null, night: null, lastUpdated: 0 });
+          return;
+        }
+
+        allRoutes = result.routes;
+      } else {
+        // Campus: compute locally over the small, already-present graph.
+        // sandboxContextRef is passed by reference on purpose: it is current at
+        // call time without making calculateRoutes re-create whenever the slice lands.
+        allRoutes = await getAllRoutes(
+          activeGraph,
+          startId,
+          endId,
+          vehicleMode,
+          feed?.reports ?? [],
+          weatherMultipliers,
+          sandboxContextRef.current
+        );
+      }
       
       setRoutes({ ...allRoutes, lastUpdated: now });
       setDeviationDetected(false);

@@ -1,18 +1,4 @@
-// Calculates straight-line distance in kilometres between two lat/lng points
-// Uses the Haversine formula — accurate enough for short campus-scale distances
-export function distanceKm(lat1, lng1, lat2, lng2) {
-  const R    = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a    =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// Converts kilometres to metres
-export function kmToMetres(km) {
-  return km * 1000;
-}
+// Re-export shim. distance helpers now live in shared/routing/utils/ so the
+// backend can import the exact same code. Kept so existing frontend importers
+// (App.jsx, graphBuilder.js, geocoding.js, routing engine) keep working.
+export * from "../../../../shared/routing/utils/distance.js";
