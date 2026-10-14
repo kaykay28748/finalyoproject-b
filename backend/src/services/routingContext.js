@@ -232,6 +232,16 @@ const TRIP_PADDING_KM = 0.75;
 // memory and block the event loop.
 const MAX_TRIP_EDGES = 300000;
 
+// Half-width of the corridor used to load a trip graph. The first attempt at a
+// server route loads only the edges within this many kilometres of the straight
+// line between the endpoints, instead of the full endpoint bounding box. For a
+// Legon->Tema trip the bbox is a ~22x22km square (~35k edges) while the route
+// itself is a thin 33km line; the corridor holds a small fraction of that, and
+// measured latency scales with edges loaded. 2.5km is deliberately generous so
+// a route that bends around a wide block or crosses a river still fits; if it
+// does not, routeOffCampus falls back to the full bbox.
+export const TRIP_CORRIDOR_KM = 2.5;
+
 // Degrees of latitude per kilometre. Hoisted to module scope because both
 // envelope helpers below need it and a second copy could silently drift.
 const KM_PER_DEG_LAT = 111.32;
@@ -650,6 +660,39 @@ function buildTripFilter({ envelope, hasGeometry }) {
 }
 
 /**
+ * WHERE clause for a trip corridor: every edge within `corridorKm` of the
+ * straight line joining the two endpoints.
+ *
+ * ST_DWithin is index-accelerated (it expands the query geometry by the
+ * distance and probes the geom GIST index), so this is a tighter, still-cheap
+ * replacement for the bbox filter buildTripFilter produces. Only usable when the
+ * geom column exists; callers fall back to buildTripFilter otherwise.
+ *
+ * The distance argument to ST_DWithin is in the units of the geometry's SRS,
+ * i.e. degrees for 4326. Converting via the *widest* latitude of the pair keeps
+ * the corridor at least `corridorKm` wide in both axes: over-covering north-south
+ * is harmless (a wider corridor never clips the route), while using the
+ * equator-wide figure would leave it narrow east-west.
+ */
+function buildCorridorFilter({ from, to, corridorKm = TRIP_CORRIDOR_KM }) {
+  const widestLat = Math.max(Math.abs(from.lat), Math.abs(to.lat));
+  const cosLat = Math.max(Math.cos((widestLat * Math.PI) / 180), 1e-6);
+  const corridorDeg = corridorKm / (KM_PER_DEG_LAT * cosLat);
+
+  // SRID must be set explicitly on the line: ST_MakePoint returns an SRID-0
+  // geometry, and PostGIS 2.2+ raises on mixed-SRID operations, so an unlabelled
+  // line would make ST_DWithin error against the 4326 geom column. (The bbox
+  // filter sets 4326 on its envelope for the same reason.)
+  return {
+    where:
+      'WHERE ST_DWithin(geom, ' +
+      'ST_SetSRID(ST_MakeLine(ST_MakePoint(?, ?), ST_MakePoint(?, ?)), 4326), ?)',
+    params: [from.lng, from.lat, to.lng, to.lat, corridorDeg],
+    corridorKm,
+  };
+}
+
+/**
  * Load the regional graph covering a single trip.
  *
  * This is the server-side replacement for the 2km client slice: instead of
@@ -657,10 +700,19 @@ function buildTripFilter({ envelope, hasGeometry }) {
  * server loads the whole corridor between the two endpoints — from the regional
  * table, which also holds the campus edges — and computes the path itself.
  *
+ * Two strategies, selected by `mode`:
+ *   'corridor' (default) — edges within TRIP_CORRIDOR_KM of the from->to line.
+ *                          Far fewer edges than the bbox, so A* is much faster;
+ *                          this is the primary path.
+ *   'bbox'               — the padded endpoint bounding box. The fallback for
+ *                          when the corridor turns out too narrow (a route that
+ *                          detours further than the corridor half-width). Only
+ *                          worth paying for on the rare miss.
+ *
  * Never throws; the caller (serverRouter) decides how to surface a failure.
- * Returns { graph, source, truncated, stats, envelope }.
+ * Returns { graph, source, truncated, stats, envelope, corridor }.
  */
-export async function loadTripGraph({ from, to }) {
+export async function loadTripGraph({ from, to, mode = 'corridor', corridorKm = TRIP_CORRIDOR_KM }) {
   const { schema } = EDGE_TABLE;
   const tableName = EDGE_TABLE.regionalTable;
 
@@ -679,7 +731,13 @@ export async function loadTripGraph({ from, to }) {
   // hasGeometry:false for the SELECT/normalise path — see above. The filter
   // still uses the geom index when it exists.
   const select = buildEdgeSelect(col, { hasGeometry: false });
-  const filter = buildTripFilter({ envelope, hasGeometry: filterByGeometry });
+
+  // Corridor is only expressible spatially (ST_DWithin on geom); without the
+  // geom column fall through to the coordinate-column bbox filter.
+  const useCorridor = mode === 'corridor' && filterByGeometry;
+  const filter = useCorridor
+    ? buildCorridorFilter({ from, to, corridorKm })
+    : buildTripFilter({ envelope, hasGeometry: filterByGeometry });
 
   const sql =
     `SELECT ${select} ` +
@@ -698,6 +756,7 @@ export async function loadTripGraph({ from, to }) {
     truncated: rows.length >= MAX_TRIP_EDGES,
     stats: { ...stats, cap: MAX_TRIP_EDGES },
     envelope,
+    corridor: useCorridor ? { corridorKm, from, to } : null,
   };
 }
 
@@ -837,7 +896,7 @@ export function __resetGeomProbe() {
 export const __test__ = {
   parseCoordinate, coerceBoolean, CAMPUS_BBOX,
   envelopeForRadius, envelopeForPoints, normaliseEdgeRow, haversineMetres,
-  buildSliceFilter, buildTripFilter, buildEdgeSelect, assembleGraph,
+  buildSliceFilter, buildTripFilter, buildCorridorFilter, buildEdgeSelect, assembleGraph,
   EDGE_TABLE, SQLITE_EDGE_TABLE, SQLITE_REGIONAL_EDGE_TABLE,
-  MAX_EDGES, SLICE_RADIUS_KM, MAX_TRIP_EDGES, TRIP_PADDING_KM,
+  MAX_EDGES, SLICE_RADIUS_KM, MAX_TRIP_EDGES, TRIP_PADDING_KM, TRIP_CORRIDOR_KM,
 };
