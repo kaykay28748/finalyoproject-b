@@ -166,6 +166,7 @@ export default function NavPanel({
   activeProfile,
   accuracy,
   locationError,
+  accuracyWarning,
   browseCategory,
   browseListOpen,
   browsePlaces = [],
@@ -251,21 +252,25 @@ export default function NavPanel({
 
   const statusClass = locationError
     ? "error"
-    : markersVisible
-      ? "ready"
-      : "idle";
+    : accuracyWarning
+      ? "warn"
+      : markersVisible
+        ? "ready"
+        : "idle";
 
   const statusMsg = locationError
     ? locationError
-    : markersVisible
-      ? "Route ready"
-      : canShow
-        ? "Ready — tap Directions"
-        : startText && !destText
-          ? "Now set your destination"
-          : !startText && destText
-            ? "Now set your start point"
-            : "Tap the map or search to set locations";
+    : accuracyWarning
+      ? accuracyWarning
+      : markersVisible
+        ? "Route ready"
+        : canShow
+          ? "Ready — tap Directions"
+          : startText && !destText
+            ? "Now set your destination"
+            : !startText && destText
+              ? "Now set your start point"
+              : "Tap the map or search to set locations";
 
   // Senior Design: Define profile colors for visual continuity with the map route
   const profileColors = {
@@ -510,7 +515,7 @@ export default function NavPanel({
             </div>
 
             <p className={`nav-status ${statusClass}`}>
-              {statusClass === "error" && (
+              {(statusClass === "error" || statusClass === "warn") && (
                 <svg
                   width="11"
                   height="11"

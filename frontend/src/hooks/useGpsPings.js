@@ -3,10 +3,12 @@ import { recordPing, startPinger, stopPinger } from "../services/gpsPings";
 
 const POLL_INTERVAL_MS = 3000;
 
-export function useGpsPings(currentLocation) {
+export function useGpsPings(currentLocation, isAccurate = true) {
   const lastSampleRef = useRef(0);
   const locationRef = useRef(currentLocation);
   locationRef.current = currentLocation;
+  const isAccurateRef = useRef(isAccurate);
+  isAccurateRef.current = isAccurate;
 
   useEffect(() => {
     startPinger();
@@ -16,6 +18,10 @@ export function useGpsPings(currentLocation) {
 
       const loc = locationRef.current;
       if (!loc?.lat || !loc?.lng) return;
+
+      // Skip coarse Wi-Fi/IP fixes (typical on desktop) — they would scatter
+      // the heatmap with pings from wherever the ISP resolves to.
+      if (!isAccurateRef.current) return;
 
       const now = Date.now();
       if (now - lastSampleRef.current < POLL_INTERVAL_MS) return;

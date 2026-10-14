@@ -352,6 +352,7 @@ const MemoizedAlternateRoute = memo(function MemoizedAlternateRoute({
 export default function MapView({
   currentLocation,
   accuracy,
+  isLowAccuracy = false,
   customStartPoint,
   startPoint,
   destPoint,
@@ -433,9 +434,11 @@ export default function MapView({
     Math.abs(primaryRoute.coordinates[0].lng - currentLocation.lng) < 0.0001;
 
   // Auto-center on the live GPS only when the fix is within the area we have
-  // routing data for (METRO_BOUNDS). A fix from kilometres away (e.g. demos
+  // routing data for (METRO_BOUNDS) and the fix is trustworthy. A coarse
+  // Wi-Fi/IP fix (typical on desktop) or one from kilometres away (e.g. demos
   // from home) must NOT hijack the initial view.
   const isGpsInCoverage = !!currentLocation &&
+    !isLowAccuracy &&
     METRO_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
 
   // Track map bounds for heatmap controls (2D only)
@@ -623,7 +626,7 @@ export default function MapView({
             onPlaceSelect={onBrowsePlaceSelect}
           />
 
-          <GpsLocationMarker  location={currentLocation} accuracy={accuracy} routeDirection={currentRouteDirection} smoothedPosition={smoothedRoutePosition} deviceHeading={deviceHeading} />
+          <GpsLocationMarker  location={currentLocation} accuracy={accuracy} isLowAccuracy={isLowAccuracy} routeDirection={currentRouteDirection} smoothedPosition={smoothedRoutePosition} deviceHeading={deviceHeading} />
 
           {currentLocation && (
             <Marker
@@ -706,6 +709,7 @@ export default function MapView({
           <SafeMapLibre3DView
             visible={is3DMode}
             currentLocation={currentLocation}
+            isLowAccuracy={isLowAccuracy}
             flyTarget={flyTarget}
             primaryRoute={primaryRoute}
             alternativeRoutes={alternativeRoutes}

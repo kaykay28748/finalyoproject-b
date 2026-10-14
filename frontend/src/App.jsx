@@ -78,7 +78,7 @@ export default function App() {
 
   const legendCollapseRef = useRef(null);
 
-  const { location: currentLocation, accuracy, error: locationError, permissionState, requestLocation } = useGeolocation();
+  const { location: currentLocation, accuracy, error: locationError, permissionState, requestLocation, isAccurate, isLowAccuracy } = useGeolocation();
 
   const browsePlaces = useMemo(() => {
     if (!browseCategory) return [];
@@ -94,7 +94,7 @@ export default function App() {
   }, [browseCategory, currentLocation]);
 
   // ── GPS heatmap pings ───────────────────────────────────────────
-  useGpsPings(currentLocation);
+  useGpsPings(currentLocation, isAccurate);
 
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
   const [resetProgressTimestamp, setResetProgressTimestamp] = useState(0); // New state for resetting progress
@@ -352,14 +352,14 @@ export default function App() {
     weatherBasis,
   }), [graph, decisionFeed, hazardFeedState, weatherBasis]);
 
-  // ── Auto-fill FROM with GPS (only when GPS can actually snap to the graph) ──
+  // ── Auto-fill FROM with GPS (only when the fix is accurate AND can snap) ──
   useEffect(() => {
-    if (currentLocation && !hasAutoFilled && !useCustomLocation && !startPoint && getNodeId(currentLocation)) {
+    if (currentLocation && isAccurate && !hasAutoFilled && !useCustomLocation && !startPoint && getNodeId(currentLocation)) {
       setStartPoint(currentLocation);
       setStartText("My current location");
       setHasAutoFilled(true);
     }
-  }, [currentLocation, hasAutoFilled, useCustomLocation, startPoint, getNodeId]);
+  }, [currentLocation, isAccurate, hasAutoFilled, useCustomLocation, startPoint, getNodeId]);
 
   // ── Lock route when active ────────────────────────────────────────────────
   useEffect(() => {
@@ -399,17 +399,20 @@ export default function App() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleUseCurrentLocation = () => {
-    if (currentLocation) {
+    if (currentLocation && isAccurate) {
       setStartPoint(currentLocation);
       setStartText("My current location");
       setWaitingForStart(false);
       setUseCustomLocation(false);
       setCustomStartPoint(null);
     } else if (permissionState !== "denied" && permissionState !== "unsupported") {
+      // No fix yet, or the fix is too coarse to route from (typical on desktop,
+      // where browsers resolve location from Wi-Fi/IP). Don't seed routing with
+      // it — ask for a fresh fix and let the user drop a pin on the map instead.
       setStartPoint(null);
       setStartText("");
       setHasAutoFilled(false);
-      setWaitingForStart(false);
+      setWaitingForStart(true);
       requestLocation();
     }
   };
@@ -662,6 +665,15 @@ export default function App() {
     (effectiveStartPoint || effectiveStartText.trim().length > 0) &&
     (destPoint           || destText.trim().length > 0);
 
+  // Desktop browsers resolve location from Wi-Fi/IP, so a "fix" can be
+  // kilometres off. Tell the user why the GPS didn't drop a pin they can route
+  // from instead of silently ignoring it. Once they've set a start (by hand or
+  // by pinning the map) the warning is moot and the panel returns to normal.
+  const accuracyWarning =
+    currentLocation && accuracy != null && !isAccurate && !effectiveStartPoint
+      ? `Location is approximate (±${accuracy} m). Drop a pin to set your start point.`
+      : null;
+
   // Compute map blur state
   // Senior Fix: Keep map in focus during legend interaction. Only blur for search.
   const isMapBlurred = isNavExpanded;
@@ -695,6 +707,7 @@ export default function App() {
           accuracy={accuracy}
           activeProfile={activeProfile}
           locationError={locationError}
+          accuracyWarning={accuracyWarning}
           browseCategory={browseCategory}
           browseListOpen={browseListOpen}
           browsePlaces={browsePlaces}
@@ -712,6 +725,7 @@ export default function App() {
           <MapView
             currentLocation={currentLocation}
             accuracy={accuracy}
+            isLowAccuracy={isLowAccuracy}
             customStartPoint={customStartPoint}
             startPoint={effectiveStartPoint}
             destPoint={finalDestPoint} // Ensure MapLibre3DView uses finalDestPoint

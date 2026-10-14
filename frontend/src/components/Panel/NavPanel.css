@@ -884,10 +884,12 @@
 .nav-status.idle  { color: #2563eb; }
 .nav-status.ready { color: #16a34a; }
 .nav-status.error { color: #dc2626; }
+.nav-status.warn  { color: #d97706; }
 
 .ug-root.dark .nav-status.idle  { color: #60a5fa; }
 .ug-root.dark .nav-status.ready { color: #4ade80; }
 .ug-root.dark .nav-status.error { color: #f87171; }
+.ug-root.dark .nav-status.warn  { color: #fbbf24; }
 
 /* ─── Panel shell ───────────────────────────────────────────────────────── */
 .ug-root.dark .nav-panel {

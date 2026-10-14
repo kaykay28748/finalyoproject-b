@@ -1,6 +1,16 @@
 // frontend/src/hooks/useGeolocation.js
 import { useState, useEffect, useRef, useCallback } from "react";
 
+// A fix is only trustworthy enough to drive routing/auto-fill when the browser
+// reports it within this radius. Plain GPS on a phone is usually < 20 m, while
+// desktop browsers derive position from Wi-Fi/IP and are frequently off by
+// kilometres (accuracy in the thousands). Without this gate a coarse desktop
+// fix got snapped to the nearest campus node and produced wrong routes and
+// "No path found" errors.
+export const MAX_USABLE_ACCURACY_M = 100;
+// Above this the marker is drawn in amber so the user can see the fix is coarse.
+export const LOW_ACCURACY_M = 50;
+
 export function useGeolocation() {
   const [location, setLocation] = useState(null);
   const [accuracy, setAccuracy] = useState(null);
@@ -95,5 +105,8 @@ export function useGeolocation() {
     return stopWatching;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { location, accuracy, error, permissionState, requestLocation };
+  const isAccurate = accuracy != null && accuracy <= MAX_USABLE_ACCURACY_M;
+  const isLowAccuracy = accuracy != null && accuracy > LOW_ACCURACY_M;
+
+  return { location, accuracy, error, permissionState, requestLocation, isAccurate, isLowAccuracy };
 }

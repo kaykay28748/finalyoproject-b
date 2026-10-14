@@ -160,6 +160,7 @@ class RainParticles {
 export default function MapLibre3DView({
   visible = false,
   currentLocation,
+  isLowAccuracy = false,
   flyTarget,
   primaryRoute,
   alternativeRoutes = [],
@@ -547,9 +548,11 @@ export default function MapLibre3DView({
   const hasFlownRef = useRef(false);
   useEffect(() => {
     // Only auto-center on the GPS when the fix is within the area we have
-    // routing data for (METRO_BOUNDS). A fix from home (kilometres away) must
+    // routing data for (METRO_BOUNDS) and the fix is trustworthy. A coarse
+    // Wi-Fi/IP fix (typical on desktop) or one from home (kilometres away) must
     // not hijack the 3D view.
     const onCampus = !!currentLocation &&
+      !isLowAccuracy &&
       METRO_BOUNDS.contains([currentLocation.lat, currentLocation.lng]);
     if (!mapRef.current || !currentLocation || !onCampus || hasFlownRef.current) return;
     try {
@@ -562,7 +565,7 @@ export default function MapLibre3DView({
       });
       hasFlownRef.current = true;
     } catch (_) {}
-  }, [currentLocation]);
+  }, [currentLocation, isLowAccuracy]);
 
   // ── markers ───────────────────────────────────────────────────────────────
 
